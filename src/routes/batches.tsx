@@ -50,7 +50,7 @@ function BatchScreen() {
 
   async function load() {
     const [r, ri, i, c] = await Promise.all([
-      supabase.from("recipes").select("id,name,yield_portions").order("name"),
+      supabase.from("recipes").select("id,name,yield_portions").eq("is_current", true).order("name"),
       supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit"),
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),

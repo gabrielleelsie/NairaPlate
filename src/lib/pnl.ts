@@ -1,10 +1,13 @@
 // NairaPlate P&L — the ONE place gross sales, cost of goods, gross margin and food cost % are calculated.
 // Every screen that shows any of these numbers must call calculateBusinessPnl().
 //
-// KNOWN LIMITATION: recipes are not versioned yet. Cost of goods for each sold plate uses the
-// recipe's cost per plate AS IT STANDS TODAY (today's ingredient prices and today's recipe
-// ingredients), not the cost on the day of the sale. If ingredient prices rise, past sales will
-// show a higher cost of goods than they really had. The result carries this in `limitations`.
+// RECIPE VERSIONS: each sold plate is costed with the EXACT recipe version it was sold under
+// (order_items.recipe_version_id → that recipes row and its own recipe_items). Editing a recipe
+// later creates a new version and never changes the cost of past sales.
+//
+// KNOWN LIMITATION: ingredient prices are not versioned. The historical recipe's ingredient list
+// and quantities are multiplied by each ingredient's CURRENT price (ingredients.current_cost_kobo),
+// not the price on the day of the sale. The result carries this in `limitations`.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeRecipeCost, type CostConversion, type CostIngredient, type CostRecipeItem } from "@/lib/costing";
 
@@ -25,6 +28,8 @@ export type PnlResult = {
 
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 
+type SoldItem = { recipe_id: string; recipe_version_id?: string | null; quantity: number };
+
 export async function calculateBusinessPnl(
   supabase: SupabaseClient,
   business_id: string,
@@ -33,22 +38,27 @@ export async function calculateBusinessPnl(
   const from = date_range.from.toISOString();
   const to = date_range.to.toISOString();
 
-  const [orders, wastage, ingredients, conversions, recipes, recipeItems, partials] = await Promise.all([
-    // Only 'paid' and 'partially_refunded' orders count. 'cancelled' (void) and 'refunded' count as ₦0.
-    supabase.from("orders")
-      .select("id,total_kobo,created_at,order_items(recipe_id,quantity)")
-      .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
-      .gte("created_at", from).lt("created_at", to),
+  // Only 'paid' and 'partially_refunded' orders count. 'cancelled' (void) and 'refunded' count as ₦0.
+  const ordersQuery = (cols: string) => supabase.from("orders")
+    .select(`id,total_kobo,created_at,order_items(${cols})`)
+    .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
+    .gte("created_at", from).lt("created_at", to);
+
+  const [ordersV, wastage, ingredients, conversions, recipes, recipeItems, partials] = await Promise.all([
+    ordersQuery("recipe_id,recipe_version_id,quantity"),
     supabase.from("wastage_logs").select("cost_kobo")
       .eq("business_id", business_id).gte("created_at", from).lt("created_at", to),
     supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").eq("business_id", business_id),
     supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty").eq("business_id", business_id),
+    // ALL versions (old and current) — past sales need the version they were sold under.
     supabase.from("recipes").select("id,name,yield_portions").eq("business_id", business_id),
     supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit").eq("business_id", business_id),
     // Partial refunds per order. If the refunds table isn't set up yet, treat as no refunds.
     supabase.from("order_adjustments").select("order_id,adjustment_amount_kobo")
       .eq("business_id", business_id).eq("type", "partial_refund"),
   ]);
+  // Before the versioning script is run the column doesn't exist: fall back to recipe_id.
+  const orders = ordersV.error ? await ordersQuery("recipe_id,quantity") : ordersV;
   const failed = [orders, wastage, ingredients, conversions, recipes, recipeItems].find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
   const refundedByOrder = new Map<string, number>();
@@ -61,16 +71,18 @@ export async function calculateBusinessPnl(
   const items = (recipeItems.data ?? []) as (CostRecipeItem & { recipe_id: string })[];
   const warnings: string[] = [];
 
-  // Today's exact (unrounded) cost per plate for each recipe, via the shared costing function.
+  // Exact (unrounded) cost per plate for EACH recipe version, via the shared costing function,
+  // using that version's own ingredient lines and plates-it-makes.
   const perPlate = new Map<string, number>();
   for (const r of recipes.data ?? []) {
     const c = computeRecipeCost({
       items: items.filter((i) => i.recipe_id === r.id).map((i) => ({ ...i, quantity: Number(i.quantity) })),
       ingredients: ings, conversions: convs, yield_portions: Number(r.yield_portions), target_margin_bps: 0,
     });
-    if (c.errors.length) warnings.push(`${r.name}: ${c.errors[0]} Its plates are counted as ₦0 cost.`);
+    if (c.errors.length) perPlate.set(r.id, NaN);
     else perPlate.set(r.id, c.total_ingredient_cost_kobo / Number(r.yield_portions));
   }
+  const nameById = new Map((recipes.data ?? []).map((r) => [r.id, r.name as string]));
 
   // Daily buckets across the whole range, so days with no sales show as 0 on the chart.
   const daily = new Map<string, number>();
@@ -78,14 +90,20 @@ export async function calculateBusinessPnl(
 
   let gross_sales_kobo = 0;
   let recipeCost = 0;
-  for (const o of orders.data ?? []) {
+  for (const o of (orders.data ?? []) as unknown as { id: string; total_kobo: number; created_at: string; order_items: SoldItem[] | null }[]) {
     // Net sale = total minus every partial refund on that order.
     const total = Number(o.total_kobo) - (refundedByOrder.get(o.id) ?? 0);
     gross_sales_kobo += total;
     const k = dayKey(new Date(o.created_at));
     daily.set(k, (daily.get(k) ?? 0) + total);
-    for (const it of (o.order_items ?? []) as { recipe_id: string; quantity: number }[]) {
-      recipeCost += (perPlate.get(it.recipe_id) ?? 0) * Number(it.quantity);
+    for (const it of o.order_items ?? []) {
+      const versionId = it.recipe_version_id ?? it.recipe_id; // the version stamped at sale time
+      const pp = perPlate.get(versionId);
+      if (pp === undefined || Number.isNaN(pp)) {
+        warnings.push(`${nameById.get(versionId) ?? "A sold dish"}: its recipe can't be costed (missing unit conversion). Its plates are counted as ₦0 cost.`);
+        continue;
+      }
+      recipeCost += pp * Number(it.quantity);
     }
   }
 
@@ -104,7 +122,7 @@ export async function calculateBusinessPnl(
     daily: [...daily.entries()].sort().map(([date, sales_kobo]) => ({ date, sales_kobo })),
     warnings: [...new Set(warnings)],
     limitations: [
-      "Plate costs use today's recipes and ingredient prices, because recipe history isn't saved yet. Past sales may show a different cost than they really had.",
+      "Each sale uses the recipe exactly as it was when sold, but at today's ingredient prices, because ingredient price history isn't used yet. If prices changed, past sales may show a different cost than they really had.",
     ],
   };
 }

@@ -47,7 +47,7 @@ function PosScreen() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    supabase.from("recipes").select("id,name,selling_price_kobo").order("name").then(({ data, error }) => {
+    supabase.from("recipes").select("id,name,selling_price_kobo").eq("is_current", true).order("name").then(({ data, error }) => {
       if (error) return setMsg({ ok: false, text: "Could not load menu." });
       setRecipes((data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) })));
     });

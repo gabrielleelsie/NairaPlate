@@ -212,6 +212,8 @@ function StaffItem({
   s, isMe, onDone, onError,
 }: { s: StaffRow; isMe: boolean; onDone: (m: string) => void; onError: (m: string) => void }) {
   const [resetting, setResetting] = useState(false);
+  const [changingRole, setChangingRole] = useState(false);
+  const [newRole, setNewRole] = useState<string>(s.role);
   const [pin, setPin] = useState("");
   const [pinRevealed, setPinRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -230,6 +232,9 @@ function StaffItem({
         {s.is_active && (
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setResetting((v) => !v)}>Reset PIN</Button>
+            {!isMe && (
+              <Button size="sm" variant="outline" onClick={() => { setNewRole(s.role); setChangingRole((v) => !v); }}>Change role</Button>
+            )}
             {!isMe && (
               <Button
                 size="sm"
@@ -250,6 +255,32 @@ function StaffItem({
           </div>
         )}
       </div>
+      {changingRole && (
+        <form
+          className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            const { status, data } = await callAdmin({ action: "change_role", staff_id: s.id, new_role: newRole });
+            setBusy(false);
+            if (status !== 200) return onError(data.error ?? "Could not change role.");
+            setChangingRole(false);
+            onDone(`${s.display_name} is now ${roleLabel(newRole)}. It fully applies once they sign out and back in.`);
+          }}
+        >
+          <span className="text-sm text-card-foreground">New role for {s.display_name}:</span>
+          <Select value={newRole} onValueChange={setNewRole}>
+            <SelectTrigger className="w-44" aria-label="New role"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {ROLE_OPTIONS.map((r) => (
+                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="submit" size="sm" disabled={busy || newRole === s.role}>Confirm</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setChangingRole(false)}>Cancel</Button>
+        </form>
+      )}
       {resetting && (
         <form
           className="mt-3 grid gap-2"
