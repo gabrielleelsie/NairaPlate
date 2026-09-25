@@ -47,7 +47,7 @@ function LoginScreen() {
     const saved = localStorage.getItem(BUSINESS_KEY);
     if (saved) setBusinessId(saved);
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setSignedInAs((data.user.user_metadata?.display_name as string) ?? "staff");
+      if (data.user) setSignedInAs((data.user.user_metadata?.["display_name"] as string) ?? "staff");
     });
   }, []);
 
