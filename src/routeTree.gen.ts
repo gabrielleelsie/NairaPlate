@@ -17,6 +17,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
+import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
@@ -67,6 +68,11 @@ const FlagsRoute = FlagsRouteImport.update({
 const IngredientsRoute = IngredientsRouteImport.update({
   id: '/ingredients',
   path: '/ingredients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayoutsRoute = PayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PosRoute = PosRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/drawer': typeof DrawerRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/drawer': typeof DrawerRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/drawer': typeof DrawerRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/drawer'
     | '/flags'
     | '/ingredients'
+    | '/payouts'
     | '/pos'
     | '/purchases'
     | '/recipes'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/drawer'
     | '/flags'
     | '/ingredients'
+    | '/payouts'
     | '/pos'
     | '/purchases'
     | '/recipes'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/drawer'
     | '/flags'
     | '/ingredients'
+    | '/payouts'
     | '/pos'
     | '/purchases'
     | '/recipes'
@@ -265,6 +277,7 @@ export interface RootRouteChildren {
   DrawerRoute: typeof DrawerRoute
   FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
+  PayoutsRoute: typeof PayoutsRoute
   PosRoute: typeof PosRoute
   PurchasesRoute: typeof PurchasesRoute
   RecipesRoute: typeof RecipesRoute
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       path: '/ingredients'
       fullPath: '/ingredients'
       preLoaderRoute: typeof IngredientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payouts': {
+      id: '/payouts'
+      path: '/payouts'
+      fullPath: '/payouts'
+      preLoaderRoute: typeof PayoutsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pos': {
@@ -425,6 +445,7 @@ const rootRouteChildren: RootRouteChildren = {
   DrawerRoute: DrawerRoute,
   FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,
+  PayoutsRoute: PayoutsRoute,
   PosRoute: PosRoute,
   PurchasesRoute: PurchasesRoute,
   RecipesRoute: RecipesRoute,
