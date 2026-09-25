@@ -79,6 +79,36 @@ export function toBaseQty(
 }
 
 /**
+ * ONE ingredient: convert qty + unit to its base unit (its own unit_conversions row,
+ * or metric sibling), then multiply by current_cost_kobo per base unit.
+ * Used by computeRecipeCost() for every recipe_item AND by the wastage screen.
+ * cost_kobo is null (never 0) when the unit can't be converted.
+ */
+export function convertAndCostIngredient(input: {
+  ingredientId: string;
+  qty: number;
+  unit: string;
+  ingredients: CostIngredient[];
+  conversions: CostConversion[];
+}): { cost_kobo: number | null; base_qty: number | null; ingredient: CostIngredient | null; error: string | null } {
+  const ing = input.ingredients.find((i) => i.id === input.ingredientId) ?? null;
+  if (!ing) return { cost_kobo: null, base_qty: null, ingredient: null, error: "Ingredient not found." };
+  const { base_qty, error } = toBaseQty(ing, Number(input.qty), input.unit, input.conversions);
+  return {
+    cost_kobo: base_qty === null ? null : base_qty * Number(ing.current_cost_kobo),
+    base_qty, ingredient: ing, error,
+  };
+}
+
+/** Units that can be costed for an ingredient: base unit, metric siblings, and ITS OWN conversions. */
+export function unitsForIngredient(ing: CostIngredient | undefined, conversions: CostConversion[]): string[] {
+  if (!ing) return [];
+  const metric = ["kg", "g"].includes(ing.base_unit) ? ["kg", "g"] : ["L", "ml"].includes(ing.base_unit) ? ["L", "ml"] : [ing.base_unit];
+  const own = conversions.filter((c) => c.ingredient_id === ing.id).map((c) => c.market_unit);
+  return Array.from(new Set([ing.base_unit, ...metric, ...own]));
+}
+
+/**
  * Cost of a recipe.
  *  1. convert each recipe_item to the ingredient's base unit (per-ingredient unit_conversions)
  *  2. multiply by the ingredient's current_cost_kobo per base unit
@@ -94,31 +124,23 @@ export function computeRecipeCost(input: {
   target_margin_bps: number; // from businesses.target_margin_bps, e.g. 3500 = 35%
 }): RecipeCostResult {
   const { items, ingredients, conversions, yield_portions, target_margin_bps } = input;
-  const byId = new Map(ingredients.map((i) => [i.id, i]));
   const errors: string[] = [];
 
-  // Steps 1–2
+  // Steps 1–2 — delegated to the shared single-ingredient function.
   const lines: CostLine[] = items.map((item) => {
-    const ing = byId.get(item.ingredient_id);
-    if (!ing) {
-      const error = "Ingredient not found.";
-      errors.push(error);
-      return {
-        ingredient_id: item.ingredient_id, ingredient_name: "Unknown", quantity: item.quantity, unit: item.unit,
-        base_qty: null, base_unit: "", line_cost_kobo: null, error,
-      };
-    }
-    const { base_qty, error } = toBaseQty(ing, Number(item.quantity), item.unit, conversions);
-    if (error) errors.push(error);
+    const r = convertAndCostIngredient({
+      ingredientId: item.ingredient_id, qty: Number(item.quantity), unit: item.unit, ingredients, conversions,
+    });
+    if (r.error) errors.push(r.error);
     return {
-      ingredient_id: ing.id,
-      ingredient_name: ing.name,
+      ingredient_id: item.ingredient_id,
+      ingredient_name: r.ingredient?.name ?? "Unknown",
       quantity: Number(item.quantity),
       unit: item.unit,
-      base_qty,
-      base_unit: ing.base_unit,
-      line_cost_kobo: base_qty === null ? null : base_qty * Number(ing.current_cost_kobo),
-      error,
+      base_qty: r.base_qty,
+      base_unit: r.ingredient?.base_unit ?? "",
+      line_cost_kobo: r.cost_kobo,
+      error: r.error,
     };
   });
 
