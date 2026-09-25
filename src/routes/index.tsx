@@ -85,6 +85,7 @@ function LoginScreen() {
           <Button asChild variant="outline"><Link to="/ingredients">Ingredients</Link></Button>
           <Button asChild variant="outline"><Link to="/recipes">Recipes</Link></Button>
           <Button asChild variant="outline"><Link to="/pos">Till</Link></Button>
+          <Button asChild variant="outline"><Link to="/orders">Orders, voids & refunds</Link></Button>
           <Button asChild variant="outline"><Link to="/credit">Customer credit</Link></Button>
           <Button asChild variant="outline"><Link to="/catering">Catering bookings</Link></Button>
           <Button asChild variant="outline"><Link to="/suppliers">Suppliers</Link></Button>

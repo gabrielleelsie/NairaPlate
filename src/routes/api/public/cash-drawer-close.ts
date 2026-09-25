@@ -43,12 +43,22 @@ export const Route = createFileRoute("/api/public/cash-drawer-close")({
         if (!drawer) return json({ error: "You have no open shift." }, 404);
 
         const closedAt = new Date().toISOString();
-        // Expected cash = float + cash portion of every cash or split order since the shift opened.
-        const { data: orders, error: oe } = await admin.from("orders").select("cash_amount_kobo")
+        // Expected cash = float + cash portion of every PAID (or part-refunded) cash/split order
+        // since the shift opened. Voided ('cancelled') and fully 'refunded' orders add nothing.
+        // A partial refund comes out of the cash portion (never more than the cash taken).
+        const { data: orders, error: oe } = await admin.from("orders")
+          .select("cash_amount_kobo,order_adjustments(type,adjustment_amount_kobo)")
           .eq("business_id", business_id).in("payment_method", ["cash", "split"])
+          .in("status", ["paid", "partially_refunded"])
           .gte("created_at", drawer.opened_at).lte("created_at", closedAt);
         if (oe) return json({ error: "Could not read orders." }, 500);
-        const cashSales = (orders ?? []).reduce((s, o) => s + Number(o.cash_amount_kobo), 0);
+        const cashSales = (orders ?? []).reduce((s, o) => {
+          const cash = Number(o.cash_amount_kobo);
+          const refunded = ((o.order_adjustments ?? []) as { type: string; adjustment_amount_kobo: number }[])
+            .filter((a) => a.type === "partial_refund")
+            .reduce((t, a) => t + Number(a.adjustment_amount_kobo), 0);
+          return s + Math.max(0, cash - refunded);
+        }, 0);
         const expected = Number(drawer.opening_float_kobo) + cashSales;
         const discrepancy = counted - expected;
 
