@@ -97,3 +97,38 @@ export async function calculateBusinessPnl(
     ],
   };
 }
+
+// Like-for-like comparison: the SAME one function run over both periods.
+// The screen computes the difference from these two results — no second calculation.
+export type PeriodComparison = { current: PnlResult; previous: PnlResult };
+
+export async function compareBusinessPnl(
+  supabase: SupabaseClient,
+  business_id: string,
+  current: DateRange,
+  previous: DateRange,
+): Promise<PeriodComparison> {
+  const [cur, prev] = await Promise.all([
+    calculateBusinessPnl(supabase, business_id, current),
+    calculateBusinessPnl(supabase, business_id, previous),
+  ]);
+  return { current: cur, previous: prev };
+}
+
+// Period helpers (UTC). weekOffset/monthOffset 0 = current, 1 = previous.
+export function weekRange(weekOffset = 0, now = new Date()): DateRange {
+  const day = (now.getUTCDay() + 6) % 7; // Monday = 0
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - day - 7 * weekOffset));
+  const to = new Date(from);
+  to.setUTCDate(to.getUTCDate() + 7);
+  return { from, to };
+}
+
+export function monthRange(monthOffset = 0, now = new Date()): DateRange {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth() - monthOffset;
+  return {
+    from: new Date(Date.UTC(y, m, 1)),
+    to: new Date(Date.UTC(y, m + 1, 1)),
+  };
+}
