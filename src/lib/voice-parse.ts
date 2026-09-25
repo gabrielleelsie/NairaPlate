@@ -30,7 +30,7 @@ const singular = (w: string) => (w.length > 3 && w.endsWith("es") && /(ch|sh|x)e
 
 function numVal(t: string): number | null {
   if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
-  return t in ONES && t !== "a" && t !== "an" ? ONES[t] : null;
+  return t in ONES && t !== "a" && t !== "an" ? ONES[t]! : null;
 }
 const isNumTok = (t: string) => numVal(t) !== null || t in MULT;
 
@@ -38,7 +38,7 @@ const isNumTok = (t: string) => numVal(t) !== null || t in MULT;
 export function parsePrice(toks: string[]): number | null {
   if (toks.length === 0) return null;
   // "4500" / "50000" — a single numeric string is literal
-  if (toks.length === 1 && /^\d+$/.test(toks[0])) return Number(toks[0]);
+  if (toks.length === 1 && /^\d+$/.test(toks[0]!)) return Number(toks[0]);
   // "50k" as one token
   if (toks.length === 1 && /^\d+k$/.test(toks[0]!)) return Number(toks[0]!.slice(0, -1)) * 1000;
   // "four five" → 4500 (market slang: thousands, hundreds)
