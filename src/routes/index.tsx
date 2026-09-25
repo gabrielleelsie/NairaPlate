@@ -84,6 +84,7 @@ function LoginScreen() {
         <div className="mt-6 flex flex-wrap gap-2">
           <Button asChild variant="outline"><Link to="/ingredients">Ingredients</Link></Button>
           <Button asChild variant="outline"><Link to="/recipes">Recipes</Link></Button>
+          <Button asChild variant="outline"><Link to="/pos">Till</Link></Button>
         </div>
         {(myRole === "owner" || myRole === "supa_admin") && (
           <Button asChild className="mt-6 mr-2">
