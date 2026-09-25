@@ -47,7 +47,7 @@ export function parsePrice(toks: string[]): number | null {
   }
   // "four five hundred" → 4500
   if (toks.length === 3) {
-    const a = numVal(toks[0]), b = numVal(toks[1]);
+    const a = numVal(toks[0]!), b = numVal(toks[1]!);
     if (a !== null && a >= 1 && a <= 9 && b !== null && b >= 1 && b <= 9 && toks[2] === "hundred") return a * 1000 + b * 100;
   }
   // Compositional: "four thousand five hundred", "fifty k", "one hundred and twenty thousand"
@@ -56,7 +56,7 @@ export function parsePrice(toks: string[]): number | null {
     const v = numVal(t);
     if (v !== null) { cur += v; sawAny = true; continue; }
     if (t === "hundred") { cur = (cur || 1) * 100; continue; }
-    if (t in MULT) { total += (cur || 1) * MULT[t]; cur = 0; continue; }
+    if (t in MULT) { total += (cur || 1) * MULT[t]!; cur = 0; continue; }
     return null;
   }
   const out = total + cur;
@@ -67,10 +67,10 @@ export function parsePrice(toks: string[]): number | null {
 
 function lev(a: string, b: string) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let j = 1; j <= b.length; j++) d[0]![j] = j;
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      d[i]![j] = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
   return d[a.length]![b.length]!;
 }
 const similarity = (a: string, b: string) => 1 - lev(a, b) / Math.max(a.length, b.length, 1);
