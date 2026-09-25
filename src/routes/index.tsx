@@ -89,9 +89,11 @@ function LoginScreen() {
           <Button asChild variant="outline"><Link to="/wastage">Log wastage</Link></Button>
         </div>
         {(myRole === "owner" || myRole === "supa_admin") && (
-          <Button asChild className="mt-6 mr-2">
-            <Link to="/staff">Manage staff</Link>
-          </Button>
+          <>
+            <Button asChild className="mt-6 mr-2"><Link to="/staff">Manage staff</Link></Button>
+            <Button asChild className="mt-6 mr-2"><Link to="/dashboard">Profit & loss</Link></Button>
+            <Button asChild className="mt-6 mr-2"><Link to="/flags">Alerts</Link></Button>
+          </>
         )}
         <Button
           className="mt-6"

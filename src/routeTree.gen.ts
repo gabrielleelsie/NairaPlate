@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
+import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as RecipesRouteImport } from './routes/recipes'
@@ -25,9 +27,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DrawerRoute = DrawerRouteImport.update({
   id: '/drawer',
   path: '/drawer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlagsRoute = FlagsRouteImport.update({
+  id: '/flags',
+  path: '/flags',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IngredientsRoute = IngredientsRouteImport.update({
@@ -74,7 +86,9 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
@@ -86,7 +100,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
@@ -99,7 +115,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
@@ -113,7 +131,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dashboard'
     | '/drawer'
+    | '/flags'
     | '/ingredients'
     | '/pos'
     | '/recipes'
@@ -125,7 +145,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dashboard'
     | '/drawer'
+    | '/flags'
     | '/ingredients'
     | '/pos'
     | '/recipes'
@@ -137,7 +159,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/dashboard'
     | '/drawer'
+    | '/flags'
     | '/ingredients'
     | '/pos'
     | '/recipes'
@@ -150,7 +174,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
   DrawerRoute: typeof DrawerRoute
+  FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
   PosRoute: typeof PosRoute
   RecipesRoute: typeof RecipesRoute
@@ -170,11 +196,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/drawer': {
       id: '/drawer'
       path: '/drawer'
       fullPath: '/drawer'
       preLoaderRoute: typeof DrawerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flags': {
+      id: '/flags'
+      path: '/flags'
+      fullPath: '/flags'
+      preLoaderRoute: typeof FlagsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ingredients': {
@@ -238,7 +278,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
   DrawerRoute: DrawerRoute,
+  FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,
   PosRoute: PosRoute,
   RecipesRoute: RecipesRoute,

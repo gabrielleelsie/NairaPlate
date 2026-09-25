@@ -167,6 +167,6 @@ export function computeRecipeCost(input: {
 export const formatNaira = (kobo: number | null | undefined) =>
   kobo === null || kobo === undefined
     ? "—"
-    : `₦${(kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    : `${kobo < 0 ? "−" : ""}₦${(Math.abs(kobo) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const nairaToKobo = (naira: string) => Math.round(Number(naira || 0) * 100);
 export const koboToNaira = (kobo: number) => (kobo / 100).toString();
