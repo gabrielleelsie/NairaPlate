@@ -36,6 +36,7 @@ function formatPriceDate(iso: string | null): string | null {
   return d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 type Conversion = { id: string; ingredient_id: string; market_unit: string; base_qty: number };
+type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "purchaser"]);
 
@@ -45,6 +46,7 @@ function IngredientsScreen() {
   const [convs, setConvs] = useState<Conversion[]>([]);
   const [editing, setEditing] = useState<Ingredient | "new" | null>(null);
   const [unitsFor, setUnitsFor] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -106,6 +108,9 @@ function IngredientsScreen() {
                 <Button size="sm" variant="outline" onClick={() => setUnitsFor(unitsFor === i.id ? null : i.id)}>
                   Units ({convs.filter((c) => c.ingredient_id === i.id).length})
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setHistoryFor(historyFor === i.id ? null : i.id)}>
+                  History
+                </Button>
                 {canEdit && <Button size="sm" variant="outline" onClick={() => setEditing(i)}>Edit</Button>}
               </div>
             </div>
@@ -120,6 +125,7 @@ function IngredientsScreen() {
                 onError={(t) => setMsg({ ok: false, text: t })}
               />
             )}
+            {historyFor === i.id && <PriceHistoryPanel ingredient={i} />}
           </li>
         ))}
       </ul>
