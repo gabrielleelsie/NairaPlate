@@ -47,13 +47,13 @@ function OrdersScreen() {
   const load = useCallback(async () => {
     if (!session) return;
     const [o, a, s] = await Promise.all([
-      supabase.from("orders").select("id,total_kobo,status,payment_method,channel,created_by,created_at,order_adjustments(*)")
+      supabase.from("orders").select("id,total_kobo,status,payment_method,channel,created_by,created_at")
         .eq("business_id", session.businessId).order("created_at", { ascending: false }).limit(100),
       supabase.from("order_adjustments").select("*").eq("business_id", session.businessId).order("created_at", { ascending: false }),
       supabase.from("staff_users").select("id,display_name").eq("business_id", session.businessId),
     ]);
     if (o.error) setErr(o.error.message);
-    setOrders((o.data ?? []) as Order[]);
+    setOrders(((o.data ?? []) as Omit<Order, "order_adjustments">[]).map((r) => ({ ...r, order_adjustments: ((a.data ?? []) as Adj[]).filter((x) => x.order_id === r.id) })));
     setAdjs((a.data ?? []) as Adj[]);
     // staff_users is owner-only under the access rules; cashiers see "Me" / "Staff".
     setNames(Object.fromEntries((s.data ?? []).map((r) => [r.id, r.display_name])));
