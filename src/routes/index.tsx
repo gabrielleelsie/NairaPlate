@@ -87,6 +87,7 @@ function LoginScreen() {
           <Button asChild variant="outline"><Link to="/pos">Till</Link></Button>
           <Button asChild variant="outline"><Link to="/drawer">Cash drawer</Link></Button>
           <Button asChild variant="outline"><Link to="/wastage">Log wastage</Link></Button>
+          <Button asChild variant="outline"><Link to="/purchases">Log purchase</Link></Button>
         </div>
         {(myRole === "owner" || myRole === "supa_admin") && (
           <>
