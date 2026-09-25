@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/supplier-payment")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>): { supplier?: string } =>
-    typeof s.supplier === "string" ? { supplier: s.supplier } : {},
+    typeof s['supplier'] === "string" ? { supplier: s['supplier'] } : {},
   head: () => ({
     meta: [
       { title: "Record supplier payment — NairaPlate" },
