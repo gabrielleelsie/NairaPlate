@@ -29,10 +29,11 @@ export const Route = createFileRoute("/recipes")({
 });
 
 type Recipe = { id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number };
-type RecipeItemRow = CostRecipeItem & { recipe_id: string };
-type DraftItem = { key: number; ingredient_id: string; quantity: string; unit: string };
+type RecipeItemRow = CostRecipeItem & { id: string; recipe_id: string };
+type DraftItem = { key: number; existingId?: string; ingredient_id: string; quantity: string; unit: string };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "cook"]);
+const DELETE_ROLES = new Set(["owner", "supa_admin"]);
 
 function RecipesScreen() {
   const { loading, session } = useStaffSession();
@@ -41,6 +42,7 @@ function RecipesScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipeItems, setRecipeItems] = useState<RecipeItemRow[]>([]);
   const [marginBps, setMarginBps] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -48,7 +50,7 @@ function RecipesScreen() {
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
       supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo").order("name"),
-      supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit"),
+      supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit"),
       supabase.from("businesses").select("target_margin_bps").maybeSingle(),
     ]);
     if (ing.error || conv.error || rec.error || ri.error || biz.error) return setMsg({ ok: false, text: "Could not load recipes." });
@@ -64,6 +66,19 @@ function RecipesScreen() {
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
   if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/" className="underline text-sm">Go to sign-in</Link></Shell>;
 
+  const canEdit = EDIT_ROLES.has(session.role);
+  const canDelete = DELETE_ROLES.has(session.role);
+
+  async function deleteRecipe(id: string, name: string) {
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+    const { error: itemsErr } = await supabase.from("recipe_items").delete().eq("recipe_id", id);
+    if (itemsErr) return setMsg({ ok: false, text: "Could not delete the recipe's ingredients." });
+    const { error } = await supabase.from("recipes").delete().eq("id", id);
+    if (error) return setMsg({ ok: false, text: "Could not delete the recipe." });
+    setMsg({ ok: true, text: `${name} deleted.` });
+    load();
+  }
+
   return (
     <Shell>
       <Link to="/" className="text-sm text-muted-foreground underline">← Home</Link>
@@ -73,8 +88,8 @@ function RecipesScreen() {
       </p>
       {msg && <p className={`mt-3 text-sm ${msg.ok ? "text-foreground" : "text-destructive"}`}>{msg.text}</p>}
 
-      {EDIT_ROLES.has(session.role) && marginBps !== null && (
-        <RecipeBuilder
+      {canEdit && marginBps !== null && editingId === null && (
+        <RecipeForm
           businessId={session.businessId}
           ingredients={ingredients}
           conversions={conversions}
@@ -83,6 +98,26 @@ function RecipesScreen() {
           onError={(t) => setMsg({ ok: false, text: t })}
         />
       )}
+
+      {canEdit && marginBps !== null && editingId !== null && (() => {
+        const r = recipes.find((x) => x.id === editingId);
+        if (!r) return null;
+        return (
+          <RecipeForm
+            key={r.id}
+            businessId={session.businessId}
+            ingredients={ingredients}
+            conversions={conversions}
+            marginBps={marginBps}
+            existing={r}
+            existingItems={recipeItems.filter((i) => i.recipe_id === r.id)}
+            canDeleteItems={canDelete}
+            onSaved={(t) => { setMsg({ ok: true, text: t }); setEditingId(null); load(); }}
+            onError={(t) => setMsg({ ok: false, text: t })}
+            onCancel={() => setEditingId(null)}
+          />
+        );
+      })()}
 
       <h2 className="mt-10 text-lg font-medium text-foreground">Saved recipes</h2>
       <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
@@ -110,6 +145,18 @@ function RecipesScreen() {
                 </div>
               </div>
               {cost.errors.length > 0 && <p className="mt-2 text-xs text-destructive">{cost.errors[0]}</p>}
+              {canEdit && editingId !== r.id && (
+                <div className="mt-3 flex gap-3">
+                  <button type="button" className="text-sm underline text-foreground" onClick={() => { setEditingId(r.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                    Edit
+                  </button>
+                  {canDelete && (
+                    <button type="button" className="text-sm underline text-destructive" onClick={() => deleteRecipe(r.id, r.name)}>
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           );
         })}
@@ -118,22 +165,43 @@ function RecipesScreen() {
   );
 }
 
-function RecipeBuilder({
-  businessId, ingredients, conversions, marginBps, onSaved, onError,
+// One form for both "New recipe" and editing a saved recipe.
+// existing === null → create. existing set → update the recipe row and
+// add / change / remove its ingredients in place.
+function RecipeForm({
+  businessId, ingredients, conversions, marginBps, existing, existingItems, canDeleteItems,
+  onSaved, onError, onCancel,
 }: {
   businessId: string; ingredients: CostIngredient[]; conversions: CostConversion[]; marginBps: number;
-  onSaved: (t: string) => void; onError: (t: string) => void;
+  existing?: Recipe; existingItems?: RecipeItemRow[]; canDeleteItems?: boolean;
+  onSaved: (t: string) => void; onError: (t: string) => void; onCancel?: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
-  const [yieldPortions, setYieldPortions] = useState("1");
+  const isEdit = !!existing;
+  const [name, setName] = useState(existing?.name ?? "");
+  const [category, setCategory] = useState(existing?.category ?? "");
+  const [yieldPortions, setYieldPortions] = useState(existing ? String(existing.yield_portions) : "1");
   const defaultPct = Math.min(90, Math.max(0, Math.round(marginBps / 100)));
-  const [marginPct, setMarginPct] = useState(defaultPct);
-  const [override, setOverride] = useState(false);
-  const [customPrice, setCustomPrice] = useState("");
+
+  // In edit mode, start the slider at the margin implied by the saved price,
+  // and keep the saved price as an override so nothing changes by surprise.
+  const [marginPct, setMarginPct] = useState(() => {
+    if (!existing || !existingItems || existingItems.length === 0) return defaultPct;
+    const c = computeRecipeCost({
+      items: existingItems, ingredients, conversions,
+      yield_portions: existing.yield_portions, target_margin_bps: 0,
+    });
+    if (c.errors.length || c.cost_per_plate_kobo <= 0) return defaultPct;
+    return Math.min(90, Math.max(0, Math.round((1 - c.cost_per_plate_kobo / existing.selling_price_kobo) * 100)));
+  });
+  const [override, setOverride] = useState(isEdit);
+  const [customPrice, setCustomPrice] = useState(existing ? (existing.selling_price_kobo / 100).toFixed(2) : "");
   const [priceError, setPriceError] = useState<string | null>(null);
-  const [items, setItems] = useState<DraftItem[]>([]);
-  const [nextKey, setNextKey] = useState(1);
+  const [items, setItems] = useState<DraftItem[]>(() =>
+    existingItems
+      ? existingItems.map((i, n) => ({ key: n + 1, existingId: i.id, ingredient_id: i.ingredient_id, quantity: String(i.quantity), unit: i.unit }))
+      : [],
+  );
+  const [nextKey, setNextKey] = useState((existingItems?.length ?? 0) + 1);
   const [busy, setBusy] = useState(false);
 
   // Units offered for an ingredient: its base unit, metric siblings, and ITS OWN conversions only.
@@ -169,10 +237,23 @@ function RecipeBuilder({
   const update = (key: number, patch: Partial<DraftItem>) =>
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...patch } : x)));
 
+  function removeItem(it: DraftItem) {
+    if (it.existingId && !canDeleteItems) return;
+    setItems((xs) => xs.filter((x) => x.key !== it.key));
+  }
+
   function toggleOverride(on: boolean) {
     setOverride(on);
     setPriceError(null);
-    setCustomPrice(on && cost.suggested_price_kobo !== null ? (cost.suggested_price_kobo / 100).toFixed(2) : "");
+    if (on) {
+      setCustomPrice(
+        isEdit && existing ? (existing.selling_price_kobo / 100).toFixed(2)
+          : cost.suggested_price_kobo !== null ? (cost.suggested_price_kobo / 100).toFixed(2)
+          : "",
+      );
+    } else {
+      setCustomPrice("");
+    }
   }
 
   async function save(e: React.FormEvent) {
@@ -193,6 +274,44 @@ function RecipeBuilder({
     }
     setPriceError(null);
     setBusy(true);
+
+    if (isEdit && existing) {
+      const { error: recErr } = await supabase.from("recipes").update({
+        name: name.trim(), category: category.trim() || null,
+        yield_portions: Number(yieldPortions), selling_price_kobo: priceKobo,
+      }).eq("id", existing.id);
+      if (recErr) { setBusy(false); return onError("Could not save the recipe details."); }
+
+      const keptIds = new Set(valid.map((i) => i.existingId).filter(Boolean) as string[]);
+      const toDelete = (existingItems ?? []).filter((e) => !keptIds.has(e.id));
+      if (toDelete.length) {
+        if (!canDeleteItems) { setBusy(false); return onError("Only an owner can remove ingredients from a saved recipe."); }
+        const { error } = await supabase.from("recipe_items").delete().in("id", toDelete.map((e) => e.id));
+        if (error) { setBusy(false); return onError("Could not remove ingredients."); }
+      }
+      for (const d of valid) {
+        if (!d.existingId) continue;
+        const orig = (existingItems ?? []).find((x) => x.id === d.existingId);
+        if (!orig) continue;
+        if (orig.ingredient_id !== d.ingredient_id || orig.quantity !== Number(d.quantity) || orig.unit !== d.unit) {
+          const { error } = await supabase.from("recipe_items").update({
+            ingredient_id: d.ingredient_id, quantity: Number(d.quantity), unit: d.unit,
+          }).eq("id", d.existingId);
+          if (error) { setBusy(false); return onError("Could not save an ingredient change."); }
+        }
+      }
+      const toInsert = valid.filter((i) => !i.existingId);
+      if (toInsert.length) {
+        const { error } = await supabase.from("recipe_items").insert(
+          toInsert.map((i) => ({ business_id: businessId, recipe_id: existing.id, ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
+        );
+        if (error) { setBusy(false); return onError("Could not add the new ingredients."); }
+      }
+      setBusy(false);
+      onSaved(`${name.trim()} updated — now ${formatNaira(priceKobo)} per plate.`);
+      return;
+    }
+
     const { data: rec, error } = await supabase
       .from("recipes")
       .insert({
@@ -213,11 +332,13 @@ function RecipeBuilder({
   }
 
   const showBelow = override && customPrice.trim() !== "" && defaultCost.errors.length === 0
-    && defaultCost.suggested_price_kobo !== null && nairaToKobo(customPrice) < defaultCost.suggested_price_kobo;
+    && defaultCost.suggested_price_kobo !== null
+    && (isEdit ? nairaToKobo(customPrice) !== existing?.selling_price_kobo : true)
+    && nairaToKobo(customPrice) < defaultCost.suggested_price_kobo;
 
   return (
     <form onSubmit={save} className="mt-6 grid gap-4 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-lg font-medium text-card-foreground">New recipe</h2>
+      <h2 className="text-lg font-medium text-card-foreground">{isEdit ? `Edit: ${existing?.name}` : "New recipe"}</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2"><Label htmlFor="r-name">Name</Label><Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="grid gap-2"><Label htmlFor="r-cat">Category</Label><Input id="r-cat" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Swallow, Rice…" /></div>
@@ -236,6 +357,7 @@ function RecipeBuilder({
         <Label>Ingredients</Label>
         {items.map((it) => {
           const line = cost.lines.find((l) => l.ingredient_id === it.ingredient_id && l.unit === it.unit && l.quantity === Number(it.quantity));
+          const cannotRemove = !!it.existingId && !canDeleteItems;
           return (
             <div key={it.key} className="grid grid-cols-[1fr_5rem_8rem_auto] items-center gap-2">
               <Select value={it.ingredient_id} onValueChange={(v) => update(it.key, { ingredient_id: v, unit: ingredients.find((i) => i.id === v)?.base_unit ?? "" })}>
@@ -253,7 +375,9 @@ function RecipeBuilder({
               </Select>
               <div className="flex items-center gap-2">
                 <span className="w-24 text-right text-sm text-muted-foreground">{line ? formatNaira(line.line_cost_kobo === null ? null : Math.round(line.line_cost_kobo)) : ""}</span>
-                <button type="button" aria-label="Remove ingredient" className="text-sm text-muted-foreground underline" onClick={() => setItems((xs) => xs.filter((x) => x.key !== it.key))}>✕</button>
+                {cannotRemove
+                  ? <span className="w-6 text-center text-xs text-muted-foreground" title="Only an owner can remove a saved ingredient">🔒</span>
+                  : <button type="button" aria-label="Remove ingredient" className="text-sm text-muted-foreground underline" onClick={() => removeItem(it)}>✕</button>}
               </div>
             </div>
           );
@@ -261,6 +385,7 @@ function RecipeBuilder({
         <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => { setItems((xs) => [...xs, { key: nextKey, ingredient_id: "", quantity: "", unit: "" }]); setNextKey((k) => k + 1); }}>
           + Add ingredient
         </Button>
+        {!canDeleteItems && <p className="text-xs text-muted-foreground">Only an owner can remove ingredients that are already saved.</p>}
       </div>
 
       <div className="grid gap-1 rounded-md bg-muted p-3 text-sm">
@@ -279,11 +404,11 @@ function RecipeBuilder({
         </div>
         <div className="flex items-center gap-2">
           <Switch id="r-override" checked={override} onCheckedChange={toggleOverride} />
-          <Label htmlFor="r-override">Override price</Label>
+          <Label htmlFor="r-override">{isEdit ? "Keep a fixed price" : "Override price"}</Label>
         </div>
         {override && (
           <div className="grid gap-2">
-            <Label htmlFor="r-custom">Custom selling price (₦)</Label>
+            <Label htmlFor="r-custom">Selling price (₦)</Label>
             <Input id="r-custom" inputMode="decimal" value={customPrice} onChange={(e) => { setCustomPrice(e.target.value.replace(/[^\d.]/g, "")); setPriceError(null); }} />
             {priceError && <p className="text-xs text-destructive">{priceError}</p>}
             {showBelow && (
@@ -295,7 +420,10 @@ function RecipeBuilder({
         )}
       </div>
 
-      <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save recipe"}</Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy}>{busy ? "Saving…" : isEdit ? "Save changes" : "Save recipe"}</Button>
+        {isEdit && <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Cancel</Button>}
+      </div>
     </form>
   );
 }
