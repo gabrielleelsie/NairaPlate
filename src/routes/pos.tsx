@@ -52,8 +52,8 @@ function PosScreen() {
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const subtotal = lines.reduce((s, l) => s + (byId.get(l.recipe_id)?.selling_price_kobo ?? 0) * l.quantity, 0);
-  const cashK = pay === "split" ? nairaToKobo(Number(cashN) || 0) : pay === "cash" ? subtotal : 0;
-  const trK = pay === "split" ? nairaToKobo(Number(trN) || 0) : pay === "transfer" ? subtotal : 0;
+  const cashK = pay === "split" ? nairaToKobo(cashN) : pay === "cash" ? subtotal : 0;
+  const trK = pay === "split" ? nairaToKobo(trN) : pay === "transfer" ? subtotal : 0;
   const splitSum = cashK + trK;
   const splitOk = pay !== "split" || (cashK > 0 && trK > 0 && splitSum === subtotal);
   const finalChannel = channel === "Aggregator" ? aggName.trim() : channel;
