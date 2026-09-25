@@ -21,7 +21,10 @@ import { Route as PosRouteImport } from './routes/pos'
 import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as SupplierPaymentRouteImport } from './routes/supplier-payment'
 import { Route as WastageRouteImport } from './routes/wastage'
+import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
+import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -86,9 +89,24 @@ const StaffRoute = StaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupplierPaymentRoute = SupplierPaymentRouteImport.update({
+  id: '/supplier-payment',
+  path: '/supplier-payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WastageRoute = WastageRouteImport.update({
   id: '/wastage',
   path: '/wastage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppliersIndexRoute = SuppliersIndexRouteImport.update({
+  id: '/suppliers/',
+  path: '/suppliers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppliersSupplierIdRoute = SuppliersSupplierIdRouteImport.update({
+  id: '/suppliers/$supplierId',
+  path: '/suppliers/$supplierId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCashDrawerCloseRoute =
@@ -121,7 +139,10 @@ export interface FileRoutesByFullPath {
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
+  '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
+  '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -139,7 +160,10 @@ export interface FileRoutesByTo {
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
+  '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
+  '/suppliers': typeof SuppliersIndexRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -158,7 +182,10 @@ export interface FileRoutesById {
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
+  '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
+  '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -178,7 +205,10 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/recipes'
     | '/staff'
+    | '/supplier-payment'
     | '/wastage'
+    | '/suppliers/$supplierId'
+    | '/suppliers/'
     | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -196,7 +226,10 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/recipes'
     | '/staff'
+    | '/supplier-payment'
     | '/wastage'
+    | '/suppliers/$supplierId'
+    | '/suppliers'
     | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -214,7 +247,10 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/recipes'
     | '/staff'
+    | '/supplier-payment'
     | '/wastage'
+    | '/suppliers/$supplierId'
+    | '/suppliers/'
     | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -233,7 +269,10 @@ export interface RootRouteChildren {
   PurchasesRoute: typeof PurchasesRoute
   RecipesRoute: typeof RecipesRoute
   StaffRoute: typeof StaffRoute
+  SupplierPaymentRoute: typeof SupplierPaymentRoute
   WastageRoute: typeof WastageRoute
+  SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
+  SuppliersIndexRoute: typeof SuppliersIndexRoute
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -325,11 +364,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/supplier-payment': {
+      id: '/supplier-payment'
+      path: '/supplier-payment'
+      fullPath: '/supplier-payment'
+      preLoaderRoute: typeof SupplierPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wastage': {
       id: '/wastage'
       path: '/wastage'
       fullPath: '/wastage'
       preLoaderRoute: typeof WastageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppliers/': {
+      id: '/suppliers/'
+      path: '/suppliers'
+      fullPath: '/suppliers/'
+      preLoaderRoute: typeof SuppliersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppliers/$supplierId': {
+      id: '/suppliers/$supplierId'
+      path: '/suppliers/$supplierId'
+      fullPath: '/suppliers/$supplierId'
+      preLoaderRoute: typeof SuppliersSupplierIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/cash-drawer-close': {
@@ -369,7 +429,10 @@ const rootRouteChildren: RootRouteChildren = {
   PurchasesRoute: PurchasesRoute,
   RecipesRoute: RecipesRoute,
   StaffRoute: StaffRoute,
+  SupplierPaymentRoute: SupplierPaymentRoute,
   WastageRoute: WastageRoute,
+  SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
+  SuppliersIndexRoute: SuppliersIndexRoute,
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
