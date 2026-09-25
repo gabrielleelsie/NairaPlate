@@ -40,10 +40,10 @@ export function parsePrice(toks: string[]): number | null {
   // "4500" / "50000" — a single numeric string is literal
   if (toks.length === 1 && /^\d+$/.test(toks[0])) return Number(toks[0]);
   // "50k" as one token
-  if (toks.length === 1 && /^\d+k$/.test(toks[0])) return Number(toks[0].slice(0, -1)) * 1000;
+  if (toks.length === 1 && /^\d+k$/.test(toks[0]!)) return Number(toks[0]!.slice(0, -1)) * 1000;
   // "four five" → 4500 (market slang: thousands, hundreds)
   if (toks.length === 2 && toks.every((t) => { const v = numVal(t); return v !== null && v >= 1 && v <= 9 && !/^\d/.test(t); })) {
-    return numVal(toks[0])! * 1000 + numVal(toks[1])! * 100;
+    return numVal(toks[0]!)! * 1000 + numVal(toks[1]!)! * 100;
   }
   // "four five hundred" → 4500
   if (toks.length === 3) {
