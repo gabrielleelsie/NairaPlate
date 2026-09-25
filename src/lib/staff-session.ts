@@ -21,7 +21,9 @@ export function useStaffSession() {
   return state;
 }
 
+// Names only — no unit carries a global size. Each needs a per-ingredient unit_conversions row.
 export const MARKET_UNITS = [
   "derica", "paint_rubber", "mudu", "tuber", "bag", "carton", "bottle", "bunch", "cup", "congo", "tia",
+  "milk_cup", "cigarette_cup", "basin", "heap", "sachet", "bowl", "jerry_can",
 ] as const;
 export const BASE_UNITS = ["kg", "g", "L", "ml", "piece"] as const;

@@ -247,7 +247,7 @@ function ConversionsPanel({
         {conversions.length === 0 && <li className="text-muted-foreground">None yet.</li>}
         {conversions.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-2">
-            <span className="text-foreground">1 {c.market_unit.replace("_", " ")} = {Number(c.base_qty)} {ingredient.base_unit}</span>
+            <span className="text-foreground">1 {c.market_unit.replaceAll("_", " ")} = {Number(c.base_qty)} {ingredient.base_unit}</span>
             {canDelete && (
               <button
                 className="text-xs text-muted-foreground underline"
@@ -268,7 +268,7 @@ function ConversionsPanel({
             <Label className="text-xs">Market unit</Label>
             <Select value={unit} onValueChange={setUnit}>
               <SelectTrigger className="w-40" aria-label="Market unit"><SelectValue placeholder="Pick" /></SelectTrigger>
-              <SelectContent>{MARKET_UNITS.map((u) => <SelectItem key={u} value={u}>{u.replace("_", " ")}</SelectItem>)}</SelectContent>
+              <SelectContent>{MARKET_UNITS.map((u) => <SelectItem key={u} value={u}>{u.replaceAll("_", " ")}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="grid gap-1">
@@ -319,8 +319,8 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
             return (
               <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-foreground">
-                  {qty} {p.market_unit.replace("_", " ")} for {formatNaira(Number(p.total_kobo))}
-                  {unitPrice !== null && <> · {formatNaira(unitPrice)} per {p.market_unit.replace("_", " ")}</>}
+                  {qty} {p.market_unit.replaceAll("_", " ")} for {formatNaira(Number(p.total_kobo))}
+                  {unitPrice !== null && <> · {formatNaira(unitPrice)} per {p.market_unit.replaceAll("_", " ")}</>}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatPriceDate(p.recorded_at)}
