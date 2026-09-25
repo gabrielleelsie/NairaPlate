@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BatchesRouteImport } from './routes/batches'
+import { Route as CashflowRouteImport } from './routes/cashflow'
 import { Route as CateringRouteImport } from './routes/catering'
 import { Route as CreditRouteImport } from './routes/credit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -47,6 +48,11 @@ const AuditRoute = AuditRouteImport.update({
 const BatchesRoute = BatchesRouteImport.update({
   id: '/batches',
   path: '/batches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CashflowRoute = CashflowRouteImport.update({
+  id: '/cashflow',
+  path: '/cashflow',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CateringRoute = CateringRouteImport.update({
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
+  '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
+  '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
+  '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/'
     | '/audit'
     | '/batches'
+    | '/cashflow'
     | '/catering'
     | '/credit'
     | '/dashboard'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/'
     | '/audit'
     | '/batches'
+    | '/cashflow'
     | '/catering'
     | '/credit'
     | '/dashboard'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/'
     | '/audit'
     | '/batches'
+    | '/cashflow'
     | '/catering'
     | '/credit'
     | '/dashboard'
@@ -320,6 +332,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditRoute: typeof AuditRoute
   BatchesRoute: typeof BatchesRoute
+  CashflowRoute: typeof CashflowRoute
   CateringRoute: typeof CateringRoute
   CreditRoute: typeof CreditRoute
   DashboardRoute: typeof DashboardRoute
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       path: '/batches'
       fullPath: '/batches'
       preLoaderRoute: typeof BatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cashflow': {
+      id: '/cashflow'
+      path: '/cashflow'
+      fullPath: '/cashflow'
+      preLoaderRoute: typeof CashflowRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catering': {
@@ -520,6 +540,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditRoute: AuditRoute,
   BatchesRoute: BatchesRoute,
+  CashflowRoute: CashflowRoute,
   CateringRoute: CateringRoute,
   CreditRoute: CreditRoute,
   DashboardRoute: DashboardRoute,
