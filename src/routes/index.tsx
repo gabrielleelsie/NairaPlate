@@ -106,7 +106,7 @@ function LoginScreen() {
           }}
         >
           <Input value={businessInput} onChange={(e) => setBusinessInput(e.target.value)} placeholder="Business code" />
-          <Button type="submit">Continue</Button>
+          <Button type="submit" className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">Continue</Button>
         </form>
         <Link className="mt-6 block text-center text-sm font-medium text-brand-blue underline underline-offset-4" to="/signup">New here? Register your business</Link>
       </AuthShell>
@@ -309,9 +309,8 @@ function HomeScreen({ name, role, onSignOut }: { name: string; role: string | nu
         <div className="mx-auto grid min-h-20 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 sm:px-6">
           <Logo variant="white" layout="inline" size={38} className="min-w-0" />
           <div className="flex min-w-0 items-center gap-2">
-            <div className="min-w-0 text-right">
-              <div className="truncate text-sm font-semibold">{name}</div>
-              <div className="truncate text-xs text-brand-inverse/70">{ROLE_NAMES[role ?? ""] ?? role ?? "Staff"}</div>
+            <div className="min-w-0 truncate text-right text-sm font-semibold">
+              {name} <span className="font-normal text-brand-inverse/60">·</span> {ROLE_NAMES[role ?? ""] ?? role ?? "Staff"}
             </div>
             <Button type="button" variant="ghost" size="icon" className="shrink-0 text-brand-inverse hover:bg-brand-inverse/10 hover:text-brand-inverse" onClick={onSignOut} title="Sign out" aria-label="Sign out">
               <LogOut />
