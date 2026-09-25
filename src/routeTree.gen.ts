@@ -10,11 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaffRouteImport } from './routes/staff'
+import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicStaffAdminRoute = ApiPublicStaffAdminRouteImport.update({
+  id: '/api/public/staff-admin',
+  path: '/api/public/staff-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
@@ -25,27 +37,41 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/staff': typeof StaffRoute
+  '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/staff': typeof StaffRoute
+  '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/staff': typeof StaffRoute
+  '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/staff-pin-login'
+  fullPaths:
+    '/' | '/staff' | '/api/public/staff-admin' | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/staff-pin-login'
-  id: '__root__' | '/' | '/api/public/staff-pin-login'
+  to: '/' | '/staff' | '/api/public/staff-admin' | '/api/public/staff-pin-login'
+  id:
+    | '__root__'
+    | '/'
+    | '/staff'
+    | '/api/public/staff-admin'
+    | '/api/public/staff-pin-login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  StaffRoute: typeof StaffRoute
+  ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
 }
 
@@ -56,6 +82,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/staff-admin': {
+      id: '/api/public/staff-admin'
+      path: '/api/public/staff-admin'
+      fullPath: '/api/public/staff-admin'
+      preLoaderRoute: typeof ApiPublicStaffAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/staff-pin-login': {
@@ -70,6 +110,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  StaffRoute: StaffRoute,
+  ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
 }
 export const routeTree = rootRouteImport
