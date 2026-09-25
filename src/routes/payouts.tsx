@@ -73,23 +73,16 @@ function PayoutsScreen() {
   async function submit() {
     if (!session || !gross || !calc || commissionKobo === null || netKobo === null) return;
     setBusy(true); setMsg(null);
-    const { error } = await supabase.from("channel_payouts").insert({
-      business_id: session.businessId, channel,
-      gross_sales_kobo: gross.kobo, // calculated above, never typed in
-      commission_kobo: commissionKobo, net_payout_kobo: netKobo,
-      period_start: from, period_end: to,
+    // ONE database call: payout + mismatch alert saved together, or neither.
+    // The database recalculates sales and the difference itself.
+    const { data, error } = await supabase.rpc("log_channel_payout", {
+      p_channel: channel, p_period_start: from, p_period_end: to,
+      p_commission_kobo: commissionKobo, p_net_payout_kobo: netKobo, p_severity: calc.severity,
     });
-    if (error) { setBusy(false); return setMsg({ ok: false, text: "Not saved: " + error.message }); }
-    let flagged = "";
-    if (calc.severity) {
-      const { error: fe } = await supabase.from("margin_flags").insert({
-        business_id: session.businessId, flag_type: "payout_mismatch", severity: calc.severity, role: "owner", acknowledged: false,
-        message: `${channel} payout for ${fmtDay(from)}–${fmtDay(to)}: expected ${formatNaira(calc.expected_net_kobo)}, received ${formatNaira(netKobo)}, difference ${formatNaira(calc.variance_kobo)}.`,
-      });
-      flagged = fe ? ` Alert NOT saved: ${fe.message}` : " The mismatch has been added to Alerts.";
-    }
     setBusy(false);
-    setMsg({ ok: true, text: `Payout saved. ${calc.variance_kobo === 0 ? "It matches exactly." : `Difference: ${formatNaira(calc.variance_kobo)}.`}${flagged}` });
+    if (error) return setMsg({ ok: false, text: "Nothing was saved: " + error.message });
+    const r = data as { variance_kobo: number; flag_id: string | null };
+    setMsg({ ok: true, text: `Payout saved. ${Number(r.variance_kobo) === 0 ? "It matches exactly." : `Difference: ${formatNaira(Number(r.variance_kobo))}. The mismatch has been added to Alerts.`}` });
     setCommission(""); setNet(""); loadBase();
   }
 
