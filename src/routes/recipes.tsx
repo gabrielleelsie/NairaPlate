@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession, BASE_UNITS } from "@/lib/staff-session";
 import {
-  computeRecipeCost, formatNaira, nairaToKobo,
+  computeRecipeCost, unitsForIngredient, formatNaira, nairaToKobo,
   type CostIngredient, type CostConversion, type CostRecipeItem,
 } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
@@ -137,13 +137,7 @@ function RecipeBuilder({
   const [busy, setBusy] = useState(false);
 
   // Units offered for an ingredient: its base unit, metric siblings, and ITS OWN conversions only.
-  const unitsFor = (ingredientId: string) => {
-    const ing = ingredients.find((i) => i.id === ingredientId);
-    if (!ing) return [];
-    const metric = ["kg", "g"].includes(ing.base_unit) ? ["kg", "g"] : ["L", "ml"].includes(ing.base_unit) ? ["L", "ml"] : [ing.base_unit];
-    const own = conversions.filter((c) => c.ingredient_id === ingredientId).map((c) => c.market_unit);
-    return Array.from(new Set([ing.base_unit, ...metric, ...own]));
-  };
+  const unitsFor = (ingredientId: string) => unitsForIngredient(ingredients.find((i) => i.id === ingredientId), conversions);
 
   const costItems = useMemo(
     () => items
