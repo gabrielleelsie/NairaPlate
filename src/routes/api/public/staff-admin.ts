@@ -9,6 +9,7 @@
 //   { action: "deactivate_staff", staff_id }                   -> is_active = false (row is never deleted)
 //   { action: "reset_pin", staff_id, pin }                     -> new salt + hash, clears lockout
 import { createFileRoute } from "@tanstack/react-router";
+import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -139,13 +140,15 @@ export const Route = createFileRoute("/api/public/staff-admin")({
             .select("id, display_name, role, is_active")
             .single();
           if (error || !data) return json({ error: "Could not add staff member." }, 500);
+          await writeAudit(admin, { business_id, actor_id: callerId, actor_role: caller.role, action: "staff_created",
+            entity_type: "staff_users", entity_id: data.id, details: `${data.display_name} added as ${data.role}` });
           return json({ staff: data });
         }
 
         // Both remaining actions target an existing staff member in the caller's business.
         const { data: target } = await admin
           .from("staff_users")
-          .select("id, role, is_active")
+          .select("id, role, is_active, display_name")
           .eq("id", body.staff_id)
           .eq("business_id", business_id)
           .maybeSingle();
@@ -165,6 +168,8 @@ export const Route = createFileRoute("/api/public/staff-admin")({
           if (error) return json({ error: "Could not deactivate staff member." }, 500);
           // End any open session: block their login account (PIN login lifts this if reactivated).
           await admin.auth.admin.updateUserById(target.id, { ban_duration: "876000h" }).catch(() => null);
+          await writeAudit(admin, { business_id, actor_id: callerId, actor_role: caller.role, action: "staff_deactivated",
+            entity_type: "staff_users", entity_id: target.id, details: `${target.display_name} deactivated` });
           return json({ ok: true });
         }
 
@@ -176,6 +181,9 @@ export const Route = createFileRoute("/api/public/staff-admin")({
           .eq("id", target.id)
           .eq("business_id", business_id);
         if (error) return json({ error: "Could not reset PIN." }, 500);
+        // The PIN itself is never logged.
+        await writeAudit(admin, { business_id, actor_id: callerId, actor_role: caller.role, action: "pin_reset",
+          entity_type: "staff_users", entity_id: target.id, details: `PIN reset for ${target.display_name}` });
         return json({ ok: true });
       },
     },

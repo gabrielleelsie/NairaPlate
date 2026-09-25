@@ -3,6 +3,7 @@
 // rules, but a cashier's short/over drawer must still raise a flag for the owner.
 // The caller's business, role and user id come ONLY from the verified login token.
 import { createFileRoute } from "@tanstack/react-router";
+import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -83,6 +84,9 @@ export const Route = createFileRoute("/api/public/cash-drawer-close")({
             role: "owner", acknowledged: false,
           }).select("*").single();
           flag = f;
+          await writeAudit(admin, { business_id, actor_id: u.user.id, actor_role: role, action: "drawer_discrepancy",
+            entity_type: "cash_drawers", entity_id: drawer.id,
+            details: `${name}: ${kind} by ${naira(discrepancy)} (expected ${naira(expected)}, counted ${naira(counted)})` });
         }
         return json({
           opening_float_kobo: Number(drawer.opening_float_kobo), cash_sales_kobo: cashSales,

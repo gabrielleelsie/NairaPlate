@@ -4,6 +4,7 @@
 //   { action: "list_staff", business_id }          -> id, display_name, role, is_active (active staff only)
 //   { business_id, staff_id, pin } (default login) -> Supabase session
 import { createFileRoute } from "@tanstack/react-router";
+import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -127,6 +128,11 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
             .update({ failed_attempts: attempts, locked_until: newLock })
             .eq("id", staff.id)
             .eq("business_id", business_id);
+          const who = { business_id, actor_id: staff.id, actor_role: staff.role, entity_type: "staff_users", entity_id: staff.id };
+          await writeAudit(admin, { ...who, action: "login_failed", details: `${staff.display_name}: wrong PIN, attempt ${attempts}` });
+          if (newLock > 0) {
+            await writeAudit(admin, { ...who, action: "account_locked", details: `${staff.display_name}: locked for ${newLock - now >= 300_000 ? "5 minutes" : "30 seconds"} after ${attempts} wrong PINs` });
+          }
           return json({ error: `Wrong PIN. Attempt ${attempts}.`, attempts }, 401);
         }
 
@@ -170,6 +176,8 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
         });
         const { data: signIn, error: signInErr } = await anon.auth.signInWithPassword({ email, password });
         if (signInErr || !signIn.session) return json({ error: "Sign-in failed." }, 500);
+        await writeAudit(admin, { business_id, actor_id: staff.id, actor_role: staff.role, action: "login_success",
+          entity_type: "staff_users", entity_id: staff.id, details: `${staff.display_name} signed in` });
 
         return json({
           session: {
