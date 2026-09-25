@@ -150,7 +150,7 @@ function PurchaseScreen() {
       </div>
       <div className="space-y-1"><Label htmlFor="p-paid">Total paid (₦)</Label>
         <Input id="p-paid" className={flag("paid")} type="number" min={0} value={paid} onChange={(e) => setPaid(e.target.value)} />
-        {unsure.has("paid") && <p className="text-xs text-warning-foreground">Couldn't hear the price clearly — please type it.</p>}
+        {unsure.has("paid") && <p className="text-xs text-foreground">Say the full amount, like 'four thousand five hundred' or 'forty five hundred', or type it in.</p>}
       </div>
       <div className="space-y-1"><Label htmlFor="p-pay">Payment</Label>
         <select id="p-pay" className={sel} value={pay} onChange={(e) => setPay(e.target.value)}>
