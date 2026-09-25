@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
+import { Route as PosRouteImport } from './routes/pos'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const IngredientsRoute = IngredientsRouteImport.update({
   id: '/ingredients',
   path: '/ingredients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PosRoute = PosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecipesRoute = RecipesRouteImport.update({
@@ -50,6 +56,7 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ingredients': typeof IngredientsRoute
+  '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ingredients': typeof IngredientsRoute
+  '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ingredients': typeof IngredientsRoute
+  '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/ingredients'
+    | '/pos'
     | '/recipes'
     | '/staff'
     | '/api/public/staff-admin'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/ingredients'
+    | '/pos'
     | '/recipes'
     | '/staff'
     | '/api/public/staff-admin'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/ingredients'
+    | '/pos'
     | '/recipes'
     | '/staff'
     | '/api/public/staff-admin'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IngredientsRoute: typeof IngredientsRoute
+  PosRoute: typeof PosRoute
   RecipesRoute: typeof RecipesRoute
   StaffRoute: typeof StaffRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/ingredients'
       fullPath: '/ingredients'
       preLoaderRoute: typeof IngredientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pos': {
+      id: '/pos'
+      path: '/pos'
+      fullPath: '/pos'
+      preLoaderRoute: typeof PosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recipes': {
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IngredientsRoute: IngredientsRoute,
+  PosRoute: PosRoute,
   RecipesRoute: RecipesRoute,
   StaffRoute: StaffRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
