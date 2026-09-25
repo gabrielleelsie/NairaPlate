@@ -143,6 +143,14 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
           .eq("id", staff.id)
           .eq("business_id", business_id);
 
+        // The BUSINESS must be approved too — an active staff row alone is never enough.
+        // Checked against the live row on every sign-in; no session is created otherwise.
+        const { data: biz, error: bizErr } = await admin
+          .from("businesses").select("status").eq("id", business_id).maybeSingle();
+        if (bizErr || !biz) return json({ error: "Could not check your business." }, 500);
+        if (biz.status === "pending") return json({ error: "Your business is awaiting approval" }, 403);
+        if (biz.status !== "approved") return json({ error: "Your business registration was not approved" }, 403);
+
         // Real Auth user whose id == staff_id; fresh random password on every login.
         const email = `staff-${staff.id}@nairaplate.local`;
         const password = crypto.randomUUID();
