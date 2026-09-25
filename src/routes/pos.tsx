@@ -87,9 +87,9 @@ function PosScreen() {
       quantity: l.quantity, unit_price_kobo: byId.get(l.recipe_id)!.selling_price_kobo, // snapshot at sale time
     })));
     if (e2) {
-      await supabase.from("orders").update({ status: "void" }).eq("id", order.id);
+      await supabase.from("orders").update({ status: "cancelled" }).eq("id", order.id);
       setBusy(false);
-      return setMsg({ ok: false, text: "Items failed to save, order voided: " + e2.message });
+      return setMsg({ ok: false, text: "Items failed to save, order cancelled: " + e2.message });
     }
     setBusy(false);
     setMsg({ ok: true, text: `Order saved — ${formatNaira(subtotal)} (${pay}).` });
