@@ -60,25 +60,19 @@ export function PricingReview({
 
   async function decide(r: Recipe, suggested: number, kind: DecisionKind) {
     setBusy(r.id); setMsg(null);
-    // Re-read the live price so "previous" is the real price before this decision.
-    const live = await supabase.from("recipes").select("selling_price_kobo").eq("id", r.id).single();
-    if (live.error) { setBusy(null); return setMsg({ ok: false, text: "Could not read the recipe's current price." }); }
-    const previous = Number(live.data.selling_price_kobo);
-
-    if (kind === "publish") {
-      const { error } = await supabase.from("recipes").update({ selling_price_kobo: suggested }).eq("id", r.id);
-      if (error) { setBusy(null); return setMsg({ ok: false, text: "Could not update the price." }); }
-    }
-    const { error: dErr } = await supabase.from("price_decisions").insert({
-      business_id: businessId, recipe_id: r.id, previous_price_kobo: previous,
-      suggested_price_kobo: suggested, decision: kind, decided_by: userId,
+    // ONE database call: price change (publish only) + decision record in a single transaction.
+    // The database reads the real "previous" price itself; if anything fails, nothing is saved.
+    const { data, error } = await supabase.rpc("decide_price", {
+      p_recipe_id: r.id, p_decision: kind, p_suggested_price_kobo: suggested, p_decided_by: userId,
     });
     setBusy(null);
-    if (dErr) setMsg({ ok: false, text: kind === "publish" ? "Price updated, but the decision could not be logged." : "Could not log the decision." });
+    const previous = data ? Number((data as { previous_price_kobo: number }).previous_price_kobo) : r.selling_price_kobo;
+    if (error) setMsg({ ok: false, text: `Nothing was saved — the price was not changed. (${error.message})` });
     else setMsg({ ok: true, text:
       kind === "publish" ? `${r.name}: price changed ${formatNaira(previous)} → ${formatNaira(suggested)}.`
       : kind === "defer" ? `${r.name}: deferred, price left at ${formatNaira(previous)}.`
       : `${r.name}: change the quantities or plates in the editor above.` });
+    if (error) return;
     loadHistory();
     onChanged();
     if (kind === "adjust_portion") onAdjust(r.id);
