@@ -306,7 +306,7 @@ function HomeScreen({ name, role, onSignOut }: { name: string; role: string | nu
   return (
     <main className="min-h-dvh bg-home-surface">
       <header className="bg-brand-navy text-brand-inverse">
-        <div className="mx-auto grid min-h-20 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto grid min-h-20 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-5 px-4 sm:gap-8 sm:px-6">
           <Logo variant="white" layout="inline" size={38} className="min-w-0" />
           <div className="flex min-w-0 items-center gap-2">
             <div className="min-w-0 truncate text-right text-sm font-semibold">
