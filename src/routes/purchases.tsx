@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 import { supabase } from "@/lib/external-supabase";
-import { useStaffSession } from "@/lib/staff-session";
+import { useStaffSession, MARKET_UNIT_OPTIONS, marketUnitLabel } from "@/lib/staff-session";
 import {
   convertAndCostIngredient, unitsForIngredient, formatNaira, nairaToKobo,
   type CostIngredient, type CostConversion,
@@ -69,7 +69,6 @@ function PurchaseScreen() {
   useEffect(() => { load(); setMicOk(!!getSR()); }, []);
 
   const ing = ingredients.find((i) => i.id === ingId);
-  const units = unitsForIngredient(ing, conversions); // shared unit filter (same as recipes & wastage)
   const conv = useMemo(
     () => (ingId && unit && Number(qty) > 0
       ? convertAndCostIngredient({ ingredientId: ingId, qty: Number(qty), unit, ingredients, conversions })
@@ -117,7 +116,7 @@ function PurchaseScreen() {
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
     const r = data as { previous_cost_kobo: number; current_cost_kobo: number; flagged: boolean; pct: number | null };
-    setMsg({ ok: true, text: `Saved. ${ing?.name} now ${formatNaira(r.current_cost_kobo)} per ${ing?.base_unit} (was ${formatNaira(r.previous_cost_kobo)}).${r.flagged ? ` Price up ${r.pct}% — owner alerted.` : ""}` });
+    setMsg({ ok: true, text: `Saved ${qty} ${marketUnitLabel(unit)} of ${ing?.name}. New price ${formatNaira(r.current_cost_kobo)} per ${ing?.base_unit} (was ${formatNaira(r.previous_cost_kobo)}).${r.flagged ? ` Price up ${r.pct}% — owner alerted.` : ""}` });
     setQty(""); setPaid(""); setTranscript(null); setUnsure(new Set());
     load();
   }
@@ -150,8 +149,7 @@ function PurchaseScreen() {
         <div className="flex-1 space-y-1"><Label htmlFor="p-unit">Unit</Label>
           <select id="p-unit" className={sel + flag("unit")} value={unit} onChange={(e) => setUnit(e.target.value)} disabled={!ing}>
             <option value="">Choose…</option>
-            {unit && !units.includes(unit) && <option value={unit}>{unit} (no conversion)</option>}
-            {units.map((u) => <option key={u} value={u}>{u}</option>)}
+            {MARKET_UNIT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
           </select></div>
       </div>
       <div className="space-y-1"><Label htmlFor="p-paid">Total paid (₦)</Label>
@@ -186,7 +184,7 @@ function PurchaseScreen() {
             <li key={h.id} className="flex justify-between py-2 text-sm">
               <span className="flex items-center gap-1">
                 {h.raw_transcript && <Mic aria-label="Voice entry" className="h-3 w-3 text-muted-foreground" />}
-                {names.get(h.ingredient_id) ?? "?"} · {Number(h.qty)} {h.market_unit}
+                {names.get(h.ingredient_id) ?? "?"} · {Number(h.qty)} {marketUnitLabel(h.market_unit)}
               </span>
               <span className="text-right">{formatNaira(Number(h.total_kobo))}<br /><span className="text-xs text-muted-foreground">{new Date(h.recorded_at).toLocaleDateString("en-NG")}</span></span>
             </li>

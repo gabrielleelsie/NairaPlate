@@ -21,9 +21,38 @@ export function useStaffSession() {
   return state;
 }
 
-// Names only — no unit carries a global size. Each needs a per-ingredient unit_conversions row.
-export const MARKET_UNITS = [
-  "derica", "paint_rubber", "mudu", "tuber", "bag", "carton", "bottle", "bunch", "cup", "congo", "tia",
-  "milk_cup", "cigarette_cup", "basin", "heap", "sachet", "bowl", "jerry_can",
+// The one canonical market-unit list. Values are stored; labels are shown to people.
+// No unit carries a global size: each still needs a per-ingredient unit_conversions row.
+export const MARKET_UNIT_OPTIONS = [
+  { value: "derica", label: "derica" },
+  { value: "paint_rubber", label: "paint rubber" },
+  { value: "mudu", label: "mudu" },
+  { value: "tuber", label: "tuber" },
+  { value: "bag", label: "bag" },
+  { value: "carton", label: "carton" },
+  { value: "bottle", label: "bottle" },
+  { value: "bunch", label: "bunch" },
+  { value: "cup", label: "cup" },
+  { value: "congo", label: "congo" },
+  { value: "tia", label: "tia" },
+  { value: "milk_cup", label: "milk cup" },
+  { value: "cigarette_cup", label: "cigarette cup" },
+  { value: "basin", label: "basin" },
+  { value: "heap", label: "heap" },
+  { value: "sachet", label: "sachet" },
+  { value: "bowl", label: "bowl" },
+  { value: "jerry_can", label: "jerry can" },
 ] as const;
+
+export const MARKET_UNITS = MARKET_UNIT_OPTIONS.map(({ value }) => value);
+
+const MARKET_UNIT_LABELS: Readonly<Record<string, string>> = Object.fromEntries(
+  MARKET_UNIT_OPTIONS.map(({ value, label }) => [value, label]),
+);
+
+/** Formats a stored market-unit value without changing what is saved. */
+export function marketUnitLabel(value: string): string {
+  return MARKET_UNIT_LABELS[value] ?? value.replaceAll("_", " ");
+}
+
 export const BASE_UNITS = ["kg", "g", "L", "ml", "piece"] as const;
