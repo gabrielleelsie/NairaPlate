@@ -2,6 +2,8 @@
 // Every screen (recipe builder, recipe list, future reports) calls computeRecipeCost().
 // Pure function: no database calls, so it gives the same answer everywhere and is easy to test.
 
+import { marketUnitLabel } from "@/lib/staff-session";
+
 export type CostIngredient = {
   id: string;
   name: string;
@@ -74,7 +76,7 @@ export function toBaseQty(
 
   return {
     base_qty: null,
-    error: `No conversion for "${unit}" on ${ingredient.name} (base unit ${ingredient.base_unit}). Add one on the Ingredients screen.`,
+    error: `No conversion for "${marketUnitLabel(unit)}" on ${ingredient.name} (base unit ${ingredient.base_unit}). Add one on the Ingredients screen.`,
   };
 }
 

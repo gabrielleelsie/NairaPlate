@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
-import { useStaffSession, BASE_UNITS } from "@/lib/staff-session";
+import { useStaffSession, BASE_UNITS, MARKET_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import {
   computeRecipeCost, unitsForIngredient, formatNaira, nairaToKobo,
   type CostIngredient, type CostConversion, type CostRecipeItem,
@@ -220,8 +220,12 @@ function RecipeForm({
   const [nextKey, setNextKey] = useState((existingItems?.length ?? 0) + 1);
   const [busy, setBusy] = useState(false);
 
-  // Units offered for an ingredient: its base unit, metric siblings, and ITS OWN conversions only.
-  const unitsFor = (ingredientId: string) => unitsForIngredient(ingredients.find((i) => i.id === ingredientId), conversions);
+  // Keep base/metric units and always offer every canonical market unit.
+  const unitsFor = (ingredientId: string) => Array.from(new Set([
+    ...unitsForIngredient(ingredients.find((i) => i.id === ingredientId), conversions)
+      .filter((unit) => !MARKET_UNITS.includes(unit as (typeof MARKET_UNITS)[number])),
+    ...MARKET_UNITS,
+  ]));
 
   const costItems = useMemo(
     () => items
@@ -384,7 +388,7 @@ function RecipeForm({
                 <SelectTrigger aria-label="Unit"><SelectValue placeholder="Unit" /></SelectTrigger>
                 <SelectContent>
                   {(it.ingredient_id ? unitsFor(it.ingredient_id) : [...BASE_UNITS]).map((u) => (
-                    <SelectItem key={u} value={u}>{u.replaceAll("_", " ")}</SelectItem>
+                    <SelectItem key={u} value={u}>{marketUnitLabel(u)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

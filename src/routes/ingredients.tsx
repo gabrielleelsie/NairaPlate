@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
-import { useStaffSession, MARKET_UNITS, BASE_UNITS } from "@/lib/staff-session";
+import { useStaffSession, MARKET_UNIT_OPTIONS, BASE_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo, koboToNaira } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -247,7 +247,7 @@ function ConversionsPanel({
         {conversions.length === 0 && <li className="text-muted-foreground">None yet.</li>}
         {conversions.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-2">
-            <span className="text-foreground">1 {c.market_unit.replaceAll("_", " ")} = {Number(c.base_qty)} {ingredient.base_unit}</span>
+            <span className="text-foreground">1 {marketUnitLabel(c.market_unit)} = {Number(c.base_qty)} {ingredient.base_unit}</span>
             {canDelete && (
               <button
                 className="text-xs text-muted-foreground underline"
@@ -268,7 +268,7 @@ function ConversionsPanel({
             <Label className="text-xs">Market unit</Label>
             <Select value={unit} onValueChange={setUnit}>
               <SelectTrigger className="w-40" aria-label="Market unit"><SelectValue placeholder="Pick" /></SelectTrigger>
-              <SelectContent>{MARKET_UNITS.map((u) => <SelectItem key={u} value={u}>{u.replaceAll("_", " ")}</SelectItem>)}</SelectContent>
+              <SelectContent>{MARKET_UNIT_OPTIONS.map(({ value, label }) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="grid gap-1">
@@ -319,8 +319,8 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
             return (
               <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-foreground">
-                  {qty} {p.market_unit.replaceAll("_", " ")} for {formatNaira(Number(p.total_kobo))}
-                  {unitPrice !== null && <> · {formatNaira(unitPrice)} per {p.market_unit.replaceAll("_", " ")}</>}
+                  {qty} {marketUnitLabel(p.market_unit)} for {formatNaira(Number(p.total_kobo))}
+                  {unitPrice !== null && <> · {formatNaira(unitPrice)} per {marketUnitLabel(p.market_unit)}</>}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatPriceDate(p.recorded_at)}

@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
-import { useStaffSession } from "@/lib/staff-session";
+import { useStaffSession, MARKET_UNIT_OPTIONS, marketUnitLabel } from "@/lib/staff-session";
 import {
-  convertAndCostIngredient, unitsForIngredient, formatNaira,
+  convertAndCostIngredient, formatNaira,
   type CostIngredient, type CostConversion,
 } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,6 @@ function WastageScreen() {
   }, []);
 
   const ing = ingredients.find((i) => i.id === ingId);
-  const units = unitsForIngredient(ing, conversions);
   // The ONLY costing on this screen — the shared function from costing.ts.
   const cost = useMemo(
     () => (ingId && unit && Number(qty) > 0
@@ -70,7 +69,7 @@ function WastageScreen() {
     });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
-    setMsg({ ok: true, text: `Logged ${qty} ${unit} of ${ing?.name} — cost ${formatNaira(cost_kobo)}.` });
+    setMsg({ ok: true, text: `Logged ${qty} ${marketUnitLabel(unit)} of ${ing?.name} — cost ${formatNaira(cost_kobo)}.` });
     setQty("");
   }
 
@@ -92,7 +91,7 @@ function WastageScreen() {
         <div className="flex-1 space-y-1"><Label htmlFor="w-unit">Unit</Label>
           <select id="w-unit" className={sel} value={unit} onChange={(e) => setUnit(e.target.value)} disabled={!ing}>
             <option value="">Choose…</option>
-            {units.map((u) => <option key={u} value={u}>{u}</option>)}
+            {MARKET_UNIT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
           </select></div>
       </div>
       <div className="space-y-1"><Label htmlFor="w-reason">Reason</Label>

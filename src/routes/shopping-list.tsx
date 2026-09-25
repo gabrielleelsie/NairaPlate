@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
-import { useStaffSession } from "@/lib/staff-session";
+import { useStaffSession, marketUnitLabel } from "@/lib/staff-session";
 import { formatNaira } from "@/lib/costing";
 
 export const Route = createFileRoute("/shopping-list")({
@@ -60,7 +60,7 @@ function ShoppingListScreen() {
         negative: i.stock_base_qty < 0,
         stockText: `${fmtQty(i.stock_base_qty)} ${i.base_unit}`,
         buyText: pick
-          ? `${fmtQty(Math.ceil((need / pick.base_qty) * 10) / 10)} ${pick.market_unit} (${fmtQty(need)} ${i.base_unit})`
+          ? `${fmtQty(Math.ceil((need / pick.base_qty) * 10) / 10)} ${marketUnitLabel(pick.market_unit)} (${fmtQty(need)} ${i.base_unit})`
           : `${fmtQty(need)} ${i.base_unit}`,
         estCostKobo: Math.round(need * i.current_cost_kobo),
       });
