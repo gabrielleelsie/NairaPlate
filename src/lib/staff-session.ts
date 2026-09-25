@@ -32,7 +32,7 @@ export const MARKET_UNIT_OPTIONS = [
   { value: "carton", label: "carton" },
   { value: "bottle", label: "bottle" },
   { value: "bunch", label: "bunch" },
-  { value: "cup", label: "cup" },
+  { value: "market_cup", label: "market cup" },
   { value: "congo", label: "congo" },
   { value: "tia", label: "tia" },
   { value: "milk_cup", label: "milk cup" },
@@ -42,6 +42,11 @@ export const MARKET_UNIT_OPTIONS = [
   { value: "sachet", label: "sachet" },
   { value: "bowl", label: "bowl" },
   { value: "jerry_can", label: "jerry can" },
+  // Kitchen measures — same rule: each needs its own per-ingredient conversion.
+  { value: "teaspoon", label: "teaspoon" },
+  { value: "tablespoon", label: "tablespoon" },
+  { value: "cooking_spoon", label: "cooking spoon" },
+  { value: "measuring_cup", label: "measuring cup" },
 ] as const;
 
 export const MARKET_UNITS = MARKET_UNIT_OPTIONS.map(({ value }) => value);

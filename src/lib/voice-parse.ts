@@ -16,7 +16,7 @@ const UNIT_WORDS: [string[], string][] = [
   [["milk", "cup"], "milk_cup"], [["cigarette", "cup"], "cigarette_cup"],
   [["jerry", "can"], "jerry_can"], [["jerrycan"], "jerry_can"],
   [["derica"], "derica"], [["mudu"], "mudu"], [["tuber"], "tuber"], [["bag"], "bag"],
-  [["carton"], "carton"], [["bottle"], "bottle"], [["bunch"], "bunch"], [["cup"], "cup"],
+  [["carton"], "carton"], [["bottle"], "bottle"], [["bunch"], "bunch"], [["cup"], "market_cup"],
   [["congo"], "congo"], [["tia"], "tia"],
   [["basin"], "basin"], [["heap"], "heap"], [["sachet"], "sachet"], [["bowl"], "bowl"],
 ];
