@@ -30,7 +30,7 @@ const singular = (w: string) => (w.length > 3 && w.endsWith("es") && /(ch|sh|x)e
 
 function numVal(t: string): number | null {
   if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
-  return t in ONES && t !== "a" && t !== "an" ? ONES[t] : null;
+  return t in ONES && t !== "a" && t !== "an" ? ONES[t]! : null;
 }
 const isNumTok = (t: string) => numVal(t) !== null || t in MULT;
 
@@ -38,16 +38,16 @@ const isNumTok = (t: string) => numVal(t) !== null || t in MULT;
 export function parsePrice(toks: string[]): number | null {
   if (toks.length === 0) return null;
   // "4500" / "50000" — a single numeric string is literal
-  if (toks.length === 1 && /^\d+$/.test(toks[0])) return Number(toks[0]);
+  if (toks.length === 1 && /^\d+$/.test(toks[0]!)) return Number(toks[0]);
   // "50k" as one token
-  if (toks.length === 1 && /^\d+k$/.test(toks[0])) return Number(toks[0].slice(0, -1)) * 1000;
+  if (toks.length === 1 && /^\d+k$/.test(toks[0]!)) return Number(toks[0]!.slice(0, -1)) * 1000;
   // "four five" → 4500 (market slang: thousands, hundreds)
   if (toks.length === 2 && toks.every((t) => { const v = numVal(t); return v !== null && v >= 1 && v <= 9 && !/^\d/.test(t); })) {
-    return numVal(toks[0])! * 1000 + numVal(toks[1])! * 100;
+    return numVal(toks[0]!)! * 1000 + numVal(toks[1]!)! * 100;
   }
   // "four five hundred" → 4500
   if (toks.length === 3) {
-    const a = numVal(toks[0]), b = numVal(toks[1]);
+    const a = numVal(toks[0]!), b = numVal(toks[1]!);
     if (a !== null && a >= 1 && a <= 9 && b !== null && b >= 1 && b <= 9 && toks[2] === "hundred") return a * 1000 + b * 100;
   }
   // Compositional: "four thousand five hundred", "fifty k", "one hundred and twenty thousand"
@@ -56,7 +56,7 @@ export function parsePrice(toks: string[]): number | null {
     const v = numVal(t);
     if (v !== null) { cur += v; sawAny = true; continue; }
     if (t === "hundred") { cur = (cur || 1) * 100; continue; }
-    if (t in MULT) { total += (cur || 1) * MULT[t]; cur = 0; continue; }
+    if (t in MULT) { total += (cur || 1) * MULT[t]!; cur = 0; continue; }
     return null;
   }
   const out = total + cur;
@@ -67,11 +67,11 @@ export function parsePrice(toks: string[]): number | null {
 
 function lev(a: string, b: string) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let j = 1; j <= b.length; j++) d[0]![j] = j;
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return d[a.length][b.length];
+      d[i]![j] = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+  return d[a.length]![b.length]!;
 }
 const similarity = (a: string, b: string) => 1 - lev(a, b) / Math.max(a.length, b.length, 1);
 
@@ -82,14 +82,14 @@ export function parsePurchase(transcript: string, ingredients: { id: string; nam
   // Quantity: first number token
   let qty: number | null = null;
   const qi = toks.findIndex((t) => numVal(t) !== null || t === "a" || t === "an");
-  if (qi >= 0) { qty = t0(toks[qi]); used.add(qi); }
+  if (qi >= 0) { qty = t0(toks[qi]!); used.add(qi); }
   function t0(t: string) { return t === "a" || t === "an" ? 1 : numVal(t); }
 
   // Unit
   let market_unit: string | null = null;
   for (let i = 0; i < toks.length && !market_unit; i++) {
     for (const [words, unit] of UNIT_WORDS) {
-      if (words.every((w, k) => toks[i + k] && singular(toks[i + k]) === w)) {
+      if (words.every((w, k) => toks[i + k] !== undefined && singular(toks[i + k]!) === w)) {
         market_unit = unit; words.forEach((_, k) => used.add(i + k)); break;
       }
     }

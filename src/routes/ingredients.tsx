@@ -26,7 +26,15 @@ export const Route = createFileRoute("/ingredients")({
 type Ingredient = {
   id: string; name: string; category: string | null; base_unit: string;
   current_cost_kobo: number; previous_cost_kobo: number; min_threshold_qty: number; supplier: string | null;
+  price_updated_at: string | null;
 };
+
+function formatPriceDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+}
 type Conversion = { id: string; ingredient_id: string; market_unit: string; base_qty: number };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "purchaser"]);
@@ -41,7 +49,7 @@ function IngredientsScreen() {
 
   const load = useCallback(async () => {
     const [a, b] = await Promise.all([
-      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier").order("name"),
+      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,price_updated_at").order("name"),
       supabase.from("unit_conversions").select("id,ingredient_id,market_unit,base_qty").order("market_unit"),
     ]);
     if (a.error || b.error) return setMsg({ ok: false, text: "Could not load ingredients." });
@@ -85,6 +93,9 @@ function IngredientsScreen() {
                   {formatNaira(i.current_cost_kobo)} per {i.base_unit}
                   {i.previous_cost_kobo > 0 && i.previous_cost_kobo !== i.current_cost_kobo && (
                     <> · was {formatNaira(i.previous_cost_kobo)}</>
+                  )}
+                  {formatPriceDate(i.price_updated_at) && (
+                    <> · price updated {formatPriceDate(i.price_updated_at)}</>
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -142,7 +153,7 @@ function IngredientForm({
     };
     if (!initial) {
       const { error } = await supabase.from("ingredients").insert({
-        ...fields, business_id: businessId, current_cost_kobo: newCost, previous_cost_kobo: 0, stock_base_qty: 0,
+        ...fields, business_id: businessId, current_cost_kobo: newCost, previous_cost_kobo: 0, stock_base_qty: 0, price_updated_at: new Date().toISOString(),
       });
       setBusy(false);
       return error ? onError("Could not add ingredient.") : onSaved(`${fields.name} added.`);
@@ -155,7 +166,7 @@ function IngredientForm({
     const priceChanged = Number(live.current_cost_kobo) !== newCost;
     const { error } = await supabase
       .from("ingredients")
-      .update(priceChanged ? { ...fields, previous_cost_kobo: live.current_cost_kobo, current_cost_kobo: newCost } : fields)
+      .update(priceChanged ? { ...fields, previous_cost_kobo: live.current_cost_kobo, current_cost_kobo: newCost, price_updated_at: new Date().toISOString() } : fields)
       .eq("id", initial.id);
     setBusy(false);
     if (error) return onError("Could not save ingredient.");
