@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
+  id: '/api/public/staff-pin-login',
+  path: '/api/public/staff-pin-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/staff-pin-login'
+  id: '__root__' | '/' | '/api/public/staff-pin-login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/staff-pin-login': {
+      id: '/api/public/staff-pin-login'
+      path: '/api/public/staff-pin-login'
+      fullPath: '/api/public/staff-pin-login'
+      preLoaderRoute: typeof ApiPublicStaffPinLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
