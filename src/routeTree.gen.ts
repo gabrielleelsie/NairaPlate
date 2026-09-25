@@ -21,6 +21,7 @@ import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
+import { Route as ReportRouteImport } from './routes/report'
 import { Route as ShoppingListRouteImport } from './routes/shopping-list'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SupplierPaymentRouteImport } from './routes/supplier-payment'
@@ -91,6 +92,11 @@ const RecipesRoute = RecipesRouteImport.update({
   path: '/recipes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShoppingListRoute = ShoppingListRouteImport.update({
   id: '/shopping-list',
   path: '/shopping-list',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/pos': typeof PosRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
+  '/report': typeof ReportRoute
   '/shopping-list': typeof ShoppingListRoute
   '/staff': typeof StaffRoute
   '/supplier-payment': typeof SupplierPaymentRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/pos': typeof PosRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
+  '/report': typeof ReportRoute
   '/shopping-list': typeof ShoppingListRoute
   '/staff': typeof StaffRoute
   '/supplier-payment': typeof SupplierPaymentRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/pos': typeof PosRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
+  '/report': typeof ReportRoute
   '/shopping-list': typeof ShoppingListRoute
   '/staff': typeof StaffRoute
   '/supplier-payment': typeof SupplierPaymentRoute
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/purchases'
     | '/recipes'
+    | '/report'
     | '/shopping-list'
     | '/staff'
     | '/supplier-payment'
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/purchases'
     | '/recipes'
+    | '/report'
     | '/shopping-list'
     | '/staff'
     | '/supplier-payment'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/purchases'
     | '/recipes'
+    | '/report'
     | '/shopping-list'
     | '/staff'
     | '/supplier-payment'
@@ -293,6 +305,7 @@ export interface RootRouteChildren {
   PosRoute: typeof PosRoute
   PurchasesRoute: typeof PurchasesRoute
   RecipesRoute: typeof RecipesRoute
+  ReportRoute: typeof ReportRoute
   ShoppingListRoute: typeof ShoppingListRoute
   StaffRoute: typeof StaffRoute
   SupplierPaymentRoute: typeof SupplierPaymentRoute
@@ -390,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecipesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shopping-list': {
       id: '/shopping-list'
       path: '/shopping-list'
@@ -469,6 +489,7 @@ const rootRouteChildren: RootRouteChildren = {
   PosRoute: PosRoute,
   PurchasesRoute: PurchasesRoute,
   RecipesRoute: RecipesRoute,
+  ReportRoute: ReportRoute,
   ShoppingListRoute: ShoppingListRoute,
   StaffRoute: StaffRoute,
   SupplierPaymentRoute: SupplierPaymentRoute,
