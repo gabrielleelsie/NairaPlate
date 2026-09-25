@@ -35,6 +35,9 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   price_published: "Dish price published",
   order_adjusted: "Order voided / refunded",
   drawer_discrepancy: "Cash drawer difference",
+  business_created: "Business signed up",
+  business_approved: "Business approved",
+  business_rejected: "Business rejected",
 };
 
 type Row = { id: string; actor_id: string | null; actor_role: string | null; action: string; details: string | null; created_at: string };

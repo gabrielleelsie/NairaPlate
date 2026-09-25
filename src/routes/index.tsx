@@ -81,6 +81,9 @@ function LoginScreen() {
       <Shell>
         <h1 className="text-3xl font-semibold text-foreground">Welcome, {signedInAs}</h1>
         <p className="mt-2 text-muted-foreground">You are signed in.</p>
+        {myRole === "platform_admin" ? (
+          <Button asChild className="mt-6 mr-2"><Link to="/approvals">Business approvals</Link></Button>
+        ) : (
         <div className="mt-6 flex flex-wrap gap-2">
           <Button asChild variant="outline"><Link to="/ingredients">Ingredients</Link></Button>
           <Button asChild variant="outline"><Link to="/recipes">Recipes</Link></Button>
@@ -95,6 +98,7 @@ function LoginScreen() {
           <Button asChild variant="outline"><Link to="/batches">Log a batch</Link></Button>
           <Button asChild variant="outline"><Link to="/purchases">Log purchase</Link></Button>
         </div>
+        )}
         {(myRole === "owner" || myRole === "supa_admin") && (
           <>
             <Button asChild className="mt-6 mr-2"><Link to="/staff">Manage staff</Link></Button>
@@ -139,6 +143,7 @@ function LoginScreen() {
           <Input value={businessInput} onChange={(e) => setBusinessInput(e.target.value)} placeholder="Business code" />
           <Button type="submit">Continue</Button>
         </form>
+        <Link className="mt-6 block text-sm underline" to="/signup">New here? Register your business</Link>
       </Shell>
     );
   }

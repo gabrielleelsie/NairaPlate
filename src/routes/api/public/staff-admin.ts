@@ -76,6 +76,31 @@ export const Route = createFileRoute("/api/public/staff-admin")({
         const business_id = typeof meta["business_id"] === "string" ? meta["business_id"] : "";
         const tokenRole = typeof meta["role"] === "string" ? meta["role"] : "";
         const callerId = userData.user.id;
+        let raw: unknown;
+        try {
+          raw = await request.json();
+        } catch {
+          return json({ error: "Invalid request body." }, 400);
+        }
+
+        // ---------- change_own_pin: any signed-in staff member (incl. platform admin), own PIN only ----------
+        if ((raw as { action?: string })?.action === "change_own_pin") {
+          const p = z.object({ current_pin: PinSchema, new_pin: PinSchema }).safeParse(raw);
+          if (!p.success) return json({ error: p.error.issues[0]?.message ?? "Invalid request." }, 400);
+          const { data: me } = await admin.from("staff_users")
+            .select("id, role, display_name, is_active, pin_hash, pin_salt")
+            .eq("id", callerId).eq("business_id", business_id).maybeSingle();
+          if (!me || !me.is_active || !me.pin_salt) return json({ error: "Account not found." }, 403);
+          if ((await sha256Hex(me.pin_salt + p.data.current_pin)) !== String(me.pin_hash).toLowerCase())
+            return json({ error: "Current PIN is wrong." }, 401);
+          const { pin_salt, pin_hash } = await hashPin(p.data.new_pin);
+          const { error } = await admin.from("staff_users").update({ pin_salt, pin_hash, failed_attempts: 0, locked_until: 0 }).eq("id", me.id);
+          if (error) return json({ error: "Could not change PIN." }, 500);
+          await writeAudit(admin, { business_id, actor_id: me.id, actor_role: me.role, action: "pin_reset",
+            entity_type: "staff_users", entity_id: me.id, details: `${me.display_name} changed their own PIN` });
+          return json({ ok: true });
+        }
+
         if (!business_id || !MANAGER_ROLES.has(tokenRole)) {
           return json({ error: "Only owners can manage staff." }, 403);
         }
@@ -91,12 +116,6 @@ export const Route = createFileRoute("/api/public/staff-admin")({
           return json({ error: "Only owners can manage staff." }, 403);
         }
 
-        let raw: unknown;
-        try {
-          raw = await request.json();
-        } catch {
-          return json({ error: "Invalid request body." }, 400);
-        }
         const parsed = ActionSchema.safeParse(raw);
         if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, 400);
         const body = parsed.data;
