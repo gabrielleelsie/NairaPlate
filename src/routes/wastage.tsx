@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession, MARKET_UNIT_OPTIONS, marketUnitLabel } from "@/lib/staff-session";
 import {
-  convertAndCostIngredient, unitsForIngredient, formatNaira,
+  convertAndCostIngredient, formatNaira,
   type CostIngredient, type CostConversion,
 } from "@/lib/costing";
 import { Button } from "@/components/ui/button";

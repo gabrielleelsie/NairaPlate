@@ -4,7 +4,7 @@ import { Mic } from "lucide-react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession, MARKET_UNIT_OPTIONS, marketUnitLabel } from "@/lib/staff-session";
 import {
-  convertAndCostIngredient, unitsForIngredient, formatNaira, nairaToKobo,
+  convertAndCostIngredient, formatNaira, nairaToKobo,
   type CostIngredient, type CostConversion,
 } from "@/lib/costing";
 import { parsePurchase } from "@/lib/voice-parse";
