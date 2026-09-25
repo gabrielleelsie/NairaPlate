@@ -5,6 +5,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
+import { expectedDrawerCash } from "@/lib/cash-drawer";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
