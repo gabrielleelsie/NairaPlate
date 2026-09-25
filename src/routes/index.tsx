@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/Logo";
+import {
+  AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
+  CreditCard, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
+  Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -77,57 +83,16 @@ function LoginScreen() {
   }, [businessId]);
 
   if (signedInAs) {
-    return (
-      <Shell>
-        <h1 className="text-3xl font-semibold text-foreground">Welcome, {signedInAs}</h1>
-        <p className="mt-2 text-muted-foreground">You are signed in.</p>
-        {myRole === "platform_admin" ? (
-          <Button asChild className="mt-6 mr-2"><Link to="/approvals">Business approvals</Link></Button>
-        ) : (
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button asChild variant="outline"><Link to="/ingredients">Ingredients</Link></Button>
-          <Button asChild variant="outline"><Link to="/recipes">Recipes</Link></Button>
-          <Button asChild variant="outline"><Link to="/pos">Till</Link></Button>
-          <Button asChild variant="outline"><Link to="/orders">Orders, voids & refunds</Link></Button>
-          <Button asChild variant="outline"><Link to="/credit">Customer credit</Link></Button>
-          <Button asChild variant="outline"><Link to="/catering">Catering bookings</Link></Button>
-          <Button asChild variant="outline"><Link to="/suppliers">Suppliers</Link></Button>
-          <Button asChild variant="outline"><Link to="/shopping-list">Shopping list</Link></Button>
-          <Button asChild variant="outline"><Link to="/drawer">Cash drawer</Link></Button>
-          <Button asChild variant="outline"><Link to="/wastage">Log wastage</Link></Button>
-          <Button asChild variant="outline"><Link to="/batches">Log a batch</Link></Button>
-          <Button asChild variant="outline"><Link to="/purchases">Log purchase</Link></Button>
-        </div>
-        )}
-        {(myRole === "owner" || myRole === "supa_admin") && (
-          <>
-            <Button asChild className="mt-6 mr-2"><Link to="/staff">Manage staff</Link></Button>
-            <Button asChild className="mt-6 mr-2"><Link to="/dashboard">Profit & loss</Link></Button>
-            <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/cashflow">7-day cashflow</Link></Button>
-            <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/report">Print report</Link></Button>
-            <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/payouts">Channel payouts</Link></Button>
-            <Button asChild className="mt-6 mr-2"><Link to="/flags">Alerts</Link></Button>
-            <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/audit">Audit log</Link></Button>
-          </>
-        )}
-        <Button
-          className="mt-6"
-          variant="outline"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            setSignedInAs(null);
-            setSelected(null);
-          }}
-        >
-          Sign out
-        </Button>
-      </Shell>
-    );
+    return <HomeScreen name={signedInAs} role={myRole} onSignOut={async () => {
+      await supabase.auth.signOut();
+      setSignedInAs(null);
+      setSelected(null);
+    }} />;
   }
 
   if (!businessId) {
     return (
-      <Shell>
+      <AuthShell>
         <h1 className="text-3xl font-semibold text-foreground">NairaPlate</h1>
         <p className="mt-2 text-muted-foreground">Enter your business code to begin.</p>
         <form
@@ -141,10 +106,10 @@ function LoginScreen() {
           }}
         >
           <Input value={businessInput} onChange={(e) => setBusinessInput(e.target.value)} placeholder="Business code" />
-          <Button type="submit">Continue</Button>
+          <Button type="submit" className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">Continue</Button>
         </form>
-        <Link className="mt-6 block text-sm underline" to="/signup">New here? Register your business</Link>
-      </Shell>
+        <Link className="mt-6 block text-center text-sm font-medium text-brand-blue underline underline-offset-4" to="/signup">New here? Register your business</Link>
+      </AuthShell>
     );
   }
 
@@ -160,7 +125,7 @@ function LoginScreen() {
   }
 
   return (
-    <Shell>
+    <AuthShell>
       <h1 className="text-3xl font-semibold text-foreground">Who's working?</h1>
       <p className="mt-2 text-muted-foreground">Tap your name.</p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
@@ -170,18 +135,22 @@ function LoginScreen() {
       )}
       <div className="mt-6 grid grid-cols-2 gap-3">
         {staff?.map((s) => (
-          <button
+          <Button
             key={s.id}
+            type="button"
+            variant="outline"
             onClick={() => setSelected(s)}
-            className="rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
+            className="h-auto min-h-20 flex-col items-start gap-1 whitespace-normal border-border bg-card p-4 text-left hover:border-brand-blue hover:bg-accent focus-visible:ring-brand-blue"
           >
             <div className="font-medium text-card-foreground">{s.display_name}</div>
             <div className="text-xs uppercase tracking-wide text-muted-foreground">{s.role.replace("_", " ")}</div>
-          </button>
+          </Button>
         ))}
       </div>
-      <button
-        className="mt-8 text-sm text-muted-foreground underline"
+      <Button
+        type="button"
+        variant="link"
+        className="mt-6 h-auto px-0 text-muted-foreground"
         onClick={() => {
           localStorage.removeItem(BUSINESS_KEY);
           setBusinessId("");
@@ -189,8 +158,8 @@ function LoginScreen() {
         }}
       >
         Change business
-      </button>
-    </Shell>
+      </Button>
+    </AuthShell>
   );
 }
 
@@ -240,8 +209,8 @@ function PinScreen({
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
   return (
-    <Shell>
-      <button onClick={onBack} className="text-sm text-muted-foreground underline">← Back</button>
+    <AuthShell>
+      <Button type="button" variant="ghost" onClick={onBack} className="h-auto px-0 text-sm text-muted-foreground"><ArrowBack /> Back</Button>
       <h1 className="mt-4 text-3xl font-semibold text-foreground">{staff.display_name}</h1>
       <p className="mt-1 text-muted-foreground">Enter your PIN</p>
       <div className="mt-6 flex justify-center gap-3">
@@ -259,7 +228,7 @@ function PinScreen({
             <Button
               key={i}
               variant="outline"
-              className="h-16 text-xl"
+               className="h-16 border-brand-blue/30 text-xl text-brand-navy hover:border-brand-blue hover:bg-brand-blue hover:text-brand-inverse focus-visible:ring-brand-blue"
               disabled={busy || lockSeconds > 0}
               onClick={() => (k === "⌫" ? setPin((p) => p.slice(0, -1)) : setPin((p) => (p.length < 8 ? p + k : p)))}
             >
@@ -268,17 +237,105 @@ function PinScreen({
           ),
         )}
       </div>
-      <Button className="mx-auto mt-6 block w-full max-w-xs" disabled={pin.length < 4 || busy || lockSeconds > 0} onClick={submit}>
+       <Button className="mx-auto mt-6 block w-full max-w-xs bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" disabled={pin.length < 4 || busy || lockSeconds > 0} onClick={submit}>
         {busy ? "Checking…" : "Sign in"}
       </Button>
-    </Shell>
+    </AuthShell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">{children}</div>
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-brand-navy px-4 py-8 sm:py-12">
+      <Logo layout="stacked" variant="white" size={72} className="mb-6 sm:mb-8" />
+      <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-auth sm:p-8">{children}</div>
     </main>
+  );
+}
+
+function ArrowBack() {
+  return <span aria-hidden="true">←</span>;
+}
+
+const ROLE_NAMES: Record<string, string> = {
+  owner: "Owner", supa_admin: "Supa Admin", cashier: "Cashier", purchaser: "Purchaser",
+  cook: "Kitchen Staff", platform_admin: "Platform Admin",
+};
+
+type AppLink = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
+const SELL: AppLink[] = [
+  { to: "/pos", label: "Till", icon: Store },
+  { to: "/drawer", label: "Cash drawer", icon: WalletCards },
+  { to: "/orders", label: "Orders", icon: ReceiptText },
+  { to: "/credit", label: "Customer credit", icon: CreditCard },
+  { to: "/catering", label: "Catering", icon: CalendarDays },
+];
+const STOCK: AppLink[] = [
+  { to: "/purchases", label: "Purchases", icon: ShoppingBasket },
+  { to: "/suppliers", label: "Suppliers", icon: Truck },
+  { to: "/shopping-list", label: "Shopping list", icon: ClipboardList },
+  { to: "/ingredients", label: "Ingredients", icon: PackageSearch },
+];
+const KITCHEN: AppLink[] = [
+  { to: "/recipes", label: "Recipes", icon: BookOpen },
+  { to: "/batches", label: "Log a batch", icon: ChefHat },
+  { to: "/wastage", label: "Wastage", icon: UtensilsCrossed },
+];
+const OVERSIGHT: AppLink[] = [
+  { to: "/dashboard", label: "P&L", icon: BarChart3 },
+  { to: "/cashflow", label: "7-day cashflow", icon: Landmark },
+  { to: "/flags", label: "Alerts", icon: AlertTriangle },
+  { to: "/audit", label: "Audit log", icon: History },
+  { to: "/payouts", label: "Channel payouts", icon: HandCoins },
+  { to: "/recipes", label: "Pricing review", icon: Scale },
+  { to: "/staff", label: "Staff", icon: Users },
+  { to: "/report", label: "Print report", icon: ClipboardList },
+];
+
+function HomeScreen({ name, role, onSignOut }: { name: string; role: string | null; onSignOut: () => Promise<void> }) {
+  const isOwner = role === "owner" || role === "supa_admin";
+  const groups = role === "platform_admin"
+    ? [{ title: "Platform", links: [{ to: "/approvals", label: "Business approvals", icon: ClipboardList }] }]
+    : [
+        ...(role === "cashier" || isOwner ? [{ title: "Sell", links: SELL }] : []),
+        ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: STOCK }] : []),
+        ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: KITCHEN }] : []),
+        ...(isOwner ? [{ title: "Oversight", links: OVERSIGHT }] : []),
+      ];
+
+  return (
+    <main className="min-h-dvh bg-home-surface">
+      <header className="bg-brand-navy text-brand-inverse">
+        <div className="mx-auto grid min-h-20 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 sm:px-6">
+          <Logo variant="white" layout="inline" size={38} className="min-w-0" />
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 truncate text-right text-sm font-semibold">
+              {name} <span className="font-normal text-brand-inverse/60">·</span> {ROLE_NAMES[role ?? ""] ?? role ?? "Staff"}
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="shrink-0 text-brand-inverse hover:bg-brand-inverse/10 hover:text-brand-inverse" onClick={onSignOut} title="Sign out" aria-label="Sign out">
+              <LogOut />
+            </Button>
+          </div>
+        </div>
+      </header>
+      <div className="mx-auto max-w-6xl space-y-9 px-4 py-7 sm:px-6 sm:py-10">
+        {groups.map((group) => <ActionGroup key={group.title} title={group.title} links={group.links} />)}
+      </div>
+    </main>
+  );
+}
+
+function ActionGroup({ title, links }: { title: string; links: AppLink[] }) {
+  return (
+    <section aria-labelledby={`group-${title.replace(/\W/g, "-")}`}>
+      <h2 id={`group-${title.replace(/\W/g, "-")}`} className="mb-3 text-sm font-semibold uppercase tracking-normal text-brand-navy/70">{title}</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {links.map(({ to, label, icon: Icon }) => (
+          <Button key={`${to}-${label}`} asChild variant="outline" className="h-24 w-full flex-col gap-2 whitespace-normal border-border bg-card px-2 text-center text-brand-navy shadow-xs hover:border-brand-blue hover:bg-card hover:text-brand-navy focus-visible:ring-brand-blue">
+            <Link to={to}><Icon className="text-brand-blue" /><span className="text-sm font-semibold leading-tight">{label}</span></Link>
+          </Button>
+        ))}
+      </div>
+    </section>
   );
 }
