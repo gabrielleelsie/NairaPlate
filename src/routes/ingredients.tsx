@@ -153,7 +153,7 @@ function IngredientForm({
     };
     if (!initial) {
       const { error } = await supabase.from("ingredients").insert({
-        ...fields, business_id: businessId, current_cost_kobo: newCost, previous_cost_kobo: 0, stock_base_qty: 0,
+        ...fields, business_id: businessId, current_cost_kobo: newCost, previous_cost_kobo: 0, stock_base_qty: 0, price_updated_at: new Date().toISOString(),
       });
       setBusy(false);
       return error ? onError("Could not add ingredient.") : onSaved(`${fields.name} added.`);
