@@ -5,6 +5,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
+import { expectedDrawerCash } from "@/lib/cash-drawer";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -44,27 +45,14 @@ export const Route = createFileRoute("/api/public/cash-drawer-close")({
         if (!drawer) return json({ error: "You have no open shift." }, 404);
 
         const closedAt = new Date().toISOString();
-        // Expected cash = float + cash portion of every PAID (or part-refunded) cash/split order
-        // since the shift opened. Voided ('cancelled') and fully 'refunded' orders add nothing.
-        // A partial refund comes out of the cash portion (never more than the cash taken).
-        const { data: orders, error: oe } = await admin.from("orders")
-          .select("id,cash_amount_kobo")
-          .eq("business_id", business_id).in("payment_method", ["cash", "split"])
-          .in("status", ["paid", "partially_refunded"])
-          .gte("created_at", drawer.opened_at).lte("created_at", closedAt);
-        if (oe) return json({ error: "Could not read orders." }, 500);
-        const ids = (orders ?? []).map((o) => o.id);
-        const { data: partials, error: pe } = ids.length
-          ? await admin.from("order_adjustments").select("order_id,adjustment_amount_kobo")
-              .eq("type", "partial_refund").in("order_id", ids)
-          : { data: [], error: null };
-        const refunded = new Map<string, number>();
-        for (const a of pe ? [] : partials ?? []) {
-          refunded.set(a.order_id, (refunded.get(a.order_id) ?? 0) + Number(a.adjustment_amount_kobo));
+        // Same single calculation the cashflow forecast uses.
+        let cashSales: number, expected: number;
+        try {
+          const r = await expectedDrawerCash(admin, drawer, closedAt);
+          cashSales = r.cash_sales_kobo; expected = r.expected_cash_kobo;
+        } catch {
+          return json({ error: "Could not read orders." }, 500);
         }
-        const cashSales = (orders ?? []).reduce(
-          (s, o) => s + Math.max(0, Number(o.cash_amount_kobo) - (refunded.get(o.id) ?? 0)), 0);
-        const expected = Number(drawer.opening_float_kobo) + cashSales;
         const discrepancy = counted - expected;
 
         const { error: de } = await admin.from("cash_drawers").update({
