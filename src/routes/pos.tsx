@@ -24,7 +24,8 @@ export const Route = createFileRoute("/pos")({
 
 type Recipe = { id: string; name: string; selling_price_kobo: number };
 type Line = { recipe_id: string; quantity: number };
-type Pay = "cash" | "transfer" | "split";
+type Pay = "cash" | "transfer" | "split" | "credit";
+const PAY_LABEL: Record<Pay, string> = { cash: "Cash", transfer: "Transfer", split: "Split", credit: "Customer credit (owe)" };
 const POS_ROLES = new Set(["cashier", "owner", "supa_admin"]);
 const TIERS = ["Standard", "Wholesale", "Event"];
 
@@ -40,6 +41,8 @@ function PosScreen() {
   const [pay, setPay] = useState<Pay>("cash");
   const [cashN, setCashN] = useState("");
   const [trN, setTrN] = useState("");
+  const [custName, setCustName] = useState("");
+  const [custPhone, setCustPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -57,7 +60,8 @@ function PosScreen() {
   const splitSum = cashK + trK;
   const splitOk = pay !== "split" || (cashK > 0 && trK > 0 && splitSum === subtotal);
   const finalChannel = channel === "Aggregator" ? aggName.trim() : channel;
-  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && finalChannel.length > 0 && !busy;
+  const creditOk = pay !== "credit" || (custName.trim().length > 0 && custPhone.trim().length > 0);
+  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy;
 
   function addLine() {
     const q = Math.floor(Number(qty));
@@ -71,6 +75,20 @@ function PosScreen() {
 
   async function submit() {
     if (!session) return;
+    // Credit sale: order + items + customer_credits row saved together in one database step.
+    if (pay === "credit") {
+      setBusy(true); setMsg(null);
+      const { data, error } = await supabase.rpc("create_credit_order" as never, {
+        p_channel: finalChannel, p_price_tier: tier, p_customer_name: custName.trim(), p_phone: custPhone.trim(),
+        p_items: lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity })),
+      } as never);
+      setBusy(false);
+      if (error) return setMsg({ ok: false, text: "Order not saved: " + error.message });
+      const total = Number((data as { total_kobo: number }).total_kobo);
+      setMsg({ ok: true, text: `Order saved — ${custName.trim()} owes ${formatNaira(total)}.` });
+      setLines([]); setCustName(""); setCustPhone("");
+      return;
+    }
     // Validate payment split before any insert.
     if (cashK + trK !== subtotal || (pay === "split" && (cashK <= 0 || trK <= 0))) {
       return setMsg({ ok: false, text: "Cash and transfer must add up exactly to the total." });
@@ -140,12 +158,17 @@ function PosScreen() {
 
       <section className="space-y-2">
         <Label>Payment</Label>
-        <div className="flex gap-4">
-          {(["cash", "transfer", "split"] as Pay[]).map((p) => (
-            <label key={p} className="flex items-center gap-1 capitalize">
-              <input type="radio" name="pay" checked={pay === p} onChange={() => setPay(p)} /> {p}
+        <div className="flex flex-wrap gap-4">
+          {(["cash", "transfer", "split", "credit"] as Pay[]).map((p) => (
+            <label key={p} className="flex items-center gap-1">
+              <input type="radio" name="pay" checked={pay === p} onChange={() => setPay(p)} /> {PAY_LABEL[p]}
             </label>))}
         </div>
+        {pay === "credit" && (
+          <div className="flex gap-2">
+            <Input aria-label="Customer name" placeholder="Customer name" value={custName} onChange={(e) => setCustName(e.target.value)} />
+            <Input aria-label="Customer phone" placeholder="Phone" type="tel" value={custPhone} onChange={(e) => setCustPhone(e.target.value)} />
+          </div>)}
         {pay === "split" && (
           <div className="space-y-2">
             <div className="flex gap-2">
@@ -159,7 +182,7 @@ function PosScreen() {
           </div>)}
       </section>
 
-      <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : `Charge ${formatNaira(subtotal)}`}</Button>
+      <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : pay === "credit" ? `Put ${formatNaira(subtotal)} on credit` : `Charge ${formatNaira(subtotal)}`}</Button>
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
     </main>
   );

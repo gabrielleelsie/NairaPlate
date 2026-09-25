@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BatchesRouteImport } from './routes/batches'
+import { Route as CateringRouteImport } from './routes/catering'
+import { Route as CreditRouteImport } from './routes/credit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as FlagsRouteImport } from './routes/flags'
@@ -32,6 +34,16 @@ const IndexRoute = IndexRouteImport.update({
 const BatchesRoute = BatchesRouteImport.update({
   id: '/batches',
   path: '/batches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CateringRoute = CateringRouteImport.update({
+  id: '/catering',
+  path: '/catering',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreditRoute = CreditRouteImport.update({
+  id: '/credit',
+  path: '/credit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -99,6 +111,8 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/batches': typeof BatchesRoute
+  '/catering': typeof CateringRoute
+  '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
   '/flags': typeof FlagsRoute
@@ -115,6 +129,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/batches': typeof BatchesRoute
+  '/catering': typeof CateringRoute
+  '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
   '/flags': typeof FlagsRoute
@@ -132,6 +148,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/batches': typeof BatchesRoute
+  '/catering': typeof CateringRoute
+  '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
   '/flags': typeof FlagsRoute
@@ -150,6 +168,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/batches'
+    | '/catering'
+    | '/credit'
     | '/dashboard'
     | '/drawer'
     | '/flags'
@@ -166,6 +186,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/batches'
+    | '/catering'
+    | '/credit'
     | '/dashboard'
     | '/drawer'
     | '/flags'
@@ -182,6 +204,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/batches'
+    | '/catering'
+    | '/credit'
     | '/dashboard'
     | '/drawer'
     | '/flags'
@@ -199,6 +223,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BatchesRoute: typeof BatchesRoute
+  CateringRoute: typeof CateringRoute
+  CreditRoute: typeof CreditRoute
   DashboardRoute: typeof DashboardRoute
   DrawerRoute: typeof DrawerRoute
   FlagsRoute: typeof FlagsRoute
@@ -227,6 +253,20 @@ declare module '@tanstack/react-router' {
       path: '/batches'
       fullPath: '/batches'
       preLoaderRoute: typeof BatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catering': {
+      id: '/catering'
+      path: '/catering'
+      fullPath: '/catering'
+      preLoaderRoute: typeof CateringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/credit': {
+      id: '/credit'
+      path: '/credit'
+      fullPath: '/credit'
+      preLoaderRoute: typeof CreditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -319,6 +359,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BatchesRoute: BatchesRoute,
+  CateringRoute: CateringRoute,
+  CreditRoute: CreditRoute,
   DashboardRoute: DashboardRoute,
   DrawerRoute: DrawerRoute,
   FlagsRoute: FlagsRoute,
