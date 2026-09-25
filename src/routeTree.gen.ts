@@ -10,16 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as WastageRouteImport } from './routes/wastage'
+import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DrawerRoute = DrawerRouteImport.update({
+  id: '/drawer',
+  path: '/drawer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IngredientsRoute = IngredientsRouteImport.update({
@@ -42,6 +50,17 @@ const StaffRoute = StaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WastageRoute = WastageRouteImport.update({
+  id: '/wastage',
+  path: '/wastage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCashDrawerCloseRoute =
+  ApiPublicCashDrawerCloseRouteImport.update({
+    id: '/api/public/cash-drawer-close',
+    path: '/api/public/cash-drawer-close',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicStaffAdminRoute = ApiPublicStaffAdminRouteImport.update({
   id: '/api/public/staff-admin',
   path: '/api/public/staff-admin',
@@ -55,29 +74,38 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/drawer': typeof DrawerRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
+  '/wastage': typeof WastageRoute
+  '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/drawer': typeof DrawerRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
+  '/wastage': typeof WastageRoute
+  '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/drawer': typeof DrawerRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
+  '/wastage': typeof WastageRoute
+  '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
@@ -85,38 +113,50 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/drawer'
     | '/ingredients'
     | '/pos'
     | '/recipes'
     | '/staff'
+    | '/wastage'
+    | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/drawer'
     | '/ingredients'
     | '/pos'
     | '/recipes'
     | '/staff'
+    | '/wastage'
+    | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   id:
     | '__root__'
     | '/'
+    | '/drawer'
     | '/ingredients'
     | '/pos'
     | '/recipes'
     | '/staff'
+    | '/wastage'
+    | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DrawerRoute: typeof DrawerRoute
   IngredientsRoute: typeof IngredientsRoute
   PosRoute: typeof PosRoute
   RecipesRoute: typeof RecipesRoute
   StaffRoute: typeof StaffRoute
+  WastageRoute: typeof WastageRoute
+  ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
 }
@@ -128,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/drawer': {
+      id: '/drawer'
+      path: '/drawer'
+      fullPath: '/drawer'
+      preLoaderRoute: typeof DrawerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ingredients': {
@@ -158,6 +205,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wastage': {
+      id: '/wastage'
+      path: '/wastage'
+      fullPath: '/wastage'
+      preLoaderRoute: typeof WastageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cash-drawer-close': {
+      id: '/api/public/cash-drawer-close'
+      path: '/api/public/cash-drawer-close'
+      fullPath: '/api/public/cash-drawer-close'
+      preLoaderRoute: typeof ApiPublicCashDrawerCloseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/staff-admin': {
       id: '/api/public/staff-admin'
       path: '/api/public/staff-admin'
@@ -177,10 +238,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DrawerRoute: DrawerRoute,
   IngredientsRoute: IngredientsRoute,
   PosRoute: PosRoute,
   RecipesRoute: RecipesRoute,
   StaffRoute: StaffRoute,
+  WastageRoute: WastageRoute,
+  ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
 }
