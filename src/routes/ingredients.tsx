@@ -278,6 +278,59 @@ function ConversionsPanel({
   );
 }
 
+function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
+  const [rows, setRows] = useState<Purchase[] | null>(null);
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("purchases")
+      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at")
+      .eq("ingredient_id", ingredient.id)
+      .order("recorded_at", { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) setErr(true);
+        else setRows((data ?? []) as Purchase[]);
+      });
+    return () => { cancelled = true; };
+  }, [ingredient.id]);
+
+  return (
+    <div className="mt-3 rounded-md bg-muted p-3">
+      <div className="text-sm font-medium text-foreground">Price history for {ingredient.name}</div>
+      <p className="text-xs text-muted-foreground">Every purchase logged, newest first. Prices are what you actually paid.</p>
+      {err && <p className="mt-2 text-sm text-destructive">Could not load price history.</p>}
+      {rows === null && !err && <p className="mt-2 text-sm text-muted-foreground">Loading…</p>}
+      {rows !== null && rows.length === 0 && (
+        <p className="mt-2 text-sm text-muted-foreground">No purchases logged yet. Log one on the Log purchase screen.</p>
+      )}
+      {rows !== null && rows.length > 0 && (
+        <ul className="mt-2 space-y-1 text-sm">
+          {rows.map((p) => {
+            const qty = Number(p.qty);
+            const unitPrice = qty > 0 ? Math.round(Number(p.total_kobo) / qty) : null;
+            return (
+              <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-foreground">
+                  {qty} {p.market_unit.replace("_", " ")} for {formatNaira(Number(p.total_kobo))}
+                  {unitPrice !== null && <> · {formatNaira(unitPrice)} per {p.market_unit.replace("_", " ")}</>}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatPriceDate(p.recorded_at)}
+                  {p.payment_method ? ` · ${p.payment_method}` : ""}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function Field({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {
   return <div className="grid gap-2"><Label htmlFor={id}>{label}</Label>{children}</div>;
 }
