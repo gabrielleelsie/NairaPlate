@@ -50,7 +50,8 @@ function RecipesScreen() {
     const [ing, conv, rec, ri, biz] = await Promise.all([
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
-      supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo").order("name"),
+      // Only the current version of each dish; old versions are kept for past sales and reports.
+      supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo").eq("is_current", true).order("name"),
       supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit"),
       supabase.from("businesses").select("target_margin_bps").maybeSingle(),
     ]);
@@ -291,39 +292,38 @@ function RecipeForm({
     setBusy(true);
 
     if (isEdit && existing) {
-      const { error: recErr } = await supabase.from("recipes").update({
-        name: name.trim(), category: category.trim() || null,
-        yield_portions: Number(yieldPortions), selling_price_kobo: priceKobo,
-      }).eq("id", existing.id);
-      if (recErr) { setBusy(false); return onError("Could not save the recipe details."); }
+      // Does this edit create a new version? Yes if any ingredient line or the yield changed.
+      const orig = existingItems ?? [];
+      const key = (i: { ingredient_id: string; quantity: number; unit: string }) => `${i.ingredient_id}|${Number(i.quantity)}|${i.unit}`;
+      const before = orig.map(key).sort().join(";");
+      const after = valid.map((i) => key({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })).sort().join(";");
+      const createsVersion = before !== after || Number(yieldPortions) !== existing.yield_portions;
 
-      const keptIds = new Set(valid.map((i) => i.existingId).filter(Boolean) as string[]);
-      const toDelete = (existingItems ?? []).filter((e) => !keptIds.has(e.id));
-      if (toDelete.length) {
-        if (!canDeleteItems) { setBusy(false); return onError("Only an owner can remove ingredients from a saved recipe."); }
-        const { error } = await supabase.from("recipe_items").delete().in("id", toDelete.map((e) => e.id));
-        if (error) { setBusy(false); return onError("Could not remove ingredients."); }
+      if (!createsVersion) {
+        // Price / name / category only: update the current row in place (no new version).
+        const { error: recErr } = await supabase.from("recipes").update({
+          name: name.trim(), category: category.trim() || null, selling_price_kobo: priceKobo,
+        }).eq("id", existing.id);
+        setBusy(false);
+        if (recErr) return onError("Could not save the recipe details.");
+        onSaved(`${name.trim()} updated — now ${formatNaira(priceKobo)} per plate.`);
+        return;
       }
-      for (const d of valid) {
-        if (!d.existingId) continue;
-        const orig = (existingItems ?? []).find((x) => x.id === d.existingId);
-        if (!orig) continue;
-        if (orig.ingredient_id !== d.ingredient_id || orig.quantity !== Number(d.quantity) || orig.unit !== d.unit) {
-          const { error } = await supabase.from("recipe_items").update({
-            ingredient_id: d.ingredient_id, quantity: Number(d.quantity), unit: d.unit,
-          }).eq("id", d.existingId);
-          if (error) { setBusy(false); return onError("Could not save an ingredient change."); }
-        }
-      }
-      const toInsert = valid.filter((i) => !i.existingId);
-      if (toInsert.length) {
-        const { error } = await supabase.from("recipe_items").insert(
-          toInsert.map((i) => ({ business_id: businessId, recipe_id: existing.id, ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
-        );
-        if (error) { setBusy(false); return onError("Could not add the new ingredients."); }
-      }
+
+      const removed = orig.some((o) => !valid.some((v) => v.existingId === o.id));
+      if (removed && !canDeleteItems) { setBusy(false); return onError("Only an owner can remove ingredients from a saved recipe."); }
+
+      // ONE database call: supersede the old version, insert the new version + its ingredients.
+      // If anything fails, nothing saves and the old version stays current.
+      const { data: v, error: vErr } = await supabase.rpc("save_recipe_version" as never, {
+        p_recipe_id: existing.id, p_name: name.trim(), p_category: category.trim() || null,
+        p_yield_portions: Number(yieldPortions), p_selling_price_kobo: priceKobo,
+        p_items: valid.map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
+      } as never);
       setBusy(false);
-      onSaved(`${name.trim()} updated — now ${formatNaira(priceKobo)} per plate.`);
+      if (vErr) return onError(`Nothing was saved — the old recipe is unchanged. (${vErr.message})`);
+      const ver = (v as { version_number?: number } | null)?.version_number;
+      onSaved(`${name.trim()} saved as version ${ver ?? "new"} — ${formatNaira(priceKobo)} per plate. Past sales keep the old version's cost.`);
       return;
     }
 
