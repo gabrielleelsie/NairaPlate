@@ -384,7 +384,7 @@ function RecipeForm({
                 <SelectTrigger aria-label="Unit"><SelectValue placeholder="Unit" /></SelectTrigger>
                 <SelectContent>
                   {(it.ingredient_id ? unitsFor(it.ingredient_id) : [...BASE_UNITS]).map((u) => (
-                    <SelectItem key={u} value={u}>{u.replace("_", " ")}</SelectItem>
+                    <SelectItem key={u} value={u}>{u.replaceAll("_", " ")}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

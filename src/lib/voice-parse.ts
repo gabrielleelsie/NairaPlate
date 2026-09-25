@@ -10,11 +10,15 @@ const ONES: Record<string, number> = {
 const MULT: Record<string, number> = { hundred: 100, thousand: 1000, k: 1000, grand: 1000 };
 
 // Spoken word(s) → stored market_unit
+// Multi-word phrases come first so "milk cup" wins over plain "cup".
 const UNIT_WORDS: [string[], string][] = [
   [["paint", "rubber"], "paint_rubber"], [["paint", "bucket"], "paint_rubber"],
+  [["milk", "cup"], "milk_cup"], [["cigarette", "cup"], "cigarette_cup"],
+  [["jerry", "can"], "jerry_can"], [["jerrycan"], "jerry_can"],
   [["derica"], "derica"], [["mudu"], "mudu"], [["tuber"], "tuber"], [["bag"], "bag"],
   [["carton"], "carton"], [["bottle"], "bottle"], [["bunch"], "bunch"], [["cup"], "cup"],
   [["congo"], "congo"], [["tia"], "tia"],
+  [["basin"], "basin"], [["heap"], "heap"], [["sachet"], "sachet"], [["bowl"], "bowl"],
 ];
 const FILLER = new Set(["of", "at", "for", "naira", "market", "and", "the", "bought", "paid", "from", "each"]);
 
