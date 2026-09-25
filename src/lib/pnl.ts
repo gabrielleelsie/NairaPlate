@@ -33,10 +33,10 @@ export async function calculateBusinessPnl(
   const from = date_range.from.toISOString();
   const to = date_range.to.toISOString();
 
-  const [orders, wastage, ingredients, conversions, recipes, recipeItems] = await Promise.all([
+  const [orders, wastage, ingredients, conversions, recipes, recipeItems, partials] = await Promise.all([
     // Only 'paid' and 'partially_refunded' orders count. 'cancelled' (void) and 'refunded' count as ₦0.
     supabase.from("orders")
-      .select("id,total_kobo,created_at,order_items(recipe_id,quantity),order_adjustments(type,adjustment_amount_kobo)")
+      .select("id,total_kobo,created_at,order_items(recipe_id,quantity)")
       .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
       .gte("created_at", from).lt("created_at", to),
     supabase.from("wastage_logs").select("cost_kobo")
@@ -45,9 +45,16 @@ export async function calculateBusinessPnl(
     supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty").eq("business_id", business_id),
     supabase.from("recipes").select("id,name,yield_portions").eq("business_id", business_id),
     supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit").eq("business_id", business_id),
+    // Partial refunds per order. If the refunds table isn't set up yet, treat as no refunds.
+    supabase.from("order_adjustments").select("order_id,adjustment_amount_kobo")
+      .eq("business_id", business_id).eq("type", "partial_refund"),
   ]);
   const failed = [orders, wastage, ingredients, conversions, recipes, recipeItems].find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
+  const refundedByOrder = new Map<string, number>();
+  for (const a of partials.error ? [] : partials.data ?? []) {
+    refundedByOrder.set(a.order_id, (refundedByOrder.get(a.order_id) ?? 0) + Number(a.adjustment_amount_kobo));
+  }
 
   const ings: CostIngredient[] = (ingredients.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo) }));
   const convs: CostConversion[] = (conversions.data ?? []).map((c) => ({ ...c, base_qty: Number(c.base_qty) }));
@@ -73,10 +80,7 @@ export async function calculateBusinessPnl(
   let recipeCost = 0;
   for (const o of orders.data ?? []) {
     // Net sale = total minus every partial refund on that order.
-    const refunded = ((o.order_adjustments ?? []) as { type: string; adjustment_amount_kobo: number }[])
-      .filter((a) => a.type === "partial_refund")
-      .reduce((s, a) => s + Number(a.adjustment_amount_kobo), 0);
-    const total = Number(o.total_kobo) - refunded;
+    const total = Number(o.total_kobo) - (refundedByOrder.get(o.id) ?? 0);
     gross_sales_kobo += total;
     const k = dayKey(new Date(o.created_at));
     daily.set(k, (daily.get(k) ?? 0) + total);
