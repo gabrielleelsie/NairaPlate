@@ -97,6 +97,7 @@ function LoginScreen() {
           <>
             <Button asChild className="mt-6 mr-2"><Link to="/staff">Manage staff</Link></Button>
             <Button asChild className="mt-6 mr-2"><Link to="/dashboard">Profit & loss</Link></Button>
+            <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/payouts">Channel payouts</Link></Button>
             <Button asChild className="mt-6 mr-2"><Link to="/flags">Alerts</Link></Button>
           </>
         )}
