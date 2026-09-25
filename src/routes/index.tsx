@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,12 @@ function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [signedInAs, setSignedInAs] = useState<string | null>(null);
+  const [myRole, setMyRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!signedInAs) return setMyRole(null);
+    supabase.auth.getUser().then(({ data }) => setMyRole((data.user?.app_metadata?.["role"] as string) ?? null));
+  }, [signedInAs]);
 
   useEffect(() => {
     const saved = localStorage.getItem(BUSINESS_KEY);
@@ -75,6 +81,11 @@ function LoginScreen() {
       <Shell>
         <h1 className="text-3xl font-semibold text-foreground">Welcome, {signedInAs}</h1>
         <p className="mt-2 text-muted-foreground">You are signed in.</p>
+        {(myRole === "owner" || myRole === "supa_admin") && (
+          <Button asChild className="mt-6 mr-2">
+            <Link to="/staff">Manage staff</Link>
+          </Button>
+        )}
         <Button
           className="mt-6"
           variant="outline"

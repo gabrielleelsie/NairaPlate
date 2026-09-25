@@ -148,6 +148,7 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
             email,
             password,
             email_confirm: true,
+            ban_duration: "none", // lift any block left by a past deactivation
             app_metadata,
             user_metadata: { display_name: staff.display_name },
           });
