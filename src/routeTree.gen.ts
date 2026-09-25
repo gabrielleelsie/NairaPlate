@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BatchesRouteImport } from './routes/batches'
 import { Route as CashflowRouteImport } from './routes/cashflow'
@@ -26,11 +27,13 @@ import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as ReportRouteImport } from './routes/report'
 import { Route as ShoppingListRouteImport } from './routes/shopping-list'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SupplierPaymentRouteImport } from './routes/supplier-payment'
 import { Route as WastageRouteImport } from './routes/wastage'
 import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
 import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
+import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public/business-signup'
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -38,6 +41,11 @@ import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuditRoute = AuditRouteImport.update({
@@ -120,6 +128,11 @@ const ShoppingListRoute = ShoppingListRouteImport.update({
   path: '/shopping-list',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
@@ -145,6 +158,11 @@ const SuppliersSupplierIdRoute = SuppliersSupplierIdRouteImport.update({
   path: '/suppliers/$supplierId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBusinessSignupRoute = ApiPublicBusinessSignupRouteImport.update({
+  id: '/api/public/business-signup',
+  path: '/api/public/business-signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCashDrawerCloseRoute =
   ApiPublicCashDrawerCloseRouteImport.update({
     id: '/api/public/cash-drawer-close',
@@ -164,6 +182,7 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
@@ -180,17 +199,20 @@ export interface FileRoutesByFullPath {
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
   '/shopping-list': typeof ShoppingListRoute
+  '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
   '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/suppliers/': typeof SuppliersIndexRoute
+  '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
@@ -207,11 +229,13 @@ export interface FileRoutesByTo {
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
   '/shopping-list': typeof ShoppingListRoute
+  '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
   '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/suppliers': typeof SuppliersIndexRoute
+  '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -219,6 +243,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
@@ -235,11 +260,13 @@ export interface FileRoutesById {
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
   '/shopping-list': typeof ShoppingListRoute
+  '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
   '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/suppliers/': typeof SuppliersIndexRoute
+  '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -248,6 +275,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/approvals'
     | '/audit'
     | '/batches'
     | '/cashflow'
@@ -264,17 +292,20 @@ export interface FileRouteTypes {
     | '/recipes'
     | '/report'
     | '/shopping-list'
+    | '/signup'
     | '/staff'
     | '/supplier-payment'
     | '/wastage'
     | '/suppliers/$supplierId'
     | '/suppliers/'
+    | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/approvals'
     | '/audit'
     | '/batches'
     | '/cashflow'
@@ -291,17 +322,20 @@ export interface FileRouteTypes {
     | '/recipes'
     | '/report'
     | '/shopping-list'
+    | '/signup'
     | '/staff'
     | '/supplier-payment'
     | '/wastage'
     | '/suppliers/$supplierId'
     | '/suppliers'
+    | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   id:
     | '__root__'
     | '/'
+    | '/approvals'
     | '/audit'
     | '/batches'
     | '/cashflow'
@@ -318,11 +352,13 @@ export interface FileRouteTypes {
     | '/recipes'
     | '/report'
     | '/shopping-list'
+    | '/signup'
     | '/staff'
     | '/supplier-payment'
     | '/wastage'
     | '/suppliers/$supplierId'
     | '/suppliers/'
+    | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -330,6 +366,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApprovalsRoute: typeof ApprovalsRoute
   AuditRoute: typeof AuditRoute
   BatchesRoute: typeof BatchesRoute
   CashflowRoute: typeof CashflowRoute
@@ -346,11 +383,13 @@ export interface RootRouteChildren {
   RecipesRoute: typeof RecipesRoute
   ReportRoute: typeof ReportRoute
   ShoppingListRoute: typeof ShoppingListRoute
+  SignupRoute: typeof SignupRoute
   StaffRoute: typeof StaffRoute
   SupplierPaymentRoute: typeof SupplierPaymentRoute
   WastageRoute: typeof WastageRoute
   SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
   SuppliersIndexRoute: typeof SuppliersIndexRoute
+  ApiPublicBusinessSignupRoute: typeof ApiPublicBusinessSignupRoute
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -363,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/audit': {
@@ -477,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShoppingListRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff': {
       id: '/staff'
       path: '/staff'
@@ -512,6 +565,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuppliersSupplierIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/business-signup': {
+      id: '/api/public/business-signup'
+      path: '/api/public/business-signup'
+      fullPath: '/api/public/business-signup'
+      preLoaderRoute: typeof ApiPublicBusinessSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cash-drawer-close': {
       id: '/api/public/cash-drawer-close'
       path: '/api/public/cash-drawer-close'
@@ -538,6 +598,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApprovalsRoute: ApprovalsRoute,
   AuditRoute: AuditRoute,
   BatchesRoute: BatchesRoute,
   CashflowRoute: CashflowRoute,
@@ -554,11 +615,13 @@ const rootRouteChildren: RootRouteChildren = {
   RecipesRoute: RecipesRoute,
   ReportRoute: ReportRoute,
   ShoppingListRoute: ShoppingListRoute,
+  SignupRoute: SignupRoute,
   StaffRoute: StaffRoute,
   SupplierPaymentRoute: SupplierPaymentRoute,
   WastageRoute: WastageRoute,
   SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
   SuppliersIndexRoute: SuppliersIndexRoute,
+  ApiPublicBusinessSignupRoute: ApiPublicBusinessSignupRoute,
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
