@@ -15,6 +15,7 @@ import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as PosRouteImport } from './routes/pos'
+import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as WastageRouteImport } from './routes/wastage'
@@ -50,6 +51,11 @@ const IngredientsRoute = IngredientsRouteImport.update({
 const PosRoute = PosRouteImport.update({
   id: '/pos',
   path: '/pos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesRoute = PurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecipesRoute = RecipesRouteImport.update({
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
+  '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/wastage': typeof WastageRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
+  '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/wastage': typeof WastageRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/pos': typeof PosRoute
+  '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/wastage': typeof WastageRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ingredients'
     | '/pos'
+    | '/purchases'
     | '/recipes'
     | '/staff'
     | '/wastage'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ingredients'
     | '/pos'
+    | '/purchases'
     | '/recipes'
     | '/staff'
     | '/wastage'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ingredients'
     | '/pos'
+    | '/purchases'
     | '/recipes'
     | '/staff'
     | '/wastage'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
   PosRoute: typeof PosRoute
+  PurchasesRoute: typeof PurchasesRoute
   RecipesRoute: typeof RecipesRoute
   StaffRoute: typeof StaffRoute
   WastageRoute: typeof WastageRoute
@@ -229,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/pos'
       fullPath: '/pos'
       preLoaderRoute: typeof PosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases': {
+      id: '/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof PurchasesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recipes': {
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,
   PosRoute: PosRoute,
+  PurchasesRoute: PurchasesRoute,
   RecipesRoute: RecipesRoute,
   StaffRoute: StaffRoute,
   WastageRoute: WastageRoute,
