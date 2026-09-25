@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { PricingReview } from "@/components/PricingReview";
 
 export const Route = createFileRoute("/recipes")({
   ssr: false,
@@ -118,6 +119,20 @@ function RecipesScreen() {
           />
         );
       })()}
+
+      {canDelete && marginBps !== null && session.userId && (
+        <PricingReview
+          businessId={session.businessId}
+          userId={session.userId}
+          recipes={recipes}
+          recipeItems={recipeItems}
+          ingredients={ingredients}
+          conversions={conversions}
+          marginBps={marginBps}
+          onAdjust={(id) => { setEditingId(id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onChanged={load}
+        />
+      )}
 
       <h2 className="mt-10 text-lg font-medium text-foreground">Saved recipes</h2>
       <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
