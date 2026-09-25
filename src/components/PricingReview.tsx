@@ -28,13 +28,17 @@ export function PricingReview({
 }) {
   const [history, setHistory] = useState<Decision[]>([]);
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
+  // Every version of every dish (old versions included), so a decision made on an old version
+  // is still listed under the dish's name instead of "Deleted recipe".
+  const [versions, setVersions] = useState<Record<string, { name: string; version_number: number }>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const loadHistory = useCallback(async () => {
-    const [d, s] = await Promise.all([
+    const [d, s, v] = await Promise.all([
       supabase.from("price_decisions").select("*").eq("business_id", businessId).order("created_at", { ascending: false }),
       supabase.from("staff_users").select("id,display_name").eq("business_id", businessId),
+      supabase.from("recipes").select("id,name,version_number").eq("business_id", businessId),
     ]);
     if (d.error) return setMsg({ ok: false, text: "Could not load price decisions." });
     setHistory((d.data ?? []).map((r) => ({
@@ -43,6 +47,8 @@ export function PricingReview({
       suggested_price_kobo: r.suggested_price_kobo === null ? null : Number(r.suggested_price_kobo),
     })));
     setStaffNames(Object.fromEntries((s.data ?? []).map((x) => [x.id, x.display_name])));
+    setVersions(Object.fromEntries(((v.data ?? []) as { id: string; name: string; version_number: number }[])
+      .map((x) => [x.id, { name: x.name, version_number: Number(x.version_number ?? 1) }])));
   }, [businessId]);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
@@ -78,9 +84,9 @@ export function PricingReview({
     if (kind === "adjust_portion") onAdjust(r.id);
   }
 
-  const nameOf = (id: string | null) => recipes.find((r) => r.id === id)?.name ?? "Deleted recipe";
+  // Group history by dish name, so all versions of one dish appear together.
   const byRecipe = history.reduce<Record<string, Decision[]>>((acc, d) => {
-    const k = d.recipe_id ?? "none"; (acc[k] ??= []).push(d); return acc;
+    const k = (d.recipe_id && versions[d.recipe_id]?.name) || "Deleted recipe"; (acc[k] ??= []).push(d); return acc;
   }, {});
 
   return (
@@ -115,13 +121,14 @@ export function PricingReview({
 
       <h3 className="mt-8 font-medium text-foreground">Price decision history</h3>
       {history.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No decisions yet.</p>}
-      {Object.entries(byRecipe).map(([rid, rows]) => (
-        <div key={rid} className="mt-3 rounded-lg border border-border p-3">
-          <div className="text-sm font-medium text-foreground">{nameOf(rid === "none" ? null : rid)}</div>
+      {Object.entries(byRecipe).map(([dish, rows]) => (
+        <div key={dish} className="mt-3 rounded-lg border border-border p-3">
+          <div className="text-sm font-medium text-foreground">{dish}</div>
           <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
             {rows.map((d) => (
               <li key={d.id}>
                 {new Date(d.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · {LABEL[d.decision ?? ""] ?? d.decision} ·
+                {d.recipe_id && versions[d.recipe_id] ? ` version ${versions[d.recipe_id]!.version_number} · ` : " "}
                 was {d.previous_price_kobo === null ? "—" : formatNaira(d.previous_price_kobo)}, suggested {d.suggested_price_kobo === null ? "—" : formatNaira(d.suggested_price_kobo)}
                 {d.decided_by ? ` · by ${staffNames[d.decided_by] ?? "staff"}` : ""}
               </li>

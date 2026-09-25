@@ -31,6 +31,8 @@ const ActionSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("deactivate_staff"), staff_id: z.string().uuid() }),
   z.object({ action: z.literal("reset_pin"), staff_id: z.string().uuid(), pin: PinSchema }),
+  // new_role is validated separately (step b) so a bad value gets its own clear 400 message.
+  z.object({ action: z.literal("change_role"), staff_id: z.string().uuid(), new_role: z.unknown() }),
 ]);
 
 function json(body: unknown, status = 200) {
@@ -162,6 +164,43 @@ export const Route = createFileRoute("/api/public/staff-admin")({
           await writeAudit(admin, { business_id, actor_id: callerId, actor_role: caller.role, action: "staff_created",
             entity_type: "staff_users", entity_id: data.id, details: `${data.display_name} added as ${data.role}` });
           return json({ staff: data });
+        }
+
+        // ---------- change_role ----------
+        // (a) caller is owner/supa_admin — already checked above from the verified token AND the live row (403).
+        if (body.action === "change_role") {
+          // (b) new_role must be exactly one of the five valid values.
+          if (typeof body.new_role !== "string" || !(ROLE_VALUES as readonly string[]).includes(body.new_role)) {
+            return json({ error: "Invalid role. It must be one of: owner, purchaser, cook, cashier, supa_admin." }, 400);
+          }
+          const new_role = body.new_role as (typeof ROLE_VALUES)[number];
+          // (c) target must belong to the caller's business (explicit check, on top of RLS).
+          const { data: t } = await admin.from("staff_users")
+            .select("id, business_id, role, display_name, is_active")
+            .eq("id", body.staff_id).maybeSingle();
+          if (!t || t.business_id !== business_id) return json({ error: "Staff member not found in your business." }, 404);
+          // (d) nobody changes their own role.
+          if (t.id === callerId) {
+            return json({ error: "You cannot change your own role. Ask another owner or a supa_admin to do this." }, 400);
+          }
+          if ((t.role === "supa_admin" || new_role === "supa_admin") && caller.role !== "supa_admin") {
+            return json({ error: "Only a Supa Admin can give or take away the Supa Admin role." }, 403);
+          }
+          if (t.role === new_role) return json({ error: `${t.display_name} is already ${new_role}.` }, 400);
+          // (e) update the role.
+          const { error } = await admin.from("staff_users").update({ role: new_role })
+            .eq("id", t.id).eq("business_id", business_id);
+          if (error) return json({ error: "Could not change role." }, 500);
+          // Keep their login account in step, so the new role is in their token at the next refresh / sign-in.
+          const { data: au } = await admin.auth.admin.getUserById(t.id).catch(() => ({ data: null }));
+          if (au?.user) {
+            await admin.auth.admin.updateUserById(t.id, {
+              app_metadata: { ...(au.user.app_metadata ?? {}), role: new_role },
+            }).catch(() => null);
+          }
+          await writeAudit(admin, { business_id, actor_id: callerId, actor_role: caller.role, action: "role_changed",
+            entity_type: "staff_users", entity_id: t.id, details: `Role changed from ${t.role} to ${new_role}` });
+          return json({ ok: true, staff: { id: t.id, display_name: t.display_name, role: new_role, is_active: t.is_active } });
         }
 
         // Both remaining actions target an existing staff member in the caller's business.
