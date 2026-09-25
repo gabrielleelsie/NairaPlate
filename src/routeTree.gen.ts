@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as IngredientsRouteImport } from './routes/ingredients'
+import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -17,6 +19,16 @@ import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IngredientsRoute = IngredientsRouteImport.update({
+  id: '/ingredients',
+  path: '/ingredients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecipesRoute = RecipesRouteImport.update({
+  id: '/recipes',
+  path: '/recipes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaffRoute = StaffRouteImport.update({
@@ -37,12 +49,16 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ingredients': typeof IngredientsRoute
+  '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ingredients': typeof IngredientsRoute
+  '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -50,6 +66,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ingredients': typeof IngredientsRoute
+  '/recipes': typeof RecipesRoute
   '/staff': typeof StaffRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -57,12 +75,25 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/staff' | '/api/public/staff-admin' | '/api/public/staff-pin-login'
+    | '/'
+    | '/ingredients'
+    | '/recipes'
+    | '/staff'
+    | '/api/public/staff-admin'
+    | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/staff' | '/api/public/staff-admin' | '/api/public/staff-pin-login'
+  to:
+    | '/'
+    | '/ingredients'
+    | '/recipes'
+    | '/staff'
+    | '/api/public/staff-admin'
+    | '/api/public/staff-pin-login'
   id:
     | '__root__'
     | '/'
+    | '/ingredients'
+    | '/recipes'
     | '/staff'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -70,6 +101,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  IngredientsRoute: typeof IngredientsRoute
+  RecipesRoute: typeof RecipesRoute
   StaffRoute: typeof StaffRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -82,6 +115,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ingredients': {
+      id: '/ingredients'
+      path: '/ingredients'
+      fullPath: '/ingredients'
+      preLoaderRoute: typeof IngredientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recipes': {
+      id: '/recipes'
+      path: '/recipes'
+      fullPath: '/recipes'
+      preLoaderRoute: typeof RecipesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/staff': {
@@ -110,6 +157,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  IngredientsRoute: IngredientsRoute,
+  RecipesRoute: RecipesRoute,
   StaffRoute: StaffRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,

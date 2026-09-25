@@ -81,6 +81,10 @@ function LoginScreen() {
       <Shell>
         <h1 className="text-3xl font-semibold text-foreground">Welcome, {signedInAs}</h1>
         <p className="mt-2 text-muted-foreground">You are signed in.</p>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button asChild variant="outline"><Link to="/ingredients">Ingredients</Link></Button>
+          <Button asChild variant="outline"><Link to="/recipes">Recipes</Link></Button>
+        </div>
         {(myRole === "owner" || myRole === "supa_admin") && (
           <Button asChild className="mt-6 mr-2">
             <Link to="/staff">Manage staff</Link>
