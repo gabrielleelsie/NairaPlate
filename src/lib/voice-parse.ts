@@ -82,14 +82,14 @@ export function parsePurchase(transcript: string, ingredients: { id: string; nam
   // Quantity: first number token
   let qty: number | null = null;
   const qi = toks.findIndex((t) => numVal(t) !== null || t === "a" || t === "an");
-  if (qi >= 0) { qty = t0(toks[qi]); used.add(qi); }
+  if (qi >= 0) { qty = t0(toks[qi]!); used.add(qi); }
   function t0(t: string) { return t === "a" || t === "an" ? 1 : numVal(t); }
 
   // Unit
   let market_unit: string | null = null;
   for (let i = 0; i < toks.length && !market_unit; i++) {
     for (const [words, unit] of UNIT_WORDS) {
-      if (words.every((w, k) => toks[i + k] && singular(toks[i + k]) === w)) {
+      if (words.every((w, k) => toks[i + k] !== undefined && singular(toks[i + k]!) === w)) {
         market_unit = unit; words.forEach((_, k) => used.add(i + k)); break;
       }
     }

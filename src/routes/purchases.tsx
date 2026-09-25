@@ -154,7 +154,7 @@ function PurchaseScreen() {
       </div>
       <div className="space-y-1"><Label htmlFor="p-pay">Payment</Label>
         <select id="p-pay" className={sel} value={pay} onChange={(e) => setPay(e.target.value)}>
-          {PAY.map((p) => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}
+          {PAY.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select></div>
 
       {conv?.error && <p className="text-sm text-destructive">{conv.error}</p>}
