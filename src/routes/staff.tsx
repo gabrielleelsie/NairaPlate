@@ -144,6 +144,7 @@ function AddStaffForm({ onDone, onError }: { onDone: (m: string) => void; onErro
   const [name, setName] = useState("");
   const [role, setRole] = useState<RoleValue | "">("");
   const [pin, setPin] = useState("");
+  const [pinRevealed, setPinRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   return (
@@ -158,8 +159,8 @@ function AddStaffForm({ onDone, onError }: { onDone: (m: string) => void; onErro
         const { status, data } = await callAdmin({ action: "create_staff", display_name: name.trim(), role, pin });
         setBusy(false);
         if (status !== 200) return onError(data.error ?? "Could not add staff member.");
-        setName(""); setRole(""); setPin("");
-        onDone(`${data.staff.display_name} added.`);
+        setName(""); setRole(""); setPin(""); setPinRevealed(false);
+        onDone(`${data.staff.display_name} added. Their starting PIN is ${pin} — tell them now, it won't be shown again.`);
       }}
     >
       <h2 className="text-lg font-medium text-card-foreground">Add staff member</h2>
@@ -212,6 +213,7 @@ function StaffItem({
 }: { s: StaffRow; isMe: boolean; onDone: (m: string) => void; onError: (m: string) => void }) {
   const [resetting, setResetting] = useState(false);
   const [pin, setPin] = useState("");
+  const [pinRevealed, setPinRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   return (
@@ -250,7 +252,7 @@ function StaffItem({
       </div>
       {resetting && (
         <form
-          className="mt-3 flex gap-2"
+          className="mt-3 grid gap-2"
           onSubmit={async (e) => {
             e.preventDefault();
             if (!/^\d{4,8}$/.test(pin)) return onError("PIN must be 4–8 digits.");
@@ -258,19 +260,34 @@ function StaffItem({
             const { status, data } = await callAdmin({ action: "reset_pin", staff_id: s.id, pin });
             setBusy(false);
             if (status !== 200) return onError(data.error ?? "Could not reset PIN.");
-            setPin(""); setResetting(false);
-            onDone(`New PIN set for ${s.display_name}.`);
+            setPin(""); setPinRevealed(false); setResetting(false);
+            onDone(`New PIN for ${s.display_name}: ${pin} — tell them now, it won't be shown again.`);
           }}
         >
-          <Input
-            aria-label="New PIN"
-            placeholder="New PIN"
-            inputMode="numeric"
-            type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-          />
-          <Button type="submit" size="sm" disabled={busy}>Save</Button>
+          <div className="flex gap-2">
+            <Input
+              aria-label="New PIN"
+              placeholder="New PIN"
+              inputMode="numeric"
+              type={pinRevealed ? "text" : "password"}
+              value={pin}
+              onChange={(e) => { setPin(e.target.value.replace(/\D/g, "").slice(0, 8)); setPinRevealed(false); }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => { setPin(generatePin()); setPinRevealed(true); }}
+            >
+              Generate
+            </Button>
+            <Button type="submit" size="sm" disabled={busy}>Save</Button>
+          </div>
+          {pinRevealed && pin && (
+            <p className="text-sm text-muted-foreground">
+              PIN: <span className="font-mono font-semibold text-foreground">{pin}</span> — tell {s.display_name} this PIN. It won't be shown again.
+            </p>
+          )}
         </form>
       )}
     </li>
