@@ -95,7 +95,6 @@ function LoginScreen() {
             <Button asChild className="mt-6 mr-2"><Link to="/flags">Alerts</Link></Button>
           </>
         )}
-        )}
         <Button
           className="mt-6"
           variant="outline"
