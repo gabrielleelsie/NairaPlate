@@ -26,7 +26,7 @@ export const Route = createFileRoute("/ingredients")({
 type Ingredient = {
   id: string; name: string; category: string | null; base_unit: string;
   current_cost_kobo: number; previous_cost_kobo: number; min_threshold_qty: number; supplier: string | null;
-  price_updated_at: string | null;
+  stock_base_qty: number; price_updated_at: string | null;
 };
 
 function formatPriceDate(iso: string | null): string | null {
@@ -51,7 +51,7 @@ function IngredientsScreen() {
 
   const load = useCallback(async () => {
     const [a, b] = await Promise.all([
-      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,price_updated_at").order("name"),
+      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,stock_base_qty,price_updated_at").order("name"),
       supabase.from("unit_conversions").select("id,ingredient_id,market_unit,base_qty").order("market_unit"),
     ]);
     if (a.error || b.error) return setMsg({ ok: false, text: "Could not load ingredients." });
@@ -99,6 +99,10 @@ function IngredientsScreen() {
                   {formatPriceDate(i.price_updated_at) && (
                     <> · price updated {formatPriceDate(i.price_updated_at)}</>
                   )}
+                </div>
+                <div className={Number(i.stock_base_qty) < 0 ? "text-sm font-semibold text-destructive" : "text-sm"} data-testid="stock">
+                  In stock: {Number(Number(i.stock_base_qty).toFixed(3))} {i.base_unit}
+                  {Number(i.stock_base_qty) < 0 && " (below zero, stock count is off)"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {[i.category, i.supplier && `from ${i.supplier}`, `reorder below ${i.min_threshold_qty} ${i.base_unit}`].filter(Boolean).join(" · ")}

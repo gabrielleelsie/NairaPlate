@@ -163,7 +163,7 @@ function BatchScreen() {
           {diff > 0
             ? <p className="text-destructive font-semibold" role="alert">This batch cost {formatNaira(diff)} MORE per plate than the recipe estimate — check for fewer plates than expected or waste.</p>
             : <p className="text-primary">This batch cost {formatNaira(-diff)} less (or the same) per plate than the recipe estimate.</p>}
-          {summary.flags > 0 && <p className="text-sm">Low stock: {summary.flags} ingredient(s) flagged for the purchaser.</p>}
+          {summary.flags > 0 && <p className="text-sm">Stock alerts sent to the purchaser: {summary.flags}.</p>}
         </div>
       )}
     </main>
