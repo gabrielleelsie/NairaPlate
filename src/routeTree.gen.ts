@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BatchesRouteImport } from './routes/batches'
 import { Route as CateringRouteImport } from './routes/catering'
 import { Route as CreditRouteImport } from './routes/credit'
@@ -36,6 +37,11 @@ import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BatchesRoute = BatchesRouteImport.update({
@@ -152,6 +158,7 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/catering': typeof CateringRoute
   '/credit': typeof CreditRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/catering': typeof CateringRoute
   '/credit': typeof CreditRoute
@@ -203,6 +211,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/catering': typeof CateringRoute
   '/credit': typeof CreditRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/audit'
     | '/batches'
     | '/catering'
     | '/credit'
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/audit'
     | '/batches'
     | '/catering'
     | '/credit'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/audit'
     | '/batches'
     | '/catering'
     | '/credit'
@@ -306,6 +318,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
   BatchesRoute: typeof BatchesRoute
   CateringRoute: typeof CateringRoute
   CreditRoute: typeof CreditRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/batches': {
@@ -498,6 +518,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
   BatchesRoute: BatchesRoute,
   CateringRoute: CateringRoute,
   CreditRoute: CreditRoute,
