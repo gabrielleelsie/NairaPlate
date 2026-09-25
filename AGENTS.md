@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Recipes are versioned: ingredient/yield edits create a new recipes row via save_recipe_version(); screens list only is_current rows; order_items/batches store recipe_version_id (DB trigger) and P&L costs by that version. Why: past sales must keep their original recipe cost.
+- The NairaPlate brand mark is a hand-built inline SVG exposed only through `Logo`; the favicon is a static rendering of that same geometry. Why: every branded screen stays visually consistent and resolution-independent.

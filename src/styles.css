@@ -61,6 +61,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-inverse: var(--brand-inverse);
+  --color-home-surface: var(--home-surface);
+  --shadow-auth: 0 24px 60px color-mix(in oklab, var(--brand-navy) 35%, transparent);
 }
 
 :root {
@@ -99,6 +104,10 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --brand-navy: oklch(0.24694 0.05265 250.803);
+  --brand-blue: oklch(0.56769 0.16654 251.313);
+  --brand-inverse: oklch(1 0 0);
+  --home-surface: oklch(0.975 0.006 250);
 }
 
 .dark {
