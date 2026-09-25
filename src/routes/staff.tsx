@@ -21,6 +21,11 @@ export const Route = createFileRoute("/staff")({
   component: StaffScreen,
 });
 
+// Random 6-digit PIN (100000–999999), so the owner doesn't have to think one up.
+function generatePin() {
+  return String(100000 + Math.floor(Math.random() * 900000));
+}
+
 // Stored value (exact staff_users.role CHECK value) -> display label. Order is fixed.
 const ROLE_OPTIONS = [
   { value: "owner", label: "Owner" },
@@ -175,13 +180,27 @@ function AddStaffForm({ onDone, onError }: { onDone: (m: string) => void; onErro
       </div>
       <div className="grid gap-2">
         <Label htmlFor="new-pin">Starting PIN (4–8 digits)</Label>
-        <Input
-          id="new-pin"
-          inputMode="numeric"
-          type="password"
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-        />
+        <div className="flex gap-2">
+          <Input
+            id="new-pin"
+            inputMode="numeric"
+            type={pinRevealed ? "text" : "password"}
+            value={pin}
+            onChange={(e) => { setPin(e.target.value.replace(/\D/g, "").slice(0, 8)); setPinRevealed(false); }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => { setPin(generatePin()); setPinRevealed(true); }}
+          >
+            Generate
+          </Button>
+        </div>
+        {pinRevealed && pin && (
+          <p className="text-sm text-muted-foreground">
+            PIN: <span className="font-mono font-semibold text-foreground">{pin}</span> — tell {name.trim() || "them"} this PIN. It won't be shown again.
+          </p>
+        )}
       </div>
       <Button type="submit" disabled={busy}>{busy ? "Adding…" : "Add staff member"}</Button>
     </form>
