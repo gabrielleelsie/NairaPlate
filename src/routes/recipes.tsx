@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/recipes")({
   ssr: false,
@@ -125,7 +127,11 @@ function RecipeBuilder({
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [yieldPortions, setYieldPortions] = useState("1");
-  const [price, setPrice] = useState("");
+  const defaultPct = Math.min(90, Math.max(0, Math.round(marginBps / 100)));
+  const [marginPct, setMarginPct] = useState(defaultPct);
+  const [override, setOverride] = useState(false);
+  const [customPrice, setCustomPrice] = useState("");
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [nextKey, setNextKey] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -139,22 +145,41 @@ function RecipeBuilder({
     return Array.from(new Set([ing.base_unit, ...metric, ...own]));
   };
 
-  // Live cost — calls the one shared costing function.
+  const costItems = useMemo(
+    () => items
+      .filter((i) => i.ingredient_id && Number(i.quantity) > 0)
+      .map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
+    [items],
+  );
+
+  // Live cost at the slider's margin — calls the one shared costing function.
   const cost = useMemo(
     () => computeRecipeCost({
-      items: items
-        .filter((i) => i.ingredient_id && Number(i.quantity) > 0)
-        .map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
-      ingredients,
-      conversions,
+      items: costItems, ingredients, conversions,
+      yield_portions: Number(yieldPortions),
+      target_margin_bps: marginPct * 100,
+    }),
+    [costItems, ingredients, conversions, yieldPortions, marginPct],
+  );
+
+  // Same function at the business default margin — used only for the override warning.
+  const defaultCost = useMemo(
+    () => computeRecipeCost({
+      items: costItems, ingredients, conversions,
       yield_portions: Number(yieldPortions),
       target_margin_bps: marginBps,
     }),
-    [items, ingredients, conversions, yieldPortions, marginBps],
+    [costItems, ingredients, conversions, yieldPortions, marginBps],
   );
 
   const update = (key: number, patch: Partial<DraftItem>) =>
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...patch } : x)));
+
+  function toggleOverride(on: boolean) {
+    setOverride(on);
+    setPriceError(null);
+    setCustomPrice(on && cost.suggested_price_kobo !== null ? (cost.suggested_price_kobo / 100).toFixed(2) : "");
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -163,12 +188,22 @@ function RecipeBuilder({
     if (!(Number(yieldPortions) > 0)) return onError("Yield must be at least 1 plate.");
     if (valid.length === 0) return onError("Add at least one ingredient.");
     if (cost.errors.length) return onError(cost.errors[0]!);
+    let priceKobo: number;
+    if (override) {
+      const n = Number(customPrice);
+      if (!customPrice.trim() || !Number.isFinite(n) || n <= 0) { setPriceError("Enter a valid price"); return; }
+      priceKobo = nairaToKobo(customPrice);
+    } else {
+      if (cost.suggested_price_kobo === null) return onError("Could not compute a price.");
+      priceKobo = cost.suggested_price_kobo;
+    }
+    setPriceError(null);
     setBusy(true);
     const { data: rec, error } = await supabase
       .from("recipes")
       .insert({
         business_id: businessId, name: name.trim(), category: category.trim() || null,
-        yield_portions: Number(yieldPortions), selling_price_kobo: nairaToKobo(price),
+        yield_portions: Number(yieldPortions), selling_price_kobo: priceKobo,
       })
       .select("id")
       .single();
@@ -178,9 +213,13 @@ function RecipeBuilder({
     );
     setBusy(false);
     if (itemsErr) return onError("Recipe saved, but its ingredients could not be saved.");
-    setName(""); setCategory(""); setYieldPortions("1"); setPrice(""); setItems([]);
-    onSaved(`${name.trim()} saved.`);
+    setName(""); setCategory(""); setYieldPortions("1"); setItems([]);
+    setMarginPct(defaultPct); setOverride(false); setCustomPrice("");
+    onSaved(`${name.trim()} saved at ${formatNaira(priceKobo)} per plate.`);
   }
+
+  const showBelow = override && customPrice.trim() !== "" && defaultCost.errors.length === 0
+    && defaultCost.suggested_price_kobo !== null && nairaToKobo(customPrice) < defaultCost.suggested_price_kobo;
 
   return (
     <form onSubmit={save} className="mt-6 grid gap-4 rounded-lg border border-border bg-card p-4">
@@ -189,7 +228,14 @@ function RecipeBuilder({
         <div className="grid gap-2"><Label htmlFor="r-name">Name</Label><Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="grid gap-2"><Label htmlFor="r-cat">Category</Label><Input id="r-cat" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Swallow, Rice…" /></div>
         <div className="grid gap-2"><Label htmlFor="r-yield">Plates it makes</Label><Input id="r-yield" inputMode="decimal" value={yieldPortions} onChange={(e) => setYieldPortions(e.target.value.replace(/[^\d.]/g, ""))} /></div>
-        <div className="grid gap-2"><Label htmlFor="r-price">Selling price per plate (₦)</Label><Input id="r-price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} /></div>
+      </div>
+
+      <div className={`grid gap-2 ${override ? "opacity-50" : ""}`}>
+        <div className="flex justify-between">
+          <Label htmlFor="r-margin">Target margin</Label>
+          <span className="text-sm font-medium text-foreground" data-testid="margin-pct">{marginPct}%</span>
+        </div>
+        <Slider id="r-margin" aria-label="Target margin" min={0} max={90} step={1} value={[marginPct]} disabled={override} onValueChange={(v) => setMarginPct(v[0] ?? 0)} />
       </div>
 
       <div className="grid gap-2">
@@ -226,10 +272,32 @@ function RecipeBuilder({
       <div className="grid gap-1 rounded-md bg-muted p-3 text-sm">
         <Row label="Total ingredient cost" value={formatNaira(Math.round(cost.total_ingredient_cost_kobo))} />
         <Row label="Cost per plate" value={formatNaira(cost.cost_per_plate_kobo)} />
-        <Row label={`Suggested price (${marginBps / 100}% margin)`} value={formatNaira(cost.suggested_price_kobo)} strong />
         {cost.errors.map((e) => <p key={e} className="text-xs text-destructive">{e}</p>)}
-        {cost.suggested_price_kobo !== null && price && nairaToKobo(price) < cost.suggested_price_kobo && (
-          <p className="text-xs text-destructive">Your selling price is below the suggested price.</p>
+      </div>
+
+      <div className="grid gap-3 rounded-md border border-border p-3">
+        <div className="grid gap-1">
+          <span className="text-sm text-muted-foreground">Selling price per plate (auto)</span>
+          <output aria-label="Selling price per plate (auto)" className="text-2xl font-semibold text-foreground">
+            {cost.errors.length ? "—" : formatNaira(cost.suggested_price_kobo)}
+          </output>
+          <span className="text-xs text-muted-foreground">at {marginPct}% margin</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="r-override" checked={override} onCheckedChange={toggleOverride} />
+          <Label htmlFor="r-override">Override price</Label>
+        </div>
+        {override && (
+          <div className="grid gap-2">
+            <Label htmlFor="r-custom">Custom selling price (₦)</Label>
+            <Input id="r-custom" inputMode="decimal" value={customPrice} onChange={(e) => { setCustomPrice(e.target.value.replace(/[^\d.]/g, "")); setPriceError(null); }} />
+            {priceError && <p className="text-xs text-destructive">{priceError}</p>}
+            {showBelow && (
+              <p className="text-xs text-destructive">
+                Your selling price is below the suggested price ({formatNaira(defaultCost.suggested_price_kobo)} at {marginBps / 100}% margin).
+              </p>
+            )}
+          </div>
         )}
       </div>
 
