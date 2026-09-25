@@ -88,6 +88,7 @@ function LoginScreen() {
           <Button asChild variant="outline"><Link to="/credit">Customer credit</Link></Button>
           <Button asChild variant="outline"><Link to="/catering">Catering bookings</Link></Button>
           <Button asChild variant="outline"><Link to="/suppliers">Suppliers</Link></Button>
+          <Button asChild variant="outline"><Link to="/shopping-list">Shopping list</Link></Button>
           <Button asChild variant="outline"><Link to="/drawer">Cash drawer</Link></Button>
           <Button asChild variant="outline"><Link to="/wastage">Log wastage</Link></Button>
           <Button asChild variant="outline"><Link to="/batches">Log a batch</Link></Button>
@@ -97,6 +98,7 @@ function LoginScreen() {
           <>
             <Button asChild className="mt-6 mr-2"><Link to="/staff">Manage staff</Link></Button>
             <Button asChild className="mt-6 mr-2"><Link to="/dashboard">Profit & loss</Link></Button>
+            <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/report">Print report</Link></Button>
             <Button asChild variant="outline" className="mt-6 mr-2"><Link to="/payouts">Channel payouts</Link></Button>
             <Button asChild className="mt-6 mr-2"><Link to="/flags">Alerts</Link></Button>
           </>
