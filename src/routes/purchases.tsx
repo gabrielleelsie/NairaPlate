@@ -50,17 +50,21 @@ function PurchaseScreen() {
   const [micOk, setMicOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
+  const [supplierId, setSupplierId] = useState("");
   const recRef = useRef<unknown>(null);
 
   async function load() {
-    const [i, c, h] = await Promise.all([
+    const [i, c, h, s] = await Promise.all([
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
       supabase.from("purchases").select("id,ingredient_id,qty,market_unit,total_kobo,recorded_at,raw_transcript").order("recorded_at", { ascending: false }).limit(30),
+      supabase.from("suppliers").select("id,name").order("name"),
     ]);
     setIngredients((i.data ?? []).map((x) => ({ ...x, current_cost_kobo: Number(x.current_cost_kobo) })));
     setConversions((c.data ?? []).map((x) => ({ ...x, base_qty: Number(x.base_qty) })));
     setHistory((h.data ?? []) as Hist[]);
+    setSuppliers((s.data ?? []) as { id: string; name: string }[]);
   }
   useEffect(() => { load(); setMicOk(!!getSR()); }, []);
 
@@ -104,9 +108,11 @@ function PurchaseScreen() {
     if (!ingId || !(Number(qty) > 0) || !unit || !(Number(paid) > 0)) return setMsg({ ok: false, text: "Fill in ingredient, quantity, unit and amount paid." });
     if (!conv || conv.error || !conv.base_qty) return setMsg({ ok: false, text: conv?.error ?? "No conversion set up." });
     setBusy(true); setMsg(null);
+    // log_purchase also records the supplier debt (purchase_on_credit) in the same transaction.
     const { data, error } = await supabase.rpc("log_purchase", {
       p_ingredient_id: ingId, p_qty: Number(qty), p_market_unit: unit,
       p_total_kobo: nairaToKobo(paid), p_payment_method: pay, p_raw_transcript: transcript,
+      ...(supplierId ? { p_supplier_id: supplierId } : {}),
     });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
@@ -156,6 +162,13 @@ function PurchaseScreen() {
         <select id="p-pay" className={sel} value={pay} onChange={(e) => setPay(e.target.value)}>
           {PAY.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select></div>
+      <div className="space-y-1"><Label htmlFor="p-sup">Supplier (optional)</Label>
+        <select id="p-sup" className={sel} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+          <option value="">— none —</option>
+          {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        {supplierId && pay === "credit" && <p className="text-xs text-muted-foreground">This amount will be added to what you owe this supplier.</p>}
+      </div>
 
       {conv?.error && <p className="text-sm text-destructive">{conv.error}</p>}
       {newUnitCost !== null && ing && (
