@@ -496,7 +496,7 @@ function MyAccount() {
 // ---------------------------------------------------------------------------
 // Platform health — read-only vitals across every kitchen on the platform.
 // ---------------------------------------------------------------------------
-function Stat({ label, value, tone, hint }: { label: string; value: string; tone?: "good" | "warn" | "bad"; hint?: string }) {
+function Stat({ label, value, tone, hint }: { label: string; value: string; tone?: "good" | "warn" | "bad" | undefined; hint?: string | undefined }) {
   const toneClass = tone === "bad" ? "text-destructive" : tone === "warn" ? "text-amber-600" : "text-card-foreground";
   return (
     <div className="rounded-xl border border-border bg-card p-4">
