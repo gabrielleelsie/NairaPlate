@@ -101,6 +101,7 @@ function PlatformConsole() {
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [auditBiz, setAuditBiz] = useState<string>("");
 
   const load = useCallback(async () => {
     setErr(null);
