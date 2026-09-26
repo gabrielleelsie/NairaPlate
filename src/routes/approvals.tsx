@@ -70,7 +70,26 @@ function Badge({ status }: { status: string }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? "bg-slate-200 text-slate-700"}`}>{STATUS_WORD[status] ?? status}</span>;
 }
 
-type Tab = "queue" | "directory" | "diagnostics" | "security";
+type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "security";
+
+type Watch = { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] };
+type Health = {
+  generated_at: string; latency_ms: number;
+  tenants: { total: number; approved: number; pending: number; suspended: number; rejected: number };
+  people: { active_staff: number; locked_now: number; failed_logins_24h: number; successful_logins_24h: number; lockouts_24h: number };
+  activity: { orders_today: number; gmv_today_kobo: number; gmv_week_kobo: number; events_24h: number };
+  flags: { open_total: number; critical: number };
+  watchlist: Watch[];
+  recent_ops: { id: string; business_id: string; business_name: string; action: string; actor_role: string | null; details: string | null; created_at: string }[];
+};
+type AuditEvent = {
+  id: string; business_id: string; business_name: string; action: string;
+  actor_role: string | null; actor_name: string; entity_type: string | null;
+  details: string | null; created_at: string;
+};
+
+const naira = (kobo: number) => "₦" + (kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 });
+const words = (s: string) => s.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
 
 function PlatformConsole() {
   const { session, loading } = useStaffSession();
