@@ -9,7 +9,10 @@ export type AuditEntry = {
   action:
     | "login_success" | "login_failed" | "account_locked"
     | "staff_created" | "role_changed" | "staff_deactivated" | "pin_reset"
-    | "drawer_discrepancy";
+    | "drawer_discrepancy"
+    // Platform admin support actions. Every one names the individual admin in actor_id.
+    | "platform_unlock_staff" | "emergency_owner_pin_reset"
+    | "emergency_reset_blocked" | "security_alert_undelivered";
   entity_type?: string | null;
   entity_id?: string | null;
   details?: string | null;
