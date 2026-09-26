@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { AlertTriangle, KeyRound, LogOut, Search, ShieldAlert, Unlock } from "lucide-react";
+import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
 
 export const Route = createFileRoute("/approvals")({
   ssr: false,
