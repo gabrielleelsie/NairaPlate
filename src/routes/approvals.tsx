@@ -146,9 +146,11 @@ function PlatformConsole() {
   const lockedTotal = all.reduce((n, b) => n + b.locked_staff, 0);
 
   const TABS: { key: Tab; label: string; count?: number | undefined }[] = [
+    { key: "health", label: "Health" },
     { key: "queue", label: "Waiting", count: pending.length },
     { key: "directory", label: "Businesses", count: all.length },
     { key: "diagnostics", label: "Troubleshoot", count: lockedTotal },
+    { key: "audit", label: "Audit trail" },
     { key: "security", label: "My account" },
   ];
 
