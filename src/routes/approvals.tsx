@@ -183,6 +183,7 @@ function PlatformConsole() {
         {msg && <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">{msg}</p>}
         {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-destructive">{err}</p>}
 
+        {tab === "health" && <HealthBoard onInspect={openDetail} onAudit={(id) => { setAuditBiz(id); setTab("audit"); }} />}
         {tab === "queue" && <Queue rows={pending} busy={busy} act={act} />}
         {tab === "directory" && (
           <Directory rows={directory} search={search} setSearch={setSearch} busy={busy} act={act} onInspect={openDetail} />
@@ -190,6 +191,7 @@ function PlatformConsole() {
         {tab === "diagnostics" && (
           <Diagnostics all={all} focus={focus} detail={detail} busy={busy} act={act} onPick={openDetail} />
         )}
+        {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "security" && <MyAccount />}
       </div>
     </main>
