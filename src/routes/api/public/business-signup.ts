@@ -4,6 +4,7 @@
 // The PIN is hashed here (same scheme as create_staff); the hash never reaches the browser.
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import { sendSignupAlert } from "@/lib/email.server";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
