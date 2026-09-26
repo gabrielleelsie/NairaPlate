@@ -93,7 +93,7 @@ const words = (s: string) => s.replaceAll("_", " ").replace(/^./, (c) => c.toUpp
 
 function PlatformConsole() {
   const { session, loading } = useStaffSession();
-  const [tab, setTab] = useState<Tab>("queue");
+  const [tab, setTab] = useState<Tab>("health");
   const [all, setAll] = useState<Biz[]>([]);
   const [search, setSearch] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
