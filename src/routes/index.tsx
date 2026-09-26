@@ -99,13 +99,15 @@ function LoginScreen() {
           className="mt-6 flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const v = businessInput.trim();
+            // Phone keyboards capitalise the first letter; business codes are always lowercase.
+            const v = businessInput.trim().toLowerCase();
             if (!v) return;
             localStorage.setItem(BUSINESS_KEY, v);
             setBusinessId(v);
           }}
         >
-          <Input value={businessInput} onChange={(e) => setBusinessInput(e.target.value)} placeholder="Business code" />
+          <Input value={businessInput} onChange={(e) => setBusinessInput(e.target.value)} placeholder="Business code"
+            autoCapitalize="none" autoCorrect="off" spellCheck={false} />
           <Button type="submit" className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">Continue</Button>
         </form>
         <Link className="mt-6 block text-center text-sm font-medium text-brand-blue underline underline-offset-4" to="/signup">New here? Register your business</Link>

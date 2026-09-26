@@ -34,6 +34,15 @@ const ActionSchema = z.discriminatedUnion("action", [
     reason: z.string().trim().max(300).optional(),
   }),
   z.object({ action: z.literal("unlock_staff"), business_id: z.string().trim().min(1).max(100), staff_id: z.string().uuid() }),
+  z.object({ action: z.literal("platform_health") }),
+  z.object({
+    action: z.literal("audit_query"),
+    business_id: z.string().trim().max(100).optional(),
+    category: z.enum(["all", "logins", "security", "money", "recipes", "platform_ops"]).optional(),
+    search: z.string().trim().max(120).optional(),
+    limit: z.number().int().min(1).max(200).optional(),
+    offset: z.number().int().min(0).max(100000).optional(),
+  }),
   z.object({
     action: z.literal("suspend_business"),
     business_id: z.string().trim().min(1).max(100),
@@ -336,6 +345,148 @@ export const Route = createFileRoute("/api/public/platform-admin")({
 
           // The PIN is returned once, to be read out to the owner, and never stored in plain text.
           return json({ ok: true, pin: newPin, display_name: target.display_name, alerted });
+        }
+
+        // ---------- platform_health: read-only vitals across every tenant (tier 1) ----------
+        if (body.action === "platform_health") {
+          const startedAt = Date.now();
+          const now = Date.now();
+          const dayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+          const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+          const startOfToday = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z").toISOString();
+
+          const [bizRes, staffRes, ordersRes, flagsRes, auditRes, opsRes] = await Promise.all([
+            admin.from("businesses").select("id, name, status").neq("id", PLATFORM_BUSINESS),
+            admin.from("staff_users").select("business_id, display_name, role, is_active, locked_until").neq("business_id", PLATFORM_BUSINESS),
+            admin.from("orders").select("business_id, total_kobo, status, created_at").gte("created_at", weekAgo),
+            admin.from("margin_flags").select("business_id, flag_type, severity, message, created_at").eq("acknowledged", false)
+              .order("created_at", { ascending: false }).limit(200),
+            admin.from("audit_logs").select("business_id, action, created_at").gte("created_at", dayAgo).limit(2000),
+            admin.from("audit_logs").select("id, business_id, action, actor_role, details, created_at")
+              .in("action", ["business_approved", "business_rejected", "business_suspended", "business_reactivated",
+                "platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked", "security_alert_undelivered"])
+              .order("created_at", { ascending: false }).limit(12),
+          ]);
+
+          const latency_ms = Date.now() - startedAt;
+          const businesses = bizRes.data ?? [];
+          const staff = staffRes.data ?? [];
+          const orders = ordersRes.data ?? [];
+          const flags = flagsRes.data ?? [];
+          const recentAudit = auditRes.data ?? [];
+          const nameOf = (id: string) => businesses.find((b) => b.id === id)?.name ?? id;
+
+          const byStatus = { approved: 0, pending: 0, suspended: 0, rejected: 0 } as Record<string, number>;
+          for (const b of businesses) byStatus[b.status] = (byStatus[b.status] ?? 0) + 1;
+
+          const lockedStaff = staff.filter((s) => Number(s.locked_until ?? 0) > now);
+          const paidOrders = orders.filter((o) => o.status !== "voided" && o.status !== "cancelled");
+          const gmvToday = paidOrders.filter((o) => o.created_at >= startOfToday)
+            .reduce((n, o) => n + Number(o.total_kobo ?? 0), 0);
+          const gmvWeek = paidOrders.reduce((n, o) => n + Number(o.total_kobo ?? 0), 0);
+          const ordersToday = paidOrders.filter((o) => o.created_at >= startOfToday).length;
+
+          // Businesses that need a human look right now.
+          const watchMap = new Map<string, { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] }>();
+          const bump = (id: string) => {
+            if (!watchMap.has(id)) watchMap.set(id, { business_id: id, business_name: nameOf(id), locked: 0, flags: 0, reasons: [] });
+            return watchMap.get(id)!;
+          };
+          for (const s of lockedStaff) { const w = bump(s.business_id); w.locked += 1; }
+          for (const f of flags) { const w = bump(f.business_id); w.flags += 1; }
+          for (const w of watchMap.values()) {
+            if (w.locked) w.reasons.push(`${w.locked} staff locked out`);
+            if (w.flags) w.reasons.push(`${w.flags} open flag${w.flags === 1 ? "" : "s"}`);
+          }
+          const watchlist = [...watchMap.values()].sort((a, b) => (b.locked * 10 + b.flags) - (a.locked * 10 + a.flags)).slice(0, 8);
+
+          return json({
+            generated_at: new Date().toISOString(),
+            latency_ms,
+            tenants: {
+              total: businesses.length,
+              approved: byStatus["approved"] ?? 0,
+              pending: byStatus["pending"] ?? 0,
+              suspended: byStatus["suspended"] ?? 0,
+              rejected: byStatus["rejected"] ?? 0,
+            },
+            people: {
+              active_staff: staff.filter((s) => s.is_active).length,
+              locked_now: lockedStaff.length,
+              failed_logins_24h: recentAudit.filter((a) => a.action === "login_failed").length,
+              successful_logins_24h: recentAudit.filter((a) => a.action === "login_success").length,
+              lockouts_24h: recentAudit.filter((a) => a.action === "account_locked").length,
+            },
+            activity: {
+              orders_today: ordersToday,
+              gmv_today_kobo: gmvToday,
+              gmv_week_kobo: gmvWeek,
+              events_24h: recentAudit.length,
+            },
+            flags: {
+              open_total: flags.length,
+              critical: flags.filter((f) => f.severity === "critical" || f.severity === "high").length,
+            },
+            watchlist,
+            recent_ops: (opsRes.data ?? []).map((r) => ({ ...r, business_name: nameOf(r.business_id) })),
+          });
+        }
+
+        // ---------- audit_query: the tenant audit inspector (tier 1, read-only) ----------
+        if (body.action === "audit_query") {
+          const CATEGORY: Record<string, string[]> = {
+            logins: ["login_success", "login_failed"],
+            security: ["account_locked", "pin_reset", "staff_created", "role_changed", "staff_deactivated", "security_alert_undelivered"],
+            money: ["drawer_discrepancy", "order_adjusted", "order_voided", "order_refunded", "payout_logged", "price_decided", "purchase_logged"],
+            recipes: ["cost_changed", "recipe_version_saved", "price_published", "batch_logged", "wastage_logged"],
+            platform_ops: ["platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked",
+              "business_approved", "business_rejected", "business_suspended", "business_reactivated"],
+          };
+
+          const limit = body.limit ?? 50;
+          const offset = body.offset ?? 0;
+          const category = body.category ?? "all";
+
+          let q = admin.from("audit_logs")
+            .select("id, business_id, actor_id, actor_role, action, entity_type, entity_id, details, created_at", { count: "exact" });
+
+          if (body.business_id) q = q.eq("business_id", body.business_id);
+          if (category !== "all" && CATEGORY[category]) q = q.in("action", CATEGORY[category]!);
+          if (body.search) q = q.or(`details.ilike.%${body.search}%,action.ilike.%${body.search}%`);
+
+          const { data, count, error } = await q
+            .order("created_at", { ascending: false })
+            .range(offset, offset + limit - 1);
+          if (error) return json({ error: "Could not load the audit trail." }, 500);
+
+          const rows = data ?? [];
+          const bizIds = [...new Set(rows.map((r) => r.business_id))];
+          const actorIds = [...new Set(rows.map((r) => r.actor_id).filter(Boolean))] as string[];
+
+          const [{ data: bizs }, { data: actors }] = await Promise.all([
+            admin.from("businesses").select("id, name").in("id", bizIds.length ? bizIds : ["__none__"]),
+            admin.from("staff_users").select("id, display_name").in("id", actorIds.length ? actorIds : ["00000000-0000-0000-0000-000000000000"]),
+          ]);
+
+          const bizName = new Map((bizs ?? []).map((b) => [b.id, b.name]));
+          const actorName = new Map((actors ?? []).map((a) => [a.id, a.display_name]));
+
+          return json({
+            total: count ?? 0,
+            offset,
+            limit,
+            events: rows.map((r) => ({
+              id: r.id,
+              business_id: r.business_id,
+              business_name: bizName.get(r.business_id) ?? r.business_id,
+              action: r.action,
+              actor_role: r.actor_role,
+              actor_name: r.actor_id ? (actorName.get(r.actor_id) ?? "Removed staff") : "System",
+              entity_type: r.entity_type,
+              details: r.details,
+              created_at: r.created_at,
+            })),
+          });
         }
 
         return json({ error: "Unknown action." }, 400);
