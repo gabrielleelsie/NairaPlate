@@ -71,8 +71,17 @@ export const Route = createFileRoute("/api/public/business-signup")({
           if (error.code === "23505") return json({ error: "That business code is taken." }, 409);
           return json({ error: "Could not register the business." }, 500);
         }
-        // Notification email to the platform admin: not sent yet — no email provider is set up.
-        return json({ ok: true, business_id: d.business_id, email_sent: false });
+
+        // Tell the platform admins a kitchen is waiting. Never blocks the signup.
+        let email_sent = false;
+        const { data: admins } = await admin.from("staff_users")
+          .select("email").eq("role", "platform_admin").eq("is_active", true).not("email", "is", null);
+        for (const a of admins ?? []) {
+          if (!a.email) continue;
+          const r = await sendSignupAlert(a.email, d.name, d.business_id, d.owner_name);
+          email_sent = email_sent || r.sent;
+        }
+        return json({ ok: true, business_id: d.business_id, email_sent });
       },
     },
   },

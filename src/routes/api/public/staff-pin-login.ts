@@ -145,11 +145,30 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
 
         // The BUSINESS must be approved too — an active staff row alone is never enough.
         // Checked against the live row on every sign-in; no session is created otherwise.
+        //
+        // What a person is told depends on who they are. A cashier or cook has no business
+        // knowing their employer's account was suspended (it may be a billing or policy
+        // matter), so they get a neutral message and are pointed at their own owner.
+        // Only the owner / supa admin is told the real reason and pointed at NairaPlate.
+        const isManagement = staff.role === "owner" || staff.role === "supa_admin";
         const { data: biz, error: bizErr } = await admin
           .from("businesses").select("status").eq("id", business_id).maybeSingle();
         if (bizErr || !biz) return json({ error: "Could not check your business." }, 500);
-        if (biz.status === "pending") return json({ error: "Your business is awaiting approval" }, 403);
-        if (biz.status !== "approved") return json({ error: "Your business registration was not approved" }, 403);
+        if (biz.status === "pending") {
+          return json({ error: isManagement
+            ? "Your business is awaiting approval"
+            : "Unable to sign in right now, contact your business owner" }, 403);
+        }
+        if (biz.status === "suspended") {
+          return json({ error: isManagement
+            ? "This business account has been suspended. Please contact NairaPlate support."
+            : "Unable to sign in right now, contact your business owner" }, 403);
+        }
+        if (biz.status !== "approved") {
+          return json({ error: isManagement
+            ? "Your business registration was not approved"
+            : "Unable to sign in right now, contact your business owner" }, 403);
+        }
 
         // Real Auth user whose id == staff_id; fresh random password on every login.
         const email = `staff-${staff.id}@nairaplate.local`;
