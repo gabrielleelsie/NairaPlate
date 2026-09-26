@@ -91,7 +91,9 @@ function PlatformConsole() {
   }, []);
 
   const openDetail = useCallback(async (business_id: string) => {
-    setFocus(business_id); setDetail(null); setTab("diagnostics"); setMsg(null); setErr(null);
+    setDetail(null); setTab("diagnostics"); setMsg(null); setErr(null);
+    if (!business_id) return setFocus(null); // "back to all businesses"
+    setFocus(business_id);
     const { status, data } = await callApi({ action: "business_detail", business_id });
     if (status !== 200) return setErr(String(data["error"] ?? "Could not load that business."));
     setDetail(data as unknown as Detail);
