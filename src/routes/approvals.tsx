@@ -492,3 +492,250 @@ function MyAccount() {
     </section>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Platform health — read-only vitals across every kitchen on the platform.
+// ---------------------------------------------------------------------------
+function Stat({ label, value, tone, hint }: { label: string; value: string; tone?: "good" | "warn" | "bad"; hint?: string }) {
+  const toneClass = tone === "bad" ? "text-destructive" : tone === "warn" ? "text-amber-600" : "text-card-foreground";
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</div>
+      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+function HealthBoard({ onInspect, onAudit }: { onInspect: (id: string) => void; onAudit: (id: string) => void }) {
+  const [h, setH] = useState<Health | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setBusy(true); setErr(null);
+    const { status, data } = await callApi({ action: "platform_health" });
+    setBusy(false);
+    if (status !== 200) return setErr(String(data["error"] ?? "Could not load platform health."));
+    setH(data as unknown as Health);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (err) return <p className="rounded-lg bg-red-50 p-3 text-sm text-destructive">{err}</p>;
+  if (!h) return <p className="text-muted-foreground">Checking the platform…</p>;
+
+  const slow = h.latency_ms > 1500;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm">
+          <span className={`inline-block size-2.5 rounded-full ${slow ? "bg-amber-500" : "bg-emerald-500"}`} />
+          <span className="font-medium text-foreground">{slow ? "Responding slowly" : "All systems responding"}</span>
+          <span className="text-muted-foreground">· {h.latency_ms} ms · checked {fmt(h.generated_at)}</span>
+        </div>
+        <Button variant="outline" size="sm" disabled={busy} onClick={load}>
+          <RefreshCw className={busy ? "animate-spin" : ""} /> Refresh
+        </Button>
+      </div>
+
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground"><Building2 className="size-4" /> Kitchens</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Active" value={String(h.tenants.approved)} hint={`${h.tenants.total} registered in total`} />
+          <Stat label="Waiting" value={String(h.tenants.pending)} tone={h.tenants.pending ? "warn" : undefined} hint="Signups to review" />
+          <Stat label="Suspended" value={String(h.tenants.suspended)} tone={h.tenants.suspended ? "bad" : undefined} />
+          <Stat label="Rejected" value={String(h.tenants.rejected)} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground"><Users className="size-4" /> People and sign-ins</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Active staff" value={String(h.people.active_staff)} />
+          <Stat label="Locked out now" value={String(h.people.locked_now)} tone={h.people.locked_now ? "bad" : undefined} hint="Cannot sign in" />
+          <Stat label="Wrong PINs (24h)" value={String(h.people.failed_logins_24h)}
+            tone={h.people.failed_logins_24h > 20 ? "warn" : undefined} />
+          <Stat label="Sign-ins (24h)" value={String(h.people.successful_logins_24h)} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground"><Activity className="size-4" /> Trading</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Sales today" value={naira(h.activity.gmv_today_kobo)} hint={`${h.activity.orders_today} orders`} />
+          <Stat label="Sales this week" value={naira(h.activity.gmv_week_kobo)} />
+          <Stat label="Open alerts" value={String(h.flags.open_total)} tone={h.flags.critical ? "bad" : h.flags.open_total ? "warn" : undefined}
+            hint={h.flags.critical ? `${h.flags.critical} serious` : "Across all kitchens"} />
+          <Stat label="Events (24h)" value={String(h.activity.events_24h)} hint="Recorded in the audit trail" />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground"><ShieldAlert className="size-4" /> Needs a look</h2>
+        {h.watchlist.length === 0 ? (
+          <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            Nothing needs attention. No lockouts and no open alerts anywhere.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {h.watchlist.map((w) => (
+              <li key={w.business_id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-card-foreground">{w.business_name}</div>
+                  <div className="text-sm text-muted-foreground">{w.reasons.join(" · ")}</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onInspect(w.business_id)}>Troubleshoot</Button>
+                  <Button size="sm" variant="ghost" onClick={() => onAudit(w.business_id)}>History</Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2 rounded-xl border border-border bg-card p-4">
+        <h2 className="font-semibold text-card-foreground">Recent platform actions</h2>
+        {h.recent_ops.length === 0 && <p className="text-sm text-muted-foreground">No platform actions recorded yet.</p>}
+        <ul className="space-y-1 text-sm text-muted-foreground">
+          {h.recent_ops.map((o) => (
+            <li key={o.id}>
+              <span className="text-foreground">{fmt(o.created_at)}</span> · {o.business_name} · {words(o.action)} — {o.details}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tenant audit inspector — search the immutable record across every kitchen.
+// ---------------------------------------------------------------------------
+const CATEGORIES: { key: string; label: string }[] = [
+  { key: "all", label: "Everything" },
+  { key: "logins", label: "Sign-ins" },
+  { key: "security", label: "Staff & PINs" },
+  { key: "money", label: "Money" },
+  { key: "recipes", label: "Recipes & costs" },
+  { key: "platform_ops", label: "Platform actions" },
+];
+
+const ACTION_TONE = (a: string) =>
+  a.includes("failed") || a.includes("locked") || a.includes("blocked") || a.includes("discrepancy") || a.includes("suspended")
+    ? "bg-red-100 text-red-800"
+    : a.startsWith("business_") || a.startsWith("platform_") || a.startsWith("emergency_")
+      ? "bg-indigo-100 text-indigo-800"
+      : a.includes("login_success")
+        ? "bg-emerald-100 text-emerald-800"
+        : "bg-slate-200 text-slate-700";
+
+function AuditInspector({ businesses, initialBusiness }: { businesses: Biz[]; initialBusiness: string }) {
+  const [bizId, setBizId] = useState(initialBusiness);
+  const [category, setCategory] = useState("all");
+  const [search, setSearch] = useState("");
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const LIMIT = 50;
+
+  const load = useCallback(async (nextOffset: number) => {
+    setBusy(true); setErr(null);
+    const { status, data } = await callApi({
+      action: "audit_query",
+      ...(bizId ? { business_id: bizId } : {}),
+      category,
+      ...(search.trim() ? { search: search.trim() } : {}),
+      limit: LIMIT,
+      offset: nextOffset,
+    });
+    setBusy(false);
+    if (status !== 200) return setErr(String(data["error"] ?? "Could not load the audit trail."));
+    setEvents((data["events"] ?? []) as AuditEvent[]);
+    setTotal(Number(data["total"] ?? 0));
+    setOffset(nextOffset);
+  }, [bizId, category, search]);
+
+  useEffect(() => { load(0); }, [bizId, category]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function exportCsv() {
+    const head = ["When (Lagos)", "Business", "Event", "Who", "Role", "Details"];
+    const esc = (v: string) => `"${v.replaceAll('"', '""')}"`;
+    const body = events.map((e) => [fmt(e.created_at), e.business_name, e.action, e.actor_name, e.actor_role ?? "", e.details ?? ""].map(esc).join(","));
+    const blob = new Blob([[head.map(esc).join(","), ...body].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nairaplate-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="audit-biz">Kitchen</Label>
+          <select id="audit-biz" value={bizId} onChange={(e) => setBizId(e.target.value)}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">Every kitchen</option>
+            {businesses.map((b) => <option key={b.business_id} value={b.business_id}>{b.business_name}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="audit-cat">Kind of event</Label>
+          <select id="audit-cat" value={category} onChange={(e) => setCategory(e.target.value)}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+            {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); load(0); }}>
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search the details — a name, an amount, an ingredient" value={search}
+            onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Button type="submit" variant="outline" disabled={busy}>Search</Button>
+        <Button type="button" variant="ghost" disabled={events.length === 0} onClick={exportCsv} title="Download as a spreadsheet">
+          <Download />
+        </Button>
+      </form>
+
+      {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-destructive">{err}</p>}
+
+      <p className="text-sm text-muted-foreground">
+        {busy ? "Loading…" : total === 0 ? "Nothing recorded for that." :
+          `Showing ${offset + 1}–${Math.min(offset + events.length, total)} of ${total} events.`}
+      </p>
+
+      <ul className="space-y-2">
+        {events.map((e) => (
+          <li key={e.id} className="rounded-xl border border-border bg-card p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ACTION_TONE(e.action)}`}>{words(e.action)}</span>
+              <span className="text-sm font-medium text-card-foreground">{e.business_name}</span>
+              <span className="text-xs text-muted-foreground">{fmt(e.created_at)}</span>
+            </div>
+            <div className="mt-1 text-sm text-card-foreground">{e.details ?? "—"}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {e.actor_name}{e.actor_role ? ` · ${roleLabel(e.actor_role)}` : ""}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {total > LIMIT && (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={busy || offset === 0} onClick={() => load(Math.max(0, offset - LIMIT))}>Newer</Button>
+          <Button variant="outline" size="sm" disabled={busy || offset + LIMIT >= total} onClick={() => load(offset + LIMIT)}>Older</Button>
+        </div>
+      )}
+    </div>
+  );
+}
