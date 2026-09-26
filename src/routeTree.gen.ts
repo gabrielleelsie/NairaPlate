@@ -35,6 +35,7 @@ import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
 import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
 import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public/business-signup'
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
+import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 
@@ -169,6 +170,11 @@ const ApiPublicCashDrawerCloseRoute =
     path: '/api/public/cash-drawer-close',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
+  id: '/api/public/platform-admin',
+  path: '/api/public/platform-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStaffAdminRoute = ApiPublicStaffAdminRouteImport.update({
   id: '/api/public/staff-admin',
   path: '/api/public/staff-admin',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   id:
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   fileRoutesById: FileRoutesById
@@ -391,6 +403,7 @@ export interface RootRouteChildren {
   SuppliersIndexRoute: typeof SuppliersIndexRoute
   ApiPublicBusinessSignupRoute: typeof ApiPublicBusinessSignupRoute
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
+  ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
 }
@@ -579,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCashDrawerCloseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/platform-admin': {
+      id: '/api/public/platform-admin'
+      path: '/api/public/platform-admin'
+      fullPath: '/api/public/platform-admin'
+      preLoaderRoute: typeof ApiPublicPlatformAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/staff-admin': {
       id: '/api/public/staff-admin'
       path: '/api/public/staff-admin'
@@ -623,6 +643,7 @@ const rootRouteChildren: RootRouteChildren = {
   SuppliersIndexRoute: SuppliersIndexRoute,
   ApiPublicBusinessSignupRoute: ApiPublicBusinessSignupRoute,
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
+  ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
 }

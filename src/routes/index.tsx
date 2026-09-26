@@ -295,7 +295,7 @@ const OVERSIGHT: AppLink[] = [
 function HomeScreen({ name, role, onSignOut }: { name: string; role: string | null; onSignOut: () => Promise<void> }) {
   const isOwner = role === "owner" || role === "supa_admin";
   const groups = role === "platform_admin"
-    ? [{ title: "Platform", links: [{ to: "/approvals", label: "Business approvals", icon: ClipboardList }] }]
+    ? [{ title: "Platform operations", links: [{ to: "/approvals", label: "Platform console", icon: ClipboardList }] }]
     : [
         ...(role === "cashier" || isOwner ? [{ title: "Sell", links: SELL }] : []),
         ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: STOCK }] : []),
