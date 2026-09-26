@@ -34,6 +34,15 @@ const ActionSchema = z.discriminatedUnion("action", [
     reason: z.string().trim().max(300).optional(),
   }),
   z.object({ action: z.literal("unlock_staff"), business_id: z.string().trim().min(1).max(100), staff_id: z.string().uuid() }),
+  z.object({ action: z.literal("platform_health") }),
+  z.object({
+    action: z.literal("audit_query"),
+    business_id: z.string().trim().max(100).optional(),
+    category: z.enum(["all", "logins", "security", "money", "recipes", "platform_ops"]).optional(),
+    search: z.string().trim().max(120).optional(),
+    limit: z.number().int().min(1).max(200).optional(),
+    offset: z.number().int().min(0).max(100000).optional(),
+  }),
   z.object({
     action: z.literal("suspend_business"),
     business_id: z.string().trim().min(1).max(100),
