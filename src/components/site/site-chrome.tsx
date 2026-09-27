@@ -197,7 +197,7 @@ export function SiteHeader() {
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
           <Logo layout="inline" variant="color" size={32} />
         </Link>
-        <nav style={{ display: "flex", alignItems: "center", gap: 32 }}>
+        <nav className="np-header-nav">
           <Link
             to="/contact"
             className="np-text-link np-hide-sm"
