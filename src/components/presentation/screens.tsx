@@ -99,7 +99,7 @@ export function LoginGateScreen() {
             <div className="mt-2 flex gap-2">
               <Input
                 value={code}
-                disabled={codeLocked}
+                readOnly={codeLocked}
                 autoCapitalize="none"
                 onChange={(e) => setCode(e.target.value.trim().toLowerCase())}
                 className="h-11 text-base font-semibold text-pres-slate"
