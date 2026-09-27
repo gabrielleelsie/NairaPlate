@@ -10,33 +10,454 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
+import { Route as AuditRouteImport } from './routes/audit'
+import { Route as BatchesRouteImport } from './routes/batches'
+import { Route as CashflowRouteImport } from './routes/cashflow'
+import { Route as CateringRouteImport } from './routes/catering'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CreditRouteImport } from './routes/credit'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DrawerRouteImport } from './routes/drawer'
+import { Route as FlagsRouteImport } from './routes/flags'
+import { Route as IngredientsRouteImport } from './routes/ingredients'
+import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as PayoutsRouteImport } from './routes/payouts'
+import { Route as PosRouteImport } from './routes/pos'
+import { Route as PresentationRouteImport } from './routes/presentation'
+import { Route as PurchasesRouteImport } from './routes/purchases'
+import { Route as RecipesRouteImport } from './routes/recipes'
+import { Route as ReportRouteImport } from './routes/report'
+import { Route as ShoppingListRouteImport } from './routes/shopping-list'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as StaffRouteImport } from './routes/staff'
+import { Route as SupplierPaymentRouteImport } from './routes/supplier-payment'
+import { Route as WastageRouteImport } from './routes/wastage'
+import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
+import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
+import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public/business-signup'
+import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
+import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
+import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
+import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
+import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BatchesRoute = BatchesRouteImport.update({
+  id: '/batches',
+  path: '/batches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CashflowRoute = CashflowRouteImport.update({
+  id: '/cashflow',
+  path: '/cashflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CateringRoute = CateringRouteImport.update({
+  id: '/catering',
+  path: '/catering',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreditRoute = CreditRouteImport.update({
+  id: '/credit',
+  path: '/credit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DrawerRoute = DrawerRouteImport.update({
+  id: '/drawer',
+  path: '/drawer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlagsRoute = FlagsRouteImport.update({
+  id: '/flags',
+  path: '/flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IngredientsRoute = IngredientsRouteImport.update({
+  id: '/ingredients',
+  path: '/ingredients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayoutsRoute = PayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PosRoute = PosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresentationRoute = PresentationRouteImport.update({
+  id: '/presentation',
+  path: '/presentation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesRoute = PurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecipesRoute = RecipesRouteImport.update({
+  id: '/recipes',
+  path: '/recipes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShoppingListRoute = ShoppingListRouteImport.update({
+  id: '/shopping-list',
+  path: '/shopping-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupplierPaymentRoute = SupplierPaymentRouteImport.update({
+  id: '/supplier-payment',
+  path: '/supplier-payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WastageRoute = WastageRouteImport.update({
+  id: '/wastage',
+  path: '/wastage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppliersIndexRoute = SuppliersIndexRouteImport.update({
+  id: '/suppliers/',
+  path: '/suppliers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppliersSupplierIdRoute = SuppliersSupplierIdRouteImport.update({
+  id: '/suppliers/$supplierId',
+  path: '/suppliers/$supplierId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBusinessSignupRoute = ApiPublicBusinessSignupRouteImport.update({
+  id: '/api/public/business-signup',
+  path: '/api/public/business-signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCashDrawerCloseRoute =
+  ApiPublicCashDrawerCloseRouteImport.update({
+    id: '/api/public/cash-drawer-close',
+    path: '/api/public/cash-drawer-close',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
+  id: '/api/public/contact',
+  path: '/api/public/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
+  id: '/api/public/platform-admin',
+  path: '/api/public/platform-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicStaffAdminRoute = ApiPublicStaffAdminRouteImport.update({
+  id: '/api/public/staff-admin',
+  path: '/api/public/staff-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
+  id: '/api/public/staff-pin-login',
+  path: '/api/public/staff-pin-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/approvals': typeof ApprovalsRoute
+  '/audit': typeof AuditRoute
+  '/batches': typeof BatchesRoute
+  '/cashflow': typeof CashflowRoute
+  '/catering': typeof CateringRoute
+  '/contact': typeof ContactRoute
+  '/credit': typeof CreditRoute
+  '/dashboard': typeof DashboardRoute
+  '/drawer': typeof DrawerRoute
+  '/flags': typeof FlagsRoute
+  '/ingredients': typeof IngredientsRoute
+  '/orders': typeof OrdersRoute
+  '/payouts': typeof PayoutsRoute
+  '/pos': typeof PosRoute
+  '/presentation': typeof PresentationRoute
+  '/purchases': typeof PurchasesRoute
+  '/recipes': typeof RecipesRoute
+  '/report': typeof ReportRoute
+  '/shopping-list': typeof ShoppingListRoute
+  '/signup': typeof SignupRoute
+  '/staff': typeof StaffRoute
+  '/supplier-payment': typeof SupplierPaymentRoute
+  '/wastage': typeof WastageRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
+  '/suppliers/': typeof SuppliersIndexRoute
+  '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
+  '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
+  '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
+  '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/approvals': typeof ApprovalsRoute
+  '/audit': typeof AuditRoute
+  '/batches': typeof BatchesRoute
+  '/cashflow': typeof CashflowRoute
+  '/catering': typeof CateringRoute
+  '/contact': typeof ContactRoute
+  '/credit': typeof CreditRoute
+  '/dashboard': typeof DashboardRoute
+  '/drawer': typeof DrawerRoute
+  '/flags': typeof FlagsRoute
+  '/ingredients': typeof IngredientsRoute
+  '/orders': typeof OrdersRoute
+  '/payouts': typeof PayoutsRoute
+  '/pos': typeof PosRoute
+  '/presentation': typeof PresentationRoute
+  '/purchases': typeof PurchasesRoute
+  '/recipes': typeof RecipesRoute
+  '/report': typeof ReportRoute
+  '/shopping-list': typeof ShoppingListRoute
+  '/signup': typeof SignupRoute
+  '/staff': typeof StaffRoute
+  '/supplier-payment': typeof SupplierPaymentRoute
+  '/wastage': typeof WastageRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
+  '/suppliers': typeof SuppliersIndexRoute
+  '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
+  '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
+  '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
+  '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/approvals': typeof ApprovalsRoute
+  '/audit': typeof AuditRoute
+  '/batches': typeof BatchesRoute
+  '/cashflow': typeof CashflowRoute
+  '/catering': typeof CateringRoute
+  '/contact': typeof ContactRoute
+  '/credit': typeof CreditRoute
+  '/dashboard': typeof DashboardRoute
+  '/drawer': typeof DrawerRoute
+  '/flags': typeof FlagsRoute
+  '/ingredients': typeof IngredientsRoute
+  '/orders': typeof OrdersRoute
+  '/payouts': typeof PayoutsRoute
+  '/pos': typeof PosRoute
+  '/presentation': typeof PresentationRoute
+  '/purchases': typeof PurchasesRoute
+  '/recipes': typeof RecipesRoute
+  '/report': typeof ReportRoute
+  '/shopping-list': typeof ShoppingListRoute
+  '/signup': typeof SignupRoute
+  '/staff': typeof StaffRoute
+  '/supplier-payment': typeof SupplierPaymentRoute
+  '/wastage': typeof WastageRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
+  '/suppliers/': typeof SuppliersIndexRoute
+  '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
+  '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
+  '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
+  '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/approvals'
+    | '/audit'
+    | '/batches'
+    | '/cashflow'
+    | '/catering'
+    | '/contact'
+    | '/credit'
+    | '/dashboard'
+    | '/drawer'
+    | '/flags'
+    | '/ingredients'
+    | '/orders'
+    | '/payouts'
+    | '/pos'
+    | '/presentation'
+    | '/purchases'
+    | '/recipes'
+    | '/report'
+    | '/shopping-list'
+    | '/signup'
+    | '/staff'
+    | '/supplier-payment'
+    | '/wastage'
+    | '/suppliers/$supplierId'
+    | '/suppliers/'
+    | '/api/public/business-signup'
+    | '/api/public/cash-drawer-close'
+    | '/api/public/contact'
+    | '/api/public/platform-admin'
+    | '/api/public/staff-admin'
+    | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app'
+    | '/approvals'
+    | '/audit'
+    | '/batches'
+    | '/cashflow'
+    | '/catering'
+    | '/contact'
+    | '/credit'
+    | '/dashboard'
+    | '/drawer'
+    | '/flags'
+    | '/ingredients'
+    | '/orders'
+    | '/payouts'
+    | '/pos'
+    | '/presentation'
+    | '/purchases'
+    | '/recipes'
+    | '/report'
+    | '/shopping-list'
+    | '/signup'
+    | '/staff'
+    | '/supplier-payment'
+    | '/wastage'
+    | '/suppliers/$supplierId'
+    | '/suppliers'
+    | '/api/public/business-signup'
+    | '/api/public/cash-drawer-close'
+    | '/api/public/contact'
+    | '/api/public/platform-admin'
+    | '/api/public/staff-admin'
+    | '/api/public/staff-pin-login'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/approvals'
+    | '/audit'
+    | '/batches'
+    | '/cashflow'
+    | '/catering'
+    | '/contact'
+    | '/credit'
+    | '/dashboard'
+    | '/drawer'
+    | '/flags'
+    | '/ingredients'
+    | '/orders'
+    | '/payouts'
+    | '/pos'
+    | '/presentation'
+    | '/purchases'
+    | '/recipes'
+    | '/report'
+    | '/shopping-list'
+    | '/signup'
+    | '/staff'
+    | '/supplier-payment'
+    | '/wastage'
+    | '/suppliers/$supplierId'
+    | '/suppliers/'
+    | '/api/public/business-signup'
+    | '/api/public/cash-drawer-close'
+    | '/api/public/contact'
+    | '/api/public/platform-admin'
+    | '/api/public/staff-admin'
+    | '/api/public/staff-pin-login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRoute
+  ApprovalsRoute: typeof ApprovalsRoute
+  AuditRoute: typeof AuditRoute
+  BatchesRoute: typeof BatchesRoute
+  CashflowRoute: typeof CashflowRoute
+  CateringRoute: typeof CateringRoute
+  ContactRoute: typeof ContactRoute
+  CreditRoute: typeof CreditRoute
+  DashboardRoute: typeof DashboardRoute
+  DrawerRoute: typeof DrawerRoute
+  FlagsRoute: typeof FlagsRoute
+  IngredientsRoute: typeof IngredientsRoute
+  OrdersRoute: typeof OrdersRoute
+  PayoutsRoute: typeof PayoutsRoute
+  PosRoute: typeof PosRoute
+  PresentationRoute: typeof PresentationRoute
+  PurchasesRoute: typeof PurchasesRoute
+  RecipesRoute: typeof RecipesRoute
+  ReportRoute: typeof ReportRoute
+  ShoppingListRoute: typeof ShoppingListRoute
+  SignupRoute: typeof SignupRoute
+  StaffRoute: typeof StaffRoute
+  SupplierPaymentRoute: typeof SupplierPaymentRoute
+  WastageRoute: typeof WastageRoute
+  SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
+  SuppliersIndexRoute: typeof SuppliersIndexRoute
+  ApiPublicBusinessSignupRoute: typeof ApiPublicBusinessSignupRoute
+  ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
+  ApiPublicContactRoute: typeof ApiPublicContactRoute
+  ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
+  ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
+  ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +469,267 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/batches': {
+      id: '/batches'
+      path: '/batches'
+      fullPath: '/batches'
+      preLoaderRoute: typeof BatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cashflow': {
+      id: '/cashflow'
+      path: '/cashflow'
+      fullPath: '/cashflow'
+      preLoaderRoute: typeof CashflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catering': {
+      id: '/catering'
+      path: '/catering'
+      fullPath: '/catering'
+      preLoaderRoute: typeof CateringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/credit': {
+      id: '/credit'
+      path: '/credit'
+      fullPath: '/credit'
+      preLoaderRoute: typeof CreditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/drawer': {
+      id: '/drawer'
+      path: '/drawer'
+      fullPath: '/drawer'
+      preLoaderRoute: typeof DrawerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flags': {
+      id: '/flags'
+      path: '/flags'
+      fullPath: '/flags'
+      preLoaderRoute: typeof FlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ingredients': {
+      id: '/ingredients'
+      path: '/ingredients'
+      fullPath: '/ingredients'
+      preLoaderRoute: typeof IngredientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payouts': {
+      id: '/payouts'
+      path: '/payouts'
+      fullPath: '/payouts'
+      preLoaderRoute: typeof PayoutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pos': {
+      id: '/pos'
+      path: '/pos'
+      fullPath: '/pos'
+      preLoaderRoute: typeof PosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/presentation': {
+      id: '/presentation'
+      path: '/presentation'
+      fullPath: '/presentation'
+      preLoaderRoute: typeof PresentationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases': {
+      id: '/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof PurchasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recipes': {
+      id: '/recipes'
+      path: '/recipes'
+      fullPath: '/recipes'
+      preLoaderRoute: typeof RecipesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shopping-list': {
+      id: '/shopping-list'
+      path: '/shopping-list'
+      fullPath: '/shopping-list'
+      preLoaderRoute: typeof ShoppingListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/supplier-payment': {
+      id: '/supplier-payment'
+      path: '/supplier-payment'
+      fullPath: '/supplier-payment'
+      preLoaderRoute: typeof SupplierPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wastage': {
+      id: '/wastage'
+      path: '/wastage'
+      fullPath: '/wastage'
+      preLoaderRoute: typeof WastageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppliers/': {
+      id: '/suppliers/'
+      path: '/suppliers'
+      fullPath: '/suppliers/'
+      preLoaderRoute: typeof SuppliersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppliers/$supplierId': {
+      id: '/suppliers/$supplierId'
+      path: '/suppliers/$supplierId'
+      fullPath: '/suppliers/$supplierId'
+      preLoaderRoute: typeof SuppliersSupplierIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/business-signup': {
+      id: '/api/public/business-signup'
+      path: '/api/public/business-signup'
+      fullPath: '/api/public/business-signup'
+      preLoaderRoute: typeof ApiPublicBusinessSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cash-drawer-close': {
+      id: '/api/public/cash-drawer-close'
+      path: '/api/public/cash-drawer-close'
+      fullPath: '/api/public/cash-drawer-close'
+      preLoaderRoute: typeof ApiPublicCashDrawerCloseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/contact': {
+      id: '/api/public/contact'
+      path: '/api/public/contact'
+      fullPath: '/api/public/contact'
+      preLoaderRoute: typeof ApiPublicContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/platform-admin': {
+      id: '/api/public/platform-admin'
+      path: '/api/public/platform-admin'
+      fullPath: '/api/public/platform-admin'
+      preLoaderRoute: typeof ApiPublicPlatformAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/staff-admin': {
+      id: '/api/public/staff-admin'
+      path: '/api/public/staff-admin'
+      fullPath: '/api/public/staff-admin'
+      preLoaderRoute: typeof ApiPublicStaffAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/staff-pin-login': {
+      id: '/api/public/staff-pin-login'
+      path: '/api/public/staff-pin-login'
+      fullPath: '/api/public/staff-pin-login'
+      preLoaderRoute: typeof ApiPublicStaffPinLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRoute,
+  ApprovalsRoute: ApprovalsRoute,
+  AuditRoute: AuditRoute,
+  BatchesRoute: BatchesRoute,
+  CashflowRoute: CashflowRoute,
+  CateringRoute: CateringRoute,
+  ContactRoute: ContactRoute,
+  CreditRoute: CreditRoute,
+  DashboardRoute: DashboardRoute,
+  DrawerRoute: DrawerRoute,
+  FlagsRoute: FlagsRoute,
+  IngredientsRoute: IngredientsRoute,
+  OrdersRoute: OrdersRoute,
+  PayoutsRoute: PayoutsRoute,
+  PosRoute: PosRoute,
+  PresentationRoute: PresentationRoute,
+  PurchasesRoute: PurchasesRoute,
+  RecipesRoute: RecipesRoute,
+  ReportRoute: ReportRoute,
+  ShoppingListRoute: ShoppingListRoute,
+  SignupRoute: SignupRoute,
+  StaffRoute: StaffRoute,
+  SupplierPaymentRoute: SupplierPaymentRoute,
+  WastageRoute: WastageRoute,
+  SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
+  SuppliersIndexRoute: SuppliersIndexRoute,
+  ApiPublicBusinessSignupRoute: ApiPublicBusinessSignupRoute,
+  ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
+  ApiPublicContactRoute: ApiPublicContactRoute,
+  ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
+  ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
+  ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
