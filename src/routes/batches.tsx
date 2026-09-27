@@ -113,7 +113,7 @@ function BatchScreen() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (!session || !ROLES.has(session.role))
-    return <main className="p-6 space-y-2"><p>Only kitchen staff and owners can log batches.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="p-6 space-y-2"><p>Only kitchen staff and owners can log batches.</p><Link className="underline" to="/app">Home</Link></main>;
 
   const sel = "w-full h-10 rounded-md border border-input bg-background px-3";
   const canSubmit = !!plan && plan.errors.length === 0 && Number(actual) > 0 && !busy;
@@ -121,7 +121,7 @@ function BatchScreen() {
 
   return (
     <main className="mx-auto max-w-md p-4 space-y-4">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Log a batch</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Log a batch</h1><Link className="underline" to="/app">Home</Link></div>
       <div className="space-y-1"><Label htmlFor="b-recipe">Dish cooked</Label>
         <select id="b-recipe" className={sel} value={recipeId} onChange={(e) => { setRecipeId(e.target.value); setSummary(null); }}>
           <option value="">Choose…</option>

@@ -67,7 +67,7 @@ function SupplierPayment() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (!session || !SUPPLIER_ROLES.has(session.role))
-    return <main className="p-6 space-y-2"><p>Purchasers and owners only.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="p-6 space-y-2"><p>Purchasers and owners only.</p><Link className="underline" to="/app">Home</Link></main>;
 
   const owed = supplierId ? supplierBalance(txns, supplierId) : null;
 

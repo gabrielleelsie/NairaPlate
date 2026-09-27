@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BatchesRouteImport } from './routes/batches'
 import { Route as CashflowRouteImport } from './routes/cashflow'
 import { Route as CateringRouteImport } from './routes/catering'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CreditRouteImport } from './routes/credit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
@@ -36,6 +38,7 @@ import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
 import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
 import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public/business-signup'
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
+import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -43,6 +46,11 @@ import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApprovalsRoute = ApprovalsRouteImport.update({
@@ -68,6 +76,11 @@ const CashflowRoute = CashflowRouteImport.update({
 const CateringRoute = CateringRouteImport.update({
   id: '/catering',
   path: '/catering',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreditRoute = CreditRouteImport.update({
@@ -176,6 +189,11 @@ const ApiPublicCashDrawerCloseRoute =
     path: '/api/public/cash-drawer-close',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
+  id: '/api/public/contact',
+  path: '/api/public/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -194,11 +212,13 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
   '/approvals': typeof ApprovalsRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
+  '/contact': typeof ContactRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
@@ -220,17 +240,20 @@ export interface FileRoutesByFullPath {
   '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
   '/approvals': typeof ApprovalsRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
+  '/contact': typeof ContactRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
@@ -252,6 +275,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -259,11 +283,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
   '/approvals': typeof ApprovalsRoute
   '/audit': typeof AuditRoute
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
+  '/contact': typeof ContactRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
@@ -285,6 +311,7 @@ export interface FileRoutesById {
   '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -293,11 +320,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/app'
     | '/approvals'
     | '/audit'
     | '/batches'
     | '/cashflow'
     | '/catering'
+    | '/contact'
     | '/credit'
     | '/dashboard'
     | '/drawer'
@@ -319,17 +348,20 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/contact'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app'
     | '/approvals'
     | '/audit'
     | '/batches'
     | '/cashflow'
     | '/catering'
+    | '/contact'
     | '/credit'
     | '/dashboard'
     | '/drawer'
@@ -351,17 +383,20 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/contact'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
   id:
     | '__root__'
     | '/'
+    | '/app'
     | '/approvals'
     | '/audit'
     | '/batches'
     | '/cashflow'
     | '/catering'
+    | '/contact'
     | '/credit'
     | '/dashboard'
     | '/drawer'
@@ -383,6 +418,7 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/contact'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -390,11 +426,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRoute
   ApprovalsRoute: typeof ApprovalsRoute
   AuditRoute: typeof AuditRoute
   BatchesRoute: typeof BatchesRoute
   CashflowRoute: typeof CashflowRoute
   CateringRoute: typeof CateringRoute
+  ContactRoute: typeof ContactRoute
   CreditRoute: typeof CreditRoute
   DashboardRoute: typeof DashboardRoute
   DrawerRoute: typeof DrawerRoute
@@ -416,6 +454,7 @@ export interface RootRouteChildren {
   SuppliersIndexRoute: typeof SuppliersIndexRoute
   ApiPublicBusinessSignupRoute: typeof ApiPublicBusinessSignupRoute
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
+  ApiPublicContactRoute: typeof ApiPublicContactRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -428,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/approvals': {
@@ -463,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/catering'
       fullPath: '/catering'
       preLoaderRoute: typeof CateringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/credit': {
@@ -612,6 +665,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCashDrawerCloseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/contact': {
+      id: '/api/public/contact'
+      path: '/api/public/contact'
+      fullPath: '/api/public/contact'
+      preLoaderRoute: typeof ApiPublicContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -638,11 +698,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRoute,
   ApprovalsRoute: ApprovalsRoute,
   AuditRoute: AuditRoute,
   BatchesRoute: BatchesRoute,
   CashflowRoute: CashflowRoute,
   CateringRoute: CateringRoute,
+  ContactRoute: ContactRoute,
   CreditRoute: CreditRoute,
   DashboardRoute: DashboardRoute,
   DrawerRoute: DrawerRoute,
@@ -664,6 +726,7 @@ const rootRouteChildren: RootRouteChildren = {
   SuppliersIndexRoute: SuppliersIndexRoute,
   ApiPublicBusinessSignupRoute: ApiPublicBusinessSignupRoute,
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
+  ApiPublicContactRoute: ApiPublicContactRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,

@@ -79,13 +79,13 @@ function CateringScreen() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (!session || !ROLES.has(session.role))
-    return <main className="p-6 space-y-2"><p>Cashiers and owners only.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="p-6 space-y-2"><p>Cashiers and owners only.</p><Link className="underline" to="/app">Home</Link></main>;
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Catering bookings</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Catering bookings</h1><Link className="underline" to="/app">Home</Link></div>
 
       <section className="rounded-md border p-3 space-y-2">
         <h2 className="font-semibold">New catering booking</h2>

@@ -62,12 +62,12 @@ function IngredientsScreen() {
   useEffect(() => { if (session) load(); }, [session, load]);
 
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
-  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/" className="underline text-sm">Go to sign-in</Link></Shell>;
+  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/app" className="underline text-sm">Go to sign-in</Link></Shell>;
   const canEdit = EDIT_ROLES.has(session.role);
 
   return (
     <Shell>
-      <Link to="/" className="text-sm text-muted-foreground underline">← Home</Link>
+      <Link to="/app" className="text-sm text-muted-foreground underline">← Home</Link>
       <div className="mt-4 flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-foreground">Ingredients</h1>
         {canEdit && <Button onClick={() => setEditing("new")}>Add ingredient</Button>}

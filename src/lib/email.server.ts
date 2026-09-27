@@ -125,3 +125,21 @@ export async function sendOwnerStatusEmail(
   };
   return send(to, titles[status], shell(titles[status], bodies[status].filter(Boolean), status === "approved" ? "info" : "alert"));
 }
+
+/** Forwards a message from the public contact page to the platform admin inbox. */
+export async function sendContactMessage(
+  to: string,
+  msg: { name: string; businessName: string | null; contact: string; message: string },
+) {
+  const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c] ?? c);
+  return send(
+    to,
+    `Website enquiry from ${msg.name}`,
+    shell("New message from the NairaPlate website", [
+      `From: <strong>${esc(msg.name)}</strong>`,
+      msg.businessName ? `Business: ${esc(msg.businessName)}` : "",
+      `Reach them on: <strong>${esc(msg.contact)}</strong>`,
+      `Message:<br>${esc(msg.message).replace(/\n/g, "<br>")}`,
+    ].filter(Boolean), "info"),
+  );
+}

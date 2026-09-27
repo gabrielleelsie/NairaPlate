@@ -74,12 +74,12 @@ function WastageScreen() {
   }
 
   if (loading) return <p className="p-6">Loading…</p>;
-  if (!session || !ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Kitchen, purchasing and owners only.</p><Link className="underline" to="/">Back</Link></main>;
+  if (!session || !ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Kitchen, purchasing and owners only.</p><Link className="underline" to="/app">Back</Link></main>;
 
   const sel = "w-full h-10 rounded-md border border-input bg-background px-3";
   return (
     <main className="mx-auto max-w-md p-4 space-y-4">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Log wastage</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Log wastage</h1><Link className="underline" to="/app">Home</Link></div>
       <div className="space-y-1"><Label htmlFor="w-ing">Ingredient</Label>
         <select id="w-ing" className={sel} value={ingId} onChange={(e) => { setIngId(e.target.value); setUnit(""); }}>
           <option value="">Choose…</option>

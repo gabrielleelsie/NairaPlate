@@ -122,7 +122,7 @@ function PurchaseScreen() {
   }
 
   if (loading) return <p className="p-6">Loading…</p>;
-  if (!session || !ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Purchasers and owners only.</p><Link className="underline" to="/">Back</Link></main>;
+  if (!session || !ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Purchasers and owners only.</p><Link className="underline" to="/app">Back</Link></main>;
 
   const flag = (k: string) => (unsure.has(k) ? " border-warning ring-2 ring-warning/60 bg-warning/10" : "");
   const sel = "w-full h-10 rounded-md border border-input bg-background px-3";
@@ -130,7 +130,7 @@ function PurchaseScreen() {
 
   return (
     <main className="mx-auto max-w-md p-4 space-y-4">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Log purchase</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Log purchase</h1><Link className="underline" to="/app">Home</Link></div>
 
       {micOk && (
         <Button type="button" variant={listening ? "destructive" : "outline"} className="w-full" onClick={startVoice} disabled={listening}>

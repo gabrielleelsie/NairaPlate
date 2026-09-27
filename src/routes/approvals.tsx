@@ -137,7 +137,7 @@ function PlatformConsole() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (session?.role !== "platform_admin")
-    return <main className="space-y-2 p-6"><p>Platform admin only.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="space-y-2 p-6"><p>Platform admin only.</p><Link className="underline" to="/app">Home</Link></main>;
 
   const pending = all.filter((b) => b.status === "pending");
   const q = search.trim().toLowerCase();
@@ -165,7 +165,7 @@ function PlatformConsole() {
               {session.name} <span className="font-normal text-brand-inverse/60">·</span> Platform Admin
             </div>
             <Button asChild variant="ghost" size="icon" className="shrink-0 text-brand-inverse hover:bg-brand-inverse/10 hover:text-brand-inverse" title="Home" aria-label="Home">
-              <Link to="/"><LogOut /></Link>
+              <Link to="/app"><LogOut /></Link>
             </Button>
           </div>
         </div>

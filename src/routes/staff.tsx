@@ -88,7 +88,7 @@ function StaffScreen() {
       <Shell>
         <h1 className="text-2xl font-semibold text-foreground">Owners only</h1>
         <p className="mt-2 text-muted-foreground">Sign in as an owner to manage staff.</p>
-        <Link to="/" className="mt-6 inline-block text-sm underline text-muted-foreground">Go to sign-in</Link>
+        <Link to="/app" className="mt-6 inline-block text-sm underline text-muted-foreground">Go to sign-in</Link>
       </Shell>
     );
   }
@@ -97,7 +97,7 @@ function StaffScreen() {
 
   return (
     <Shell>
-      <Link to="/" className="text-sm text-muted-foreground underline">← Back</Link>
+      <Link to="/app" className="text-sm text-muted-foreground underline">← Back</Link>
       <h1 className="mt-4 text-3xl font-semibold text-foreground">Staff</h1>
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
       {notice && <p className="mt-3 text-sm text-foreground">{notice}</p>}

@@ -63,14 +63,14 @@ function CreditScreen() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (!session || !ROLES.has(session.role))
-    return <main className="p-6 space-y-2"><p>Cashiers and owners only.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="p-6 space-y-2"><p>Cashiers and owners only.</p><Link className="underline" to="/app">Home</Link></main>;
 
   const shown = rows.filter((r) => r.settled === (tab === "settled"));
   const owingTotal = rows.filter((r) => !r.settled).reduce((s, r) => s + r.amount_kobo, 0);
 
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Customer credit</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Customer credit</h1><Link className="underline" to="/app">Home</Link></div>
 
       <section className="rounded-md border p-3 space-y-2">
         <h2 className="font-semibold">Add credit</h2>

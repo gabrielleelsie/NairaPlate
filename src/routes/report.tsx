@@ -54,8 +54,8 @@ function ReportScreen() {
   useEffect(() => { if (session && ROLES.has(session.role)) load(mode); }, [session, mode, load]);
 
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
-  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/" className="underline text-sm">Go to sign-in</Link></Shell>;
-  if (!ROLES.has(session.role)) return <Shell><p className="text-muted-foreground">Only the owner or supa admin can see reports.</p><Link to="/" className="underline text-sm">← Home</Link></Shell>;
+  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/app" className="underline text-sm">Go to sign-in</Link></Shell>;
+  if (!ROLES.has(session.role)) return <Shell><p className="text-muted-foreground">Only the owner or supa admin can see reports.</p><Link to="/app" className="underline text-sm">← Home</Link></Shell>;
 
   const periodLabel = mode === "week" ? "week" : "month";
   const cur = cmp?.current;
@@ -64,7 +64,7 @@ function ReportScreen() {
   return (
     <Shell>
       <div className="flex items-center justify-between print:block">
-        <Link to="/" className="text-sm text-muted-foreground underline print:hidden">← Home</Link>
+        <Link to="/app" className="text-sm text-muted-foreground underline print:hidden">← Home</Link>
         <Button variant="outline" className="print:hidden" onClick={() => window.print()}>Print</Button>
       </div>
       <h1 className="mt-4 text-3xl font-semibold text-foreground print:mt-0">

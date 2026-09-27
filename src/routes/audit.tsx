@@ -73,12 +73,12 @@ function AuditScreen() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
-  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/" className="underline text-sm">Go to sign-in</Link></Shell>;
-  if (!ROLES.has(session.role)) return <Shell><p className="text-muted-foreground">Only owners can see the audit log.</p><Link to="/" className="underline text-sm">Home</Link></Shell>;
+  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/app" className="underline text-sm">Go to sign-in</Link></Shell>;
+  if (!ROLES.has(session.role)) return <Shell><p className="text-muted-foreground">Only owners can see the audit log.</p><Link to="/app" className="underline text-sm">Home</Link></Shell>;
 
   return (
     <Shell>
-      <Link to="/" className="text-sm text-muted-foreground underline">← Home</Link>
+      <Link to="/app" className="text-sm text-muted-foreground underline">← Home</Link>
       <h1 className="mt-4 text-3xl font-semibold text-foreground">Audit log</h1>
       <p className="mt-1 text-sm text-muted-foreground">Every entry is permanent — nobody can change or delete it.</p>
 

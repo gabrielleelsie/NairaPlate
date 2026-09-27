@@ -46,13 +46,13 @@ function Flags() {
   }
 
   if (loading) return <p className="p-6">Loading…</p>;
-  if (!session || !OWNER_ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Owners only.</p><Link className="underline" to="/">Back</Link></main>;
+  if (!session || !OWNER_ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Owners only.</p><Link className="underline" to="/app">Back</Link></main>;
 
   return (
     <main className="mx-auto max-w-2xl p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Alerts</h1>
-        <div className="flex gap-3"><Link className="underline" to="/dashboard">Profit & loss</Link><Link className="underline" to="/">Home</Link></div>
+        <div className="flex gap-3"><Link className="underline" to="/dashboard">Profit & loss</Link><Link className="underline" to="/app">Home</Link></div>
       </div>
       {err && <p className="text-destructive">{err}</p>}
       {flags?.length === 0 && <p>Nothing needs your attention.</p>}
