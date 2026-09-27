@@ -12,6 +12,7 @@ import {
 import {
   C,
   FloatingWhatsApp,
+  OutlineLink,
   PrimaryLink,
   SecondaryButton,
   SiteFooter,

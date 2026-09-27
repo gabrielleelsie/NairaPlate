@@ -83,6 +83,30 @@ export function PrimaryLink({ to, children }: { to: string; children: React.Reac
   );
 }
 
+/** Secondary outline button for light backgrounds — text/border #0078D4 instead of white. */
+export function OutlineLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="np-outline-btn"
+      style={{
+        display: "inline-block",
+        background: "transparent",
+        border: `2px solid ${C.blue}`,
+        color: C.blue,
+        borderRadius: 8,
+        padding: "12px 26px",
+        fontSize: 16,
+        fontWeight: 600,
+        textDecoration: "none",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function SecondaryButton({
   onClick,
   children,
