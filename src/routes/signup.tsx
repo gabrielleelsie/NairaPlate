@@ -71,7 +71,7 @@ function Signup() {
           <h1 className="text-3xl font-semibold text-foreground">Thank you</h1>
           <p className="text-foreground">Your business is pending approval. You'll be able to sign in once it's approved.</p>
           <p className="text-sm text-muted-foreground">Your business code is <strong>{code.trim().toLowerCase()}</strong>. Keep it — you'll need it with your PIN to sign in.</p>
-          <Link className="text-sm underline" to="/">Back to sign in</Link>
+          <Link className="text-sm underline" to="/app">Back to sign in</Link>
         </div>
       </main>
     );
@@ -102,7 +102,7 @@ function Signup() {
           <Input id="ct" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="0803 000 0000" /></div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={!canSubmit}>{busy ? "Sending…" : "Register business"}</Button>
-        <Link className="block text-center text-sm underline" to="/">Already registered? Sign in</Link>
+        <Link className="block text-center text-sm underline" to="/app">Already registered? Sign in</Link>
       </form>
     </main>
   );

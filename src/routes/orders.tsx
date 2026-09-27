@@ -61,14 +61,14 @@ function OrdersScreen() {
   useEffect(() => { void load(); }, [load]);
 
   if (loading) return <main className="p-6">Loading…</main>;
-  if (!session || !ROLES.has(session.role)) return <main className="p-6">Only cashiers and owners can see orders. <Link to="/" className="underline">Home</Link></main>;
+  if (!session || !ROLES.has(session.role)) return <main className="p-6">Only cashiers and owners can see orders. <Link to="/app" className="underline">Home</Link></main>;
   const who = (id: string | null) => (id && names[id]) || (id === session.userId ? `${session.name} (me)` : "Other staff");
 
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Orders</h1>
-        <Link to="/" className="text-sm underline">Home</Link>
+        <Link to="/app" className="text-sm underline">Home</Link>
       </div>
       {err && <p className="text-destructive">{err}</p>}
       <Tabs defaultValue="orders">

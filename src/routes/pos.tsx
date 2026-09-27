@@ -116,13 +116,13 @@ function PosScreen() {
 
   if (loading) return <p className="p-6">Loading…</p>;
   if (!session || !POS_ROLES.has(session.role)) return (
-    <main className="p-6 space-y-3"><p>Cashiers and owners only.</p><Link className="underline" to="/">Back</Link></main>
+    <main className="p-6 space-y-3"><p>Cashiers and owners only.</p><Link className="underline" to="/app">Back</Link></main>
   );
 
   const sel = "w-full h-10 rounded-md border border-input bg-background px-3";
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><Link className="underline" to="/app">Home</Link></div>
 
       <section className="space-y-2">
         <Label>Add item</Label>

@@ -88,11 +88,11 @@ function PayoutsScreen() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (!session || !ROLES.has(session.role))
-    return <main className="p-6 space-y-2"><p>Owners only.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="p-6 space-y-2"><p>Owners only.</p><Link className="underline" to="/app">Home</Link></main>;
 
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Channel payouts</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Channel payouts</h1><Link className="underline" to="/app">Home</Link></div>
 
       <section className="rounded-md border p-3 space-y-3">
         <div className="space-y-1"><Label htmlFor="po-ch">Channel</Label>

@@ -44,13 +44,13 @@ function Dashboard() {
   }, [session, days]);
 
   if (loading) return <p className="p-6">Loading…</p>;
-  if (!session || !OWNER_ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Owners only.</p><Link className="underline" to="/">Back</Link></main>;
+  if (!session || !OWNER_ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Owners only.</p><Link className="underline" to="/app">Back</Link></main>;
 
   return (
     <main className="mx-auto max-w-2xl p-4 space-y-5">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Profit & loss</h1>
-        <div className="flex gap-3"><Link className="underline" to="/flags">Alerts</Link><Link className="underline" to="/">Home</Link></div>
+        <div className="flex gap-3"><Link className="underline" to="/flags">Alerts</Link><Link className="underline" to="/app">Home</Link></div>
       </div>
       <div className="flex gap-2">
         {RANGES.map((r) => <Button key={r.days} variant={days === r.days ? "default" : "outline"} onClick={() => setDays(r.days)}>{r.label}</Button>)}

@@ -42,7 +42,7 @@ function SupplierDetail() {
 
   if (loading) return <main className="p-6">Loading…</main>;
   if (!session || !SUPPLIER_ROLES.has(session.role))
-    return <main className="p-6 space-y-2"><p>Purchasers and owners only.</p><Link className="underline" to="/">Home</Link></main>;
+    return <main className="p-6 space-y-2"><p>Purchasers and owners only.</p><Link className="underline" to="/app">Home</Link></main>;
   if (err) return <main className="p-6 space-y-2"><p>{err}</p><Link className="underline" to="/suppliers">Back to suppliers</Link></main>;
   if (!sup) return <main className="p-6">Loading…</main>;
 

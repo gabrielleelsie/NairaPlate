@@ -71,12 +71,12 @@ function ShoppingListScreen() {
   useEffect(() => { if (session && ROLES.has(session.role)) load(); }, [session, load]);
 
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
-  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/" className="underline text-sm">Go to sign-in</Link></Shell>;
-  if (!ROLES.has(session.role)) return <Shell><p className="text-muted-foreground">Only the purchaser, owner or supa admin can see the shopping list.</p><Link to="/" className="underline text-sm">← Home</Link></Shell>;
+  if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/app" className="underline text-sm">Go to sign-in</Link></Shell>;
+  if (!ROLES.has(session.role)) return <Shell><p className="text-muted-foreground">Only the purchaser, owner or supa admin can see the shopping list.</p><Link to="/app" className="underline text-sm">← Home</Link></Shell>;
 
   return (
     <Shell>
-      <Link to="/" className="text-sm text-muted-foreground underline print:hidden">← Home</Link>
+      <Link to="/app" className="text-sm text-muted-foreground underline print:hidden">← Home</Link>
       <h1 className="mt-4 text-3xl font-semibold text-foreground">Shopping list</h1>
       <p className="mt-1 text-sm text-muted-foreground">Everything at or below its reorder level, and about what it will cost.</p>
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}

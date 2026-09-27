@@ -71,12 +71,12 @@ function DrawerScreen() {
   }
 
   if (loading || open === undefined) return <p className="p-6">Loading…</p>;
-  if (!session || !ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Cashiers and owners only.</p><Link className="underline" to="/">Back</Link></main>;
+  if (!session || !ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Cashiers and owners only.</p><Link className="underline" to="/app">Back</Link></main>;
 
   const d = summary?.discrepancy_kobo ?? 0;
   return (
     <main className="mx-auto max-w-md p-4 space-y-5">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Cash drawer</h1><Link className="underline" to="/">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Cash drawer</h1><Link className="underline" to="/app">Home</Link></div>
 
       {summary && (
         <section className="rounded-lg border p-4 space-y-1" aria-label="Shift summary">
