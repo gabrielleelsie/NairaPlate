@@ -223,3 +223,9 @@
   .np-header-nav .np-primary-btn { padding: 10px 14px !important; font-size: 14px !important; white-space: nowrap; }
   .np-header-nav .np-text-link { font-size: 14px !important; white-space: nowrap; }
 }
+
+.np-show-sm { display: none; }
+@media (max-width: 639px) {
+  .np-show-sm { display: inline-flex; }
+  .np-header-nav .np-primary-btn { padding: 10px 12px !important; }
+}
