@@ -10,11 +10,12 @@ import {
   Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
 } from "lucide-react";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [
       { title: "NairaPlate — Staff sign-in" },
       { name: "description", content: "Pick your name and enter your PIN to start your NairaPlate shift." },
+      { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "NairaPlate — Staff sign-in" },
       { property: "og:description", content: "Pick your name and enter your PIN to start your NairaPlate shift." },
       { property: "og:type", content: "website" },
