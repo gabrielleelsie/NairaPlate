@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet } from "lucide-react";
+import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
 
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
@@ -12,6 +12,7 @@ import {
 import {
   C,
   FloatingWhatsApp,
+  OutlineLink,
   PrimaryLink,
   SecondaryButton,
   SiteFooter,
@@ -299,11 +300,35 @@ function Features() {
 
 function LiveCalculator() {
   const [margin, setMargin] = useState(35);
+  const [touched, setTouched] = useState(false);
+  const [calloutOpen, setCalloutOpen] = useState(false);
   const result = useEbaEgusi(margin);
+
+  const onMarginChange = (value: number) => {
+    setMargin(value);
+    if (!touched) {
+      setTouched(true);
+      setCalloutOpen(true);
+    }
+  };
 
   return (
     <Section bg={C.light}>
       <Heading>See the Real Cost of a Plate, Right Now.</Heading>
+      <p
+        style={{
+          fontSize: 16,
+          fontWeight: 400,
+          color: C.text,
+          lineHeight: 1.6,
+          maxWidth: 560,
+          margin: "16px auto 0",
+          textAlign: "center",
+        }}
+      >
+        This example uses fixed numbers for Eba &amp; Egusi. Your real kitchen has its own ingredients, your own
+        market prices, and dozens of dishes — that's what the app actually tracks.
+      </p>
       <div style={{ ...cardStyle, maxWidth: 560, margin: "32px auto 0" }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: C.navy }}>Eba &amp; Egusi</div>
         <div style={{ fontSize: 14, color: C.muted, marginTop: 2 }}>{EBA_EGUSI_PLATES} plates</div>
@@ -340,7 +365,7 @@ function LiveCalculator() {
           max={90}
           step={1}
           value={margin}
-          onChange={(e) => setMargin(Number(e.target.value))}
+          onChange={(e) => onMarginChange(Number(e.target.value))}
           style={{ width: "100%", marginTop: 10, background: `linear-gradient(to right, ${C.blue} ${(margin / 90) * 100}%, ${C.border} ${(margin / 90) * 100}%)` }}
         />
 
@@ -350,6 +375,47 @@ function LiveCalculator() {
             {formatNaira(result.suggested_price_kobo)}
           </div>
         </div>
+
+        {calloutOpen && (
+          <div
+            role="note"
+            style={{
+              marginTop: 20,
+              border: `1px solid ${C.success}`,
+              borderRadius: 8,
+              padding: "12px 40px 12px 16px",
+              position: "relative",
+              background: C.white,
+            }}
+          >
+            <span style={{ fontSize: 14, color: C.text, lineHeight: 1.5, display: "block" }}>
+              This math is simple. Remembering to redo it every time garri or egusi changes price — for every dish
+              you sell — is the part that actually saves you money.
+            </span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setCalloutOpen(false)}
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                background: "transparent",
+                border: "none",
+                color: C.muted,
+                cursor: "pointer",
+                padding: 4,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 24 }}>
+        <OutlineLink to="/signup">Try it with your own ingredients</OutlineLink>
       </div>
     </Section>
   );
