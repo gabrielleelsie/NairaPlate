@@ -65,6 +65,14 @@
   --color-brand-blue: var(--brand-blue);
   --color-brand-inverse: var(--brand-inverse);
   --color-home-surface: var(--home-surface);
+  --color-pres-navy: var(--pres-navy);
+  --color-pres-navy-deep: var(--pres-navy-deep);
+  --color-pres-navy-soft: var(--pres-navy-soft);
+  --color-pres-blue: var(--pres-blue);
+  --color-pres-blue-deep: var(--pres-blue-deep);
+  --color-pres-slate: var(--pres-slate);
+  --color-pres-alert: var(--pres-alert);
+  --color-pres-surface: var(--pres-surface);
   --shadow-auth: 0 24px 60px color-mix(in oklab, var(--brand-navy) 35%, transparent);
 }
 
@@ -108,6 +116,14 @@
   --brand-blue: oklch(0.56769 0.16654 251.313);
   --brand-inverse: oklch(1 0 0);
   --home-surface: oklch(0.975 0.006 250);
+  --pres-navy: oklch(0.2336 0.0483 260.2);
+  --pres-navy-deep: oklch(0.2012 0.0398 259.5);
+  --pres-navy-soft: oklch(0.2905 0.0512 259.8);
+  --pres-blue: oklch(0.5463 0.2452 262.9);
+  --pres-blue-deep: oklch(0.4882 0.2374 264.4);
+  --pres-slate: oklch(0.2077 0.0398 265.8);
+  --pres-alert: oklch(0.5771 0.2452 27.33);
+  --pres-surface: oklch(1 0 0);
 }
 
 .dark {
