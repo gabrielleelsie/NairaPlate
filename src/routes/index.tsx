@@ -1,343 +1,391 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/external-supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/Logo";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet } from "lucide-react";
+
+import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
-  AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
-  CreditCard, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
-  Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
-} from "lucide-react";
+  DEMO_CONVERSIONS,
+  DEMO_INGREDIENTS,
+  EBA_EGUSI_ITEMS,
+  EBA_EGUSI_PLATES,
+} from "@/components/site/plate-calculator";
+import {
+  C,
+  FloatingWhatsApp,
+  PrimaryLink,
+  SecondaryButton,
+  SiteFooter,
+  SiteHeader,
+  WHATSAPP_HREF,
+  WhatsAppButton,
+  cardStyle,
+} from "@/components/site/site-chrome";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "NairaPlate — Staff sign-in" },
-      { name: "description", content: "Pick your name and enter your PIN to start your NairaPlate shift." },
-      { property: "og:title", content: "NairaPlate — Staff sign-in" },
-      { property: "og:description", content: "Pick your name and enter your PIN to start your NairaPlate shift." },
+      { title: "NairaPlate — Real-Time Food Costing for Nigerian Kitchens" },
+      {
+        name: "description",
+        content:
+          "Track food costs in real Nigerian market units, protect your margins when prices spike, and run your kitchen with secure staff PINs. Start a 14-day free trial.",
+      },
+      { property: "og:title", content: "NairaPlate — Real-Time Food Costing for Nigerian Kitchens" },
+      {
+        property: "og:description",
+        content:
+          "Track food costs in real Nigerian market units, protect your margins when prices spike, and run your kitchen with secure staff PINs. Start a 14-day free trial.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: LoginScreen,
+  component: MarketingPage,
 });
 
-// Only these four fields ever reach the browser.
-type StaffOption = { id: string; display_name: string; role: string; is_active: boolean };
+const MAX = 1140;
 
-const ENDPOINT = "/api/public/staff-pin-login";
-const BUSINESS_KEY = "nairaplate.business_id";
-
-async function callEndpoint(body: unknown) {
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  return { status: res.status, data };
+function Section({
+  bg,
+  children,
+  id,
+}: {
+  bg: string;
+  children: React.ReactNode;
+  id?: string;
+}) {
+  return (
+    <section id={id} className="np-section" style={{ background: bg }}>
+      <div style={{ maxWidth: MAX, margin: "0 auto", padding: "0 24px" }}>{children}</div>
+    </section>
+  );
 }
 
-function LoginScreen() {
-  const [businessId, setBusinessId] = useState("");
-  const [businessInput, setBusinessInput] = useState("");
-  const [staff, setStaff] = useState<StaffOption[] | null>(null);
-  const [selected, setSelected] = useState<StaffOption | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [signedInAs, setSignedInAs] = useState<string | null>(null);
-  const [myRole, setMyRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!signedInAs) return setMyRole(null);
-    supabase.auth.getUser().then(({ data }) => setMyRole((data.user?.app_metadata?.["role"] as string) ?? null));
-  }, [signedInAs]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(BUSINESS_KEY);
-    if (saved) setBusinessId(saved);
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setSignedInAs((data.user.user_metadata?.["display_name"] as string) ?? "staff");
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!businessId) return;
-    setLoading(true);
-    setError(null);
-    callEndpoint({ action: "list_staff", business_id: businessId })
-      .then(({ status, data }) => {
-        if (status !== 200) throw new Error(data.error ?? "Could not load staff.");
-        const list: StaffOption[] = (data.staff ?? []).map((s: StaffOption) => ({
-          id: s.id,
-          display_name: s.display_name,
-          role: s.role,
-          is_active: s.is_active,
-        }));
-        setStaff(list);
-      })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [businessId]);
-
-  if (signedInAs) {
-    return <HomeScreen name={signedInAs} role={myRole} onSignOut={async () => {
-      await supabase.auth.signOut();
-      setSignedInAs(null);
-      setSelected(null);
-    }} />;
-  }
-
-  if (!businessId) {
-    return (
-      <AuthShell>
-        <h1 className="text-3xl font-semibold text-foreground">NairaPlate</h1>
-        <p className="mt-2 text-muted-foreground">Enter your business code to begin.</p>
-        <form
-          className="mt-6 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            // Phone keyboards capitalise the first letter; business codes are always lowercase.
-            const v = businessInput.trim().toLowerCase();
-            if (!v) return;
-            localStorage.setItem(BUSINESS_KEY, v);
-            setBusinessId(v);
-          }}
-        >
-          <Input value={businessInput} onChange={(e) => setBusinessInput(e.target.value)} placeholder="Business code"
-            autoCapitalize="none" autoCorrect="off" spellCheck={false} />
-          <Button type="submit" className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">Continue</Button>
-        </form>
-        <Link className="mt-6 block text-center text-sm font-medium text-brand-blue underline underline-offset-4" to="/signup">New here? Register your business</Link>
-      </AuthShell>
-    );
-  }
-
-  if (selected) {
-    return (
-      <PinScreen
-        businessId={businessId}
-        staff={selected}
-        onBack={() => setSelected(null)}
-        onSignedIn={(name) => setSignedInAs(name)}
-      />
-    );
-  }
-
+function Heading({ children, onNavy }: { children: React.ReactNode; onNavy?: boolean }) {
   return (
-    <AuthShell>
-      <h1 className="text-3xl font-semibold text-foreground">Who's working?</h1>
-      <p className="mt-2 text-muted-foreground">Tap your name.</p>
-      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-      {loading && <p className="mt-6 text-muted-foreground">Loading staff…</p>}
-      {staff && staff.length === 0 && !loading && (
-        <p className="mt-6 text-muted-foreground">No active staff found for this business.</p>
-      )}
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        {staff?.map((s) => (
-          <Button
-            key={s.id}
-            type="button"
-            variant="outline"
-            onClick={() => setSelected(s)}
-            className="h-auto min-h-20 flex-col items-start gap-1 whitespace-normal border-border bg-card p-4 text-left hover:border-brand-blue hover:bg-accent focus-visible:ring-brand-blue"
-          >
-            <div className="font-medium text-card-foreground">{s.display_name}</div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">{s.role.replace("_", " ")}</div>
-          </Button>
-        ))}
-      </div>
-      <Button
-        type="button"
-        variant="link"
-        className="mt-6 h-auto px-0 text-muted-foreground"
-        onClick={() => {
-          localStorage.removeItem(BUSINESS_KEY);
-          setBusinessId("");
-          setStaff(null);
+    <h2 className="np-h2" style={{ color: onNavy ? C.white : C.navy, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
+      {children}
+    </h2>
+  );
+}
+
+/** Cost of the Eba & Egusi example — the app's own computeRecipeCost(), same formula as the kitchen screens. */
+function useEbaEgusi(marginPct: number) {
+  return useMemo(
+    () =>
+      computeRecipeCost({
+        items: EBA_EGUSI_ITEMS,
+        ingredients: DEMO_INGREDIENTS,
+        conversions: DEMO_CONVERSIONS,
+        yield_portions: EBA_EGUSI_PLATES,
+        target_margin_bps: Math.round(marginPct * 100),
+      }),
+    [marginPct],
+  );
+}
+
+function MarketingPage() {
+  return (
+    <div style={{ fontFamily: '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+      <SiteHeader />
+      <main>
+        <Hero />
+        <InstallGuide />
+        <Features />
+        <LiveCalculator />
+        <TrialOffer />
+        <WhatsAppSection />
+      </main>
+      <SiteFooter />
+      <FloatingWhatsApp />
+    </div>
+  );
+}
+
+function Hero() {
+  const result = useEbaEgusi(35);
+  return (
+    <section className="np-hero" style={{ background: C.navy }}>
+      <div
+        style={{
+          maxWidth: MAX,
+          margin: "0 auto",
+          padding: "0 24px",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 40,
+          alignItems: "center",
         }}
       >
-        Change business
-      </Button>
-    </AuthShell>
-  );
-}
-
-function PinScreen({
-  businessId,
-  staff,
-  onBack,
-  onSignedIn,
-}: {
-  businessId: string;
-  staff: StaffOption;
-  onBack: () => void;
-  onSignedIn: (name: string) => void;
-}) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [lockSeconds, setLockSeconds] = useState(0);
-
-  useEffect(() => {
-    if (lockSeconds <= 0) return;
-    const t = setTimeout(() => setLockSeconds((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [lockSeconds]);
-
-  async function submit() {
-    if (pin.length < 4 || busy || lockSeconds > 0) return;
-    setBusy(true);
-    setError(null);
-    const { status, data } = await callEndpoint({ business_id: businessId, staff_id: staff.id, pin });
-    setPin("");
-    if (status === 200 && data.session) {
-      const { error: sessErr } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      });
-      setBusy(false);
-      if (sessErr) return setError("Could not start your session.");
-      onSignedIn(staff.display_name);
-      return;
-    }
-    setBusy(false);
-    if (status === 429 && typeof data.remaining_seconds === "number") setLockSeconds(data.remaining_seconds);
-    setError(data.error ?? "Sign-in failed.");
-  }
-
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
-
-  return (
-    <AuthShell>
-      <Button type="button" variant="ghost" onClick={onBack} className="h-auto px-0 text-sm text-muted-foreground"><ArrowBack /> Back</Button>
-      <h1 className="mt-4 text-3xl font-semibold text-foreground">{staff.display_name}</h1>
-      <p className="mt-1 text-muted-foreground">Enter your PIN</p>
-      <div className="mt-6 flex justify-center gap-3">
-        {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
-          <span key={i} className={`h-4 w-4 rounded-full border border-foreground ${i < pin.length ? "bg-foreground" : ""}`} />
-        ))}
-      </div>
-      {error && <p className="mt-4 text-center text-sm text-destructive">{error}</p>}
-      {lockSeconds > 0 && <p className="mt-1 text-center text-sm text-muted-foreground">Locked for {lockSeconds}s</p>}
-      <div className="mx-auto mt-6 grid max-w-xs grid-cols-3 gap-3">
-        {keys.map((k, i) =>
-          k === "" ? (
-            <span key={i} />
-          ) : (
-            <Button
-              key={i}
-              variant="outline"
-               className="h-16 border-brand-blue/30 text-xl text-brand-navy hover:border-brand-blue hover:bg-brand-blue hover:text-brand-inverse focus-visible:ring-brand-blue"
-              disabled={busy || lockSeconds > 0}
-              onClick={() => (k === "⌫" ? setPin((p) => p.slice(0, -1)) : setPin((p) => (p.length < 8 ? p + k : p)))}
+        <div style={{ flex: "1 1 460px", minWidth: 280 }}>
+          <h1 className="np-h1" style={{ color: C.white, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>
+            Stop Guessing Plate Costs. Run Your Nigerian Kitchen by the Numbers.
+          </h1>
+          <p
+            className="np-sub"
+            style={{ color: C.onNavy, fontWeight: 400, lineHeight: 1.5, maxWidth: 640, marginTop: 20 }}
+          >
+            Track food costs in real Nigerian market units (mudu, paint rubber, derica), protect your dish margins
+            when market prices jump, and control your cash drawer with simple staff PINs.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 32 }}>
+            <PrimaryLink to="/signup">Start 14-Day Free Trial</PrimaryLink>
+            <SecondaryButton
+              onClick={() => document.getElementById("download")?.scrollIntoView({ behavior: "smooth" })}
             >
-              {k}
-            </Button>
-          ),
-        )}
-      </div>
-       <Button className="mx-auto mt-6 block w-full max-w-xs bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" disabled={pin.length < 4 || busy || lockSeconds > 0} onClick={submit}>
-        {busy ? "Checking…" : "Sign in"}
-      </Button>
-    </AuthShell>
-  );
-}
-
-function AuthShell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-brand-navy px-4 py-8 sm:py-12">
-      <Logo layout="stacked" variant="white" size={72} className="mb-6 sm:mb-8" />
-      <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-auth sm:p-8">{children}</div>
-    </main>
-  );
-}
-
-function ArrowBack() {
-  return <span aria-hidden="true">←</span>;
-}
-
-const ROLE_NAMES: Record<string, string> = {
-  owner: "Owner", supa_admin: "Supa Admin", cashier: "Cashier", purchaser: "Purchaser",
-  cook: "Kitchen Staff", platform_admin: "Platform Admin",
-};
-
-type AppLink = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
-const SELL: AppLink[] = [
-  { to: "/pos", label: "Till", icon: Store },
-  { to: "/drawer", label: "Cash drawer", icon: WalletCards },
-  { to: "/orders", label: "Orders", icon: ReceiptText },
-  { to: "/credit", label: "Customer credit", icon: CreditCard },
-  { to: "/catering", label: "Catering", icon: CalendarDays },
-];
-const STOCK: AppLink[] = [
-  { to: "/purchases", label: "Purchases", icon: ShoppingBasket },
-  { to: "/suppliers", label: "Suppliers", icon: Truck },
-  { to: "/shopping-list", label: "Shopping list", icon: ClipboardList },
-  { to: "/ingredients", label: "Ingredients", icon: PackageSearch },
-];
-const KITCHEN: AppLink[] = [
-  { to: "/recipes", label: "Recipes", icon: BookOpen },
-  { to: "/batches", label: "Log a batch", icon: ChefHat },
-  { to: "/wastage", label: "Wastage", icon: UtensilsCrossed },
-];
-const OVERSIGHT: AppLink[] = [
-  { to: "/dashboard", label: "P&L", icon: BarChart3 },
-  { to: "/cashflow", label: "7-day cashflow", icon: Landmark },
-  { to: "/flags", label: "Alerts", icon: AlertTriangle },
-  { to: "/audit", label: "Audit log", icon: History },
-  { to: "/payouts", label: "Channel payouts", icon: HandCoins },
-  { to: "/recipes", label: "Pricing review", icon: Scale },
-  { to: "/staff", label: "Staff", icon: Users },
-  { to: "/report", label: "Print report", icon: ClipboardList },
-];
-
-function HomeScreen({ name, role, onSignOut }: { name: string; role: string | null; onSignOut: () => Promise<void> }) {
-  const isOwner = role === "owner" || role === "supa_admin";
-  const groups = role === "platform_admin"
-    ? [{ title: "Platform operations", links: [{ to: "/approvals", label: "Platform console", icon: ClipboardList }] }]
-    : [
-        ...(role === "cashier" || isOwner ? [{ title: "Sell", links: SELL }] : []),
-        ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: STOCK }] : []),
-        ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: KITCHEN }] : []),
-        ...(isOwner ? [{ title: "Oversight", links: OVERSIGHT }] : []),
-      ];
-
-  return (
-    <main className="min-h-dvh bg-home-surface">
-      <header className="bg-brand-navy text-brand-inverse">
-        <div className="mx-auto grid min-h-20 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-5 px-4 sm:gap-8 sm:px-6">
-          <Logo variant="white" layout="inline" size={38} className="min-w-0" />
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="min-w-0 truncate text-right text-sm font-semibold">
-              {name} <span className="font-normal text-brand-inverse/60">·</span> {ROLE_NAMES[role ?? ""] ?? role ?? "Staff"}
-            </div>
-            <Button type="button" variant="ghost" size="icon" className="shrink-0 text-brand-inverse hover:bg-brand-inverse/10 hover:text-brand-inverse" onClick={onSignOut} title="Sign out" aria-label="Sign out">
-              <LogOut />
-            </Button>
+              Download the App
+            </SecondaryButton>
+          </div>
+          <div style={{ marginTop: 24 }}>
+            <a
+              href={WHATSAPP_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="np-text-link"
+              style={{ color: C.white, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+            >
+              Chat on WhatsApp
+            </a>
           </div>
         </div>
-      </header>
-      <div className="mx-auto max-w-6xl space-y-9 px-4 py-7 sm:px-6 sm:py-10">
-        {groups.map((group) => <ActionGroup key={group.title} title={group.title} links={group.links} />)}
+
+        <div style={{ flex: "1 1 380px", minWidth: 280 }}>
+          <div style={cardStyle}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, letterSpacing: 0.4 }}>RECIPE BUILDER</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.navy, marginTop: 4 }}>Eba &amp; Egusi</div>
+            <div style={{ fontSize: 14, color: C.muted, marginTop: 2 }}>{EBA_EGUSI_PLATES} plates · target margin 35%</div>
+            <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+              {result.lines.map((l) => (
+                <div key={l.ingredient_id} style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                  <span style={{ color: C.text }}>
+                    {l.quantity} {l.unit} {l.ingredient_name}
+                  </span>
+                  <span style={{ color: C.navy, fontWeight: 600 }}>{formatNaira(l.line_cost_kobo)}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 16, paddingTop: 16, display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.muted }}>
+                <span>Cost per plate</span>
+                <span style={{ color: C.navy, fontWeight: 700 }}>{formatNaira(result.cost_per_plate_kobo)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.muted }}>
+                <span>Selling price per plate</span>
+                <span style={{ color: C.success, fontWeight: 700, fontSize: 20 }}>
+                  {formatNaira(result.suggested_price_kobo)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </main>
+    </section>
   );
 }
 
-function ActionGroup({ title, links }: { title: string; links: AppLink[] }) {
+function InstallGuide() {
+  const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
+  const [deferred, setDeferred] = useState<{ prompt: () => void } | null>(null);
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    if (/Android/i.test(ua)) setPlatform("android");
+    else if (/iPad|iPhone|iPod/.test(ua)) setPlatform("ios");
+    else setPlatform("desktop");
+
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferred(e as unknown as { prompt: () => void });
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
+
   return (
-    <section aria-labelledby={`group-${title.replace(/\W/g, "-")}`}>
-      <h2 id={`group-${title.replace(/\W/g, "-")}`} className="mb-3 text-sm font-semibold uppercase tracking-normal text-brand-navy/70">{title}</h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {links.map(({ to, label, icon: Icon }) => (
-          <Button key={`${to}-${label}`} asChild variant="outline" className="h-24 w-full flex-col gap-2 whitespace-normal border-border bg-card px-2 text-center text-brand-navy shadow-xs hover:border-brand-blue hover:bg-card hover:text-brand-navy focus-visible:ring-brand-blue">
-            <Link to={to}><Icon className="text-brand-blue" /><span className="text-sm font-semibold leading-tight">{label}</span></Link>
-          </Button>
+    <Section bg={C.light} id="download">
+      <Heading>Get NairaPlate on Your Phone.</Heading>
+      <div style={{ ...cardStyle, maxWidth: 480, margin: "32px auto 0" }}>
+        {platform === "android" && (
+          <>
+            <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
+              Install NairaPlate to your home screen.
+            </p>
+            <button
+              className="np-primary-btn"
+              onClick={() => deferred?.prompt()}
+              style={{
+                background: C.blue,
+                color: C.white,
+                borderRadius: 8,
+                padding: "14px 28px",
+                border: "none",
+                fontSize: 16,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Install App
+            </button>
+          </>
+        )}
+        {platform === "ios" && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <Share size={32} color={C.blue} />
+              <span style={{ fontSize: 16, color: C.text }}>1. Tap the Share icon</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <Plus size={32} color={C.blue} />
+              <span style={{ fontSize: 16, color: C.text }}>2. Tap 'Add to Home Screen'</span>
+            </div>
+          </div>
+        )}
+        {platform === "desktop" && (
+          <>
+            <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
+              Use NairaPlate as a web app on this computer.
+            </p>
+            <PrimaryLink to="/app">Open Kitchen POS Web Station</PrimaryLink>
+          </>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+const FEATURES = [
+  {
+    icon: Scale,
+    title: "18 Real Market Units, Not Foreign Ones.",
+    body:
+      "Mudus, milk cups, paint rubbers, basins, heaps, and jerry cans — the units you actually buy in, not grams and pounds.",
+  },
+  {
+    icon: Bell,
+    title: "The Margin Alarm.",
+    body:
+      "The moment garri, pepper, or palm oil rises more than 5%, every dish using it is flagged automatically for a pricing decision.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Staff PIN Security, Zero Shared Passwords.",
+    body:
+      "Cashiers sell and close the drawer. Cooks log batches and wastage. Owners see the full P&L and 7-day cashflow. Nobody sees more than their role allows.",
+  },
+  {
+    icon: Wallet,
+    title: "Every Naira Reconciled.",
+    body:
+      "Cash drawers are closed with an actual count, not an assumption. Voided sales stay in the record with a reason — nothing is ever silently deleted.",
+  },
+];
+
+function Features() {
+  return (
+    <Section bg={C.white}>
+      <Heading>Built for How Nigerian Kitchens Actually Run.</Heading>
+      <div className="np-feature-grid" style={{ marginTop: 32 }}>
+        {FEATURES.map((f) => (
+          <div key={f.title} style={cardStyle}>
+            <f.icon size={28} color={C.blue} />
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: C.navy, margin: "12px 0 8px" }}>{f.title}</h3>
+            <p style={{ fontSize: 15, fontWeight: 400, color: C.muted, lineHeight: 1.5, margin: 0 }}>{f.body}</p>
+          </div>
         ))}
       </div>
-    </section>
+    </Section>
+  );
+}
+
+function LiveCalculator() {
+  const [margin, setMargin] = useState(35);
+  const result = useEbaEgusi(margin);
+
+  return (
+    <Section bg={C.light}>
+      <Heading>See the Real Cost of a Plate, Right Now.</Heading>
+      <div style={{ ...cardStyle, maxWidth: 560, margin: "32px auto 0" }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: C.navy }}>Eba &amp; Egusi</div>
+        <div style={{ fontSize: 14, color: C.muted, marginTop: 2 }}>{EBA_EGUSI_PLATES} plates</div>
+
+        <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+          {result.lines.map((l) => (
+            <div key={l.ingredient_id} style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+              <span style={{ color: C.text }}>
+                {l.quantity} {l.unit} {l.ingredient_name}
+              </span>
+              <span style={{ color: C.navy, fontWeight: 600 }}>{formatNaira(l.line_cost_kobo)}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 16, paddingTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.muted }}>
+            <span>Cost per plate</span>
+            <span style={{ color: C.navy, fontWeight: 700 }}>{formatNaira(result.cost_per_plate_kobo)}</span>
+          </div>
+        </div>
+
+        <label
+          htmlFor="margin"
+          style={{ display: "block", fontSize: 14, fontWeight: 600, color: C.text, marginTop: 20 }}
+        >
+          Target margin: {margin}%
+        </label>
+        <input
+          id="margin"
+          className="np-slider"
+          type="range"
+          min={0}
+          max={90}
+          step={1}
+          value={margin}
+          onChange={(e) => setMargin(Number(e.target.value))}
+          style={{ width: "100%", marginTop: 10, background: `linear-gradient(to right, ${C.blue} ${(margin / 90) * 100}%, ${C.border} ${(margin / 90) * 100}%)` }}
+        />
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.muted }}>Suggested selling price</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: C.navy }}>
+            {formatNaira(result.suggested_price_kobo)}
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+const TRIAL_POINTS = [
+  "14 days free, full access, every feature.",
+  "We help you set up your top 5 dishes and market-unit conversions so you're not starting from a blank screen.",
+  "Daily WhatsApp summaries of your sales and profit during the trial, so you see the value before you're asked to pay.",
+];
+
+function TrialOffer() {
+  return (
+    <Section bg={C.navy}>
+      <Heading onNavy>14 Days Free, With a Real Person Setting It Up For You.</Heading>
+      <div style={{ display: "grid", gap: 12, marginTop: 24, maxWidth: 720 }}>
+        {TRIAL_POINTS.map((t) => (
+          <div key={t} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <Check size={22} color={C.success} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span style={{ color: C.onNavy, fontSize: 16, lineHeight: 1.6 }}>{t}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 32 }}>
+        <PrimaryLink to="/signup">Start Your Free Trial</PrimaryLink>
+      </div>
+    </Section>
+  );
+}
+
+function WhatsAppSection() {
+  return (
+    <Section bg={C.light}>
+      <div style={{ textAlign: "center" }}>
+        <WhatsAppButton large />
+      </div>
+    </Section>
   );
 }
