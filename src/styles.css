@@ -65,6 +65,14 @@
   --color-brand-blue: var(--brand-blue);
   --color-brand-inverse: var(--brand-inverse);
   --color-home-surface: var(--home-surface);
+  --color-pres-navy: var(--pres-navy);
+  --color-pres-navy-deep: var(--pres-navy-deep);
+  --color-pres-navy-soft: var(--pres-navy-soft);
+  --color-pres-blue: var(--pres-blue);
+  --color-pres-blue-deep: var(--pres-blue-deep);
+  --color-pres-slate: var(--pres-slate);
+  --color-pres-alert: var(--pres-alert);
+  --color-pres-surface: var(--pres-surface);
   --shadow-auth: 0 24px 60px color-mix(in oklab, var(--brand-navy) 35%, transparent);
 }
 
