@@ -30,7 +30,7 @@ export function Card({ className, children }: { className?: string; children: Re
   return (
     <div
       className={cn(
-        "rounded-2xl border border-slate-200 bg-pres-surface shadow-[0_24px_60px_rgba(2,12,30,0.35)]",
+        "rounded-2xl border border-slate-200 bg-pres-surface text-pres-slate shadow-[0_24px_60px_rgba(2,12,30,0.35)]",
         className,
       )}
     >
