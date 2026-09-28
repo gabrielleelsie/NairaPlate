@@ -70,7 +70,7 @@ function Badge({ status }: { status: string }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? "bg-slate-200 text-slate-700"}`}>{STATUS_WORD[status] ?? status}</span>;
 }
 
-type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "security";
+type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "security";
 
 type Watch = { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] };
 type Health = {
@@ -108,23 +108,19 @@ function PlatformConsole() {
   const [focus, setFocus] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [auditBiz, setAuditBiz] = useState<string>("");
+  const [unhandled, setUnhandled] = useState(0);
 
   const load = useCallback(async () => {
     setErr(null);
-    const { status, data } = await callApi({ action: "list_businesses" });
+    const [{ status, data }, m] = await Promise.all([
+      callApi({ action: "list_businesses" }),
+      callApi({ action: "list_messages", handled: false }),
+    ]);
+    if (m.status === 200) setUnhandled(Number(m.data["unhandled"] ?? 0));
     if (status !== 200) return setErr(String(data["error"] ?? "Could not load businesses."));
     setAll((data["businesses"] ?? []) as Biz[]);
   }, []);
-
-  const openDetail = useCallback(async (business_id: string) => {
-    setDetail(null); setTab("diagnostics"); setMsg(null); setErr(null);
-    if (!business_id) return setFocus(null); // "back to all businesses"
-    setFocus(business_id);
-    const { status, data } = await callApi({ action: "business_detail", business_id });
-    if (status !== 200) return setErr(String(data["error"] ?? "Could not load that business."));
-    setDetail(data as unknown as Detail);
-  }, []);
-
+...
   useEffect(() => { if (session?.role === "platform_admin") load(); }, [session, load]);
 
   async function act(body: Record<string, unknown>, okText: (d: Record<string, unknown>) => string) {
@@ -158,6 +154,7 @@ function PlatformConsole() {
     { key: "directory", label: "Businesses", count: all.length },
     { key: "diagnostics", label: "Troubleshoot", count: lockedTotal },
     { key: "audit", label: "Audit trail" },
+    { key: "messages", label: "Messages", count: unhandled },
     { key: "security", label: "My account" },
   ];
 
@@ -199,6 +196,7 @@ function PlatformConsole() {
           <Diagnostics all={all} focus={focus} detail={detail} busy={busy} act={act} onPick={openDetail} />
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
+        {tab === "messages" && <Messages onCount={setUnhandled} />}
         {tab === "security" && <MyAccount />}
       </div>
     </main>
@@ -742,6 +740,77 @@ function AuditInspector({ businesses, initialBusiness }: { businesses: Biz[]; in
           <Button variant="outline" size="sm" disabled={busy || offset === 0} onClick={() => load(Math.max(0, offset - LIMIT))}>Newer</Button>
           <Button variant="outline" size="sm" disabled={busy || offset + LIMIT >= total} onClick={() => load(offset + LIMIT)}>Older</Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Website contact messages. Saved before any email is tried, so no lead is lost.
+// ---------------------------------------------------------------------------
+type ContactMsg = {
+  id: string; name: string; business_name: string | null; contact: string; message: string;
+  created_at: string; handled: boolean; handled_at: string | null;
+};
+
+function Messages({ onCount }: { onCount: (n: number) => void }) {
+  const [view, setView] = useState<"unhandled" | "handled">("unhandled");
+  const [rows, setRows] = useState<ContactMsg[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setBusy(true); setErr(null);
+    const { status, data } = await callApi({ action: "list_messages", handled: view === "handled" });
+    setBusy(false);
+    if (status !== 200) return setErr(String(data["error"] ?? "Could not load messages."));
+    setRows((data["messages"] ?? []) as ContactMsg[]);
+    onCount(Number(data["unhandled"] ?? 0));
+  }, [view, onCount]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function markHandled(id: string) {
+    setBusy(true); setErr(null);
+    const { status, data } = await callApi({ action: "mark_message_handled", message_id: id });
+    setBusy(false);
+    if (status !== 200) return setErr(String(data["error"] ?? "Could not update the message."));
+    await load();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {(["unhandled", "handled"] as const).map((v) => (
+          <Button key={v} size="sm" variant={view === v ? "default" : "outline"} onClick={() => setView(v)}
+            className={view === v ? "bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" : ""}>
+            {v === "unhandled" ? "Unhandled" : "Handled"}
+          </Button>
+        ))}
+      </div>
+      {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-destructive">{err}</p>}
+      {busy && rows.length === 0 ? <p className="text-sm text-muted-foreground">Loading…</p> : rows.length === 0 ? (
+        <p className="text-muted-foreground">{view === "unhandled" ? "No messages waiting." : "No handled messages yet."}</p>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((m) => (
+            <li key={m.id} className="space-y-2 rounded-xl border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-card-foreground">{m.name}</span>
+                {m.business_name && <span className="text-sm text-muted-foreground">({m.business_name})</span>}
+                <span className="text-xs text-muted-foreground">{fmt(m.created_at)}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">{m.contact}</div>
+              <p className="whitespace-pre-wrap text-sm text-card-foreground">{m.message}</p>
+              {m.handled ? (
+                <div className="text-xs text-muted-foreground">Handled {m.handled_at ? fmt(m.handled_at) : ""}</div>
+              ) : (
+                <Button size="sm" disabled={busy} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90"
+                  onClick={() => markHandled(m.id)}>Mark handled</Button>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
