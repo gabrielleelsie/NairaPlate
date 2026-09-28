@@ -312,6 +312,56 @@ function Features() {
   );
 }
 
+function DemoVideos() {
+  const videos = [
+    {
+      src: walkthroughAsset.url,
+      title: "NairaPlate in action",
+      caption:
+        "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
+    },
+    {
+      src: adminDemoAsset.url,
+      title: "Multi-tenant platform control",
+      caption:
+        "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
+    },
+  ];
+  return (
+    <Section bg={C.white} id="demo">
+      <Heading>See NairaPlate working</Heading>
+      <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "16px 0 0", maxWidth: 640 }}>
+        Watch the real product — no slides, no mockups. These are recordings of the actual app
+        running a real kitchen.
+      </p>
+      <div
+        className="np-video-grid"
+        style={{ display: "grid", gap: 32, gridTemplateColumns: "1fr 1fr", marginTop: 40 }}
+      >
+        {videos.map((v) => (
+          <figure key={v.src} style={{ margin: 0 }}>
+            <div style={{ ...cardStyle, overflow: "hidden", padding: 0 }}>
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                src={v.src}
+                style={{ display: "block", width: "100%", aspectRatio: "16 / 9", background: C.navy }}
+              />
+            </div>
+            <figcaption style={{ marginTop: 16 }}>
+              <div style={{ color: C.navy, fontSize: 18, fontWeight: 700 }}>{v.title}</div>
+              <p style={{ color: C.muted, fontSize: 15, lineHeight: 1.6, margin: "6px 0 0" }}>
+                {v.caption}
+              </p>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 function LiveCalculator() {
   const [margin, setMargin] = useState(35);
   const [touched, setTouched] = useState(false);
