@@ -466,7 +466,8 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             money: ["drawer_discrepancy", "order_adjusted", "order_voided", "order_refunded", "payout_logged", "price_decided", "purchase_logged"],
             recipes: ["cost_changed", "recipe_version_saved", "price_published", "batch_logged", "wastage_logged"],
             platform_ops: ["platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked",
-              "business_approved", "business_rejected", "business_suspended", "business_reactivated"],
+              "business_approved", "business_rejected", "business_suspended", "business_reactivated",
+              "email_undelivered", "security_alert_undelivered"],
           };
 
           const limit = body.limit ?? 50;
