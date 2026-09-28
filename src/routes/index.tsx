@@ -607,7 +607,7 @@ function LiveCalculator() {
             </div>
             <p style={{ fontSize: 14, color: C.muted, margin: 0, lineHeight: 1.5 }}>
               Keep selling at {formatNaira(result.suggested_price_kobo)} and you quietly lose{" "}
-              {formatNaira(spiked.suggested_price_kobo - result.suggested_price_kobo)} of margin on every plate. In
+              {formatNaira((spiked.suggested_price_kobo ?? 0) - (result.suggested_price_kobo ?? 0))} of margin on every plate. In
               the app, the Margin Alarm flags this the moment you log the new garri price.
             </p>
           </div>
