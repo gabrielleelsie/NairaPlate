@@ -187,6 +187,7 @@ function Hero() {
 function InstallGuide() {
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
   const [deferred, setDeferred] = useState<{ prompt: () => void } | null>(null);
+  const [showManualSteps, setShowManualSteps] = useState(false);
 
   useEffect(() => {
     const ua = navigator.userAgent;
@@ -201,6 +202,15 @@ function InstallGuide() {
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
+
+  const onInstallClick = () => {
+    if (deferred) {
+      deferred.prompt();
+    } else {
+      // Browser hasn't offered an install prompt (or already installed) — show manual steps.
+      setShowManualSteps(true);
+    }
+  };
 
   return (
     <Section bg={C.light} id="download">
