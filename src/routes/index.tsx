@@ -2,13 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
 
-import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
-import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
-import calcDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
-import calcPosterAsset from "@/assets/nairaplate-price-calculator-poster.jpg.asset.json";
-import walkPosterAsset from "@/assets/nairaplate-walkthrough-poster.jpg.asset.json";
-import adminPosterAsset from "@/assets/nairaplate-admin-poster.jpg.asset.json";
-
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
   DEMO_CONVERSIONS,
@@ -53,11 +46,6 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX = 1140;
-const MEDIA_ORIGIN = "https://id-preview--bbbf4c9a-1779-4134-b130-41f2d8e91702.lovable.app";
-
-function mediaUrl(path: string) {
-  return `${MEDIA_ORIGIN}${path}`;
-}
 
 function Section({
   bg,
@@ -380,23 +368,23 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
-      src: mediaUrl(calcDemoAsset.url),
-      poster: mediaUrl(calcPosterAsset.url),
+      src: "/media/nairaplate-price-calculator-demo.mp4",
+      poster: "/media/nairaplate-price-calculator-poster.jpg",
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
       featured: true,
     },
     {
-      src: mediaUrl(walkthroughAsset.url),
-      poster: mediaUrl(walkPosterAsset.url),
+      src: "/media/nairaplate-walkthrough.mp4",
+      poster: "/media/nairaplate-walkthrough-poster.jpg",
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
-      src: mediaUrl(adminDemoAsset.url),
-      poster: mediaUrl(adminPosterAsset.url),
+      src: "/media/nairaplate-admin-demo.mp4",
+      poster: "/media/nairaplate-admin-poster.jpg",
       title: "Multi-tenant platform control",
       caption:
         "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
