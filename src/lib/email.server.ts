@@ -21,10 +21,16 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+/** Reason wording is fixed, so audit rows can be searched consistently. Never contains keys or bodies. */
+export const NO_ADMIN_EMAIL_REASON = "no platform administrator has an email address";
+
 async function send(to: string, subject: string, html: string): Promise<SendResult> {
   const apiKey = process.env["RESEND_DIRECT_API_KEY"];
   const from = process.env["EMAIL_FROM"];
-  if (!apiKey || !from) return { sent: false, reason: "email not configured" };
+  if (!apiKey || !from) {
+    const missing = [!apiKey ? "RESEND_DIRECT_API_KEY" : "", !from ? "EMAIL_FROM" : ""].filter(Boolean).join(", ");
+    return { sent: false, reason: `email not configured, missing: ${missing}` };
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -35,19 +41,43 @@ async function send(to: string, subject: string, html: string): Promise<SendResu
       signal: controller.signal,
     });
     if (!res.ok) {
-      const body = (await res.text()).slice(0, 300);
-      console.error(`resend send failed [${res.status}]: ${body}`);
-      return { sent: false, reason: `provider error ${res.status}` };
+      const raw = (await res.text()).slice(0, 300);
+      let msg = raw;
+      try {
+        const parsed = JSON.parse(raw) as { message?: string; error?: string };
+        msg = parsed.message ?? parsed.error ?? raw;
+      } catch { /* keep the raw text */ }
+      console.error(`resend send failed [${res.status}]`);
+      return { sent: false, reason: `Resend rejected the request: ${res.status} ${msg}`.trim() };
     }
     const data = (await res.json().catch(() => ({}))) as { id?: string };
     return data.id ? { sent: true, id: data.id } : { sent: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     console.error(aborted ? "resend send timed out" : "resend send failed: network error");
-    return { sent: false, reason: aborted ? "timeout" : "network error" };
+    return { sent: false, reason: "email request failed or timed out" };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Writes one audit row per undelivered email, so a skip or failure is never invisible.
+ * Never records the API key, the email body, a recipient's message text or any PIN.
+ * Platform-wide emails use the same "platform" business_id that security alerts use.
+ */
+export async function logEmailUndelivered(
+  admin: SupabaseClient,
+  opts: { businessId: string; kind: string; subjectOf: string; reason: string; actorId?: string | null },
+): Promise<void> {
+  await writeAudit(admin, {
+    business_id: opts.businessId,
+    actor_id: opts.actorId ?? null,
+    actor_role: "platform_admin",
+    action: "email_undelivered",
+    entity_type: "email",
+    details: `${opts.kind} — ${opts.subjectOf} — ${opts.reason}`,
+  });
 }
 
 function shell(title: string, lines: string[], tone: "alert" | "info") {
