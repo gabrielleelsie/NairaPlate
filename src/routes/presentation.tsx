@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, LogOut, Maximize2, Minimize2, Pause, Play, RotateCcw,
@@ -99,7 +99,9 @@ function PresentationPage() {
       {/* ---------- header ---------- */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-pres-navy/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
-          <Logo size={30} variant="white" layout="inline" className="text-base" />
+          <Link to="/" aria-label="Back to NairaPlate home" className="transition-opacity hover:opacity-80">
+            <Logo size={30} variant="white" layout="inline" className="text-base" />
+          </Link>
 
           <div className="order-3 flex w-full items-center justify-center gap-1.5 sm:order-2 sm:w-auto sm:flex-1">
             <button
