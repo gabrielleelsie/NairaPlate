@@ -277,7 +277,9 @@ function InstallGuide() {
 
   return (
     <Section bg={C.light} id="download">
-      <Heading>Get NairaPlate on Your Phone.</Heading>
+      <Heading>
+        {platform === "desktop" ? "Get NairaPlate on Your Computer." : "Get NairaPlate on Your Phone."}
+      </Heading>
       <div style={{ ...cardStyle, maxWidth: 480, margin: "32px auto 0" }}>
         {platform === "android" && (
           <>
