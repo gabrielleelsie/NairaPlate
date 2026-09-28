@@ -120,7 +120,16 @@ function PlatformConsole() {
     if (status !== 200) return setErr(String(data["error"] ?? "Could not load businesses."));
     setAll((data["businesses"] ?? []) as Biz[]);
   }, []);
-...
+
+  const openDetail = useCallback(async (business_id: string) => {
+    setDetail(null); setTab("diagnostics"); setMsg(null); setErr(null);
+    if (!business_id) return setFocus(null); // "back to all businesses"
+    setFocus(business_id);
+    const { status, data } = await callApi({ action: "business_detail", business_id });
+    if (status !== 200) return setErr(String(data["error"] ?? "Could not load that business."));
+    setDetail(data as unknown as Detail);
+  }, []);
+
   useEffect(() => { if (session?.role === "platform_admin") load(); }, [session, load]);
 
   async function act(body: Record<string, unknown>, okText: (d: Record<string, unknown>) => string) {
