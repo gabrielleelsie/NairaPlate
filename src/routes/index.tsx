@@ -5,6 +5,9 @@ import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-
 import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
 import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
 import calcDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
+import calcPosterAsset from "@/assets/nairaplate-price-calculator-poster.jpg.asset.json";
+import walkPosterAsset from "@/assets/nairaplate-walkthrough-poster.jpg.asset.json";
+import adminPosterAsset from "@/assets/nairaplate-admin-poster.jpg.asset.json";
 
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
@@ -373,6 +376,7 @@ function DemoVideos() {
   const videos = [
     {
       src: calcDemoAsset.url,
+      poster: calcPosterAsset.url,
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
@@ -380,12 +384,14 @@ function DemoVideos() {
     },
     {
       src: walkthroughAsset.url,
+      poster: walkPosterAsset.url,
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
       src: adminDemoAsset.url,
+      poster: adminPosterAsset.url,
       title: "Multi-tenant platform control",
       caption:
         "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
@@ -414,6 +420,7 @@ function DemoVideos() {
                 playsInline
                 preload="metadata"
                 src={v.src}
+                poster={v.poster}
                 style={{ display: "block", width: "100%", aspectRatio: "16 / 9", background: C.navy }}
               />
             </div>
