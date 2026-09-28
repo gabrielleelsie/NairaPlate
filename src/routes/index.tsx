@@ -17,6 +17,7 @@ import {
   C,
   FloatingWhatsApp,
   OutlineLink,
+  PrimaryButton,
   PrimaryLink,
   SecondaryButton,
   SiteFooter,
@@ -191,30 +192,51 @@ function Hero() {
 
 function InstallGuide() {
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
-  const [deferred, setDeferred] = useState<{ prompt: () => void } | null>(null);
+  const [androidBrowser, setAndroidBrowser] = useState<"samsung" | "other">("other");
+  const [deferred, setDeferred] = useState<{
+    prompt: () => Promise<void>;
+    userChoice?: Promise<{ outcome: "accepted" | "dismissed" }>;
+  } | null>(null);
   const [showManualSteps, setShowManualSteps] = useState(false);
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    if (/Android/i.test(ua)) setPlatform("android");
+    if (/Android/i.test(ua)) {
+      setPlatform("android");
+      if (/SamsungBrowser/i.test(ua)) setAndroidBrowser("samsung");
+    }
     else if (/iPad|iPhone|iPod/.test(ua)) setPlatform("ios");
     else setPlatform("desktop");
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferred(e as unknown as { prompt: () => void });
+      setDeferred(
+        e as unknown as {
+          prompt: () => Promise<void>;
+          userChoice?: Promise<{ outcome: "accepted" | "dismissed" }>;
+        },
+      );
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
 
-  const onInstallClick = () => {
-    if (deferred) {
-      deferred.prompt();
-    } else {
-      // Browser hasn't offered an install prompt (or already installed) — show manual steps.
-      setShowManualSteps(true);
+  const onInstallClick = async () => {
+    // Always reveal instructions first. Some mobile browsers do not support
+    // a one-tap prompt, and install prompts are unavailable inside previews.
+    setShowManualSteps(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById("android-install-steps")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    if (!deferred) return;
+
+    await deferred.prompt();
+    const choice = await deferred.userChoice;
+    if (choice?.outcome === "accepted") {
+      setShowManualSteps(false);
     }
+    setDeferred(null);
   };
 
   return (
@@ -226,24 +248,19 @@ function InstallGuide() {
             <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
               Install NairaPlate to your home screen.
             </p>
-            <button
-              className="np-primary-btn"
+            <PrimaryButton
+              type="button"
               onClick={onInstallClick}
-              style={{
-                background: C.blue,
-                color: C.white,
-                borderRadius: 8,
-                padding: "14px 28px",
-                border: "none",
-                fontSize: 16,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              aria-expanded={showManualSteps}
+              aria-controls="android-install-steps"
             >
-              Install App
-            </button>
+              {deferred ? "Install App" : "Show Install Steps"}
+            </PrimaryButton>
             {showManualSteps && (
               <div
+                id="android-install-steps"
+                role="status"
+                aria-live="polite"
                 style={{
                   marginTop: 20,
                   padding: 16,
@@ -255,16 +272,29 @@ function InstallGuide() {
                 }}
               >
                 <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
-                  Your browser didn't offer a one-tap install — do it manually:
+                  Install NairaPlate from your browser menu:
                 </p>
+                {androidBrowser === "samsung" ? (
+                  <>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      1. Tap the <strong>☰ menu</strong> at the bottom-right of Samsung Internet
+                    </p>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      2. Tap <strong>Add page to</strong>, then <strong>Home screen</strong>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      1. Tap the <strong>⋮ browser menu</strong>
+                    </p>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
+                    </p>
+                  </>
+                )}
                 <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                  1. Tap the <strong>⋮ menu</strong> (top-right of your browser)
-                </p>
-                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                  2. Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>
-                </p>
-                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                  3. Tap <strong>Add</strong> — the NairaPlate icon appears on your home screen
+                  3. Confirm <strong>Install</strong> or <strong>Add</strong>. The NairaPlate icon will appear on your phone.
                 </p>
               </div>
             )}
