@@ -229,3 +229,4 @@
   .np-show-sm { display: inline-flex; }
   .np-header-nav .np-primary-btn { padding: 10px 12px !important; }
 }
+@media (max-width: 767px) { .np-video-grid { grid-template-columns: 1fr !important; } }
