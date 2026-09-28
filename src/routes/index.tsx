@@ -350,7 +350,7 @@ function InstallGuide() {
           >
             <div style={{ fontSize: 17, fontWeight: 700, color: C.navy }}>Reading this on a computer?</div>
             <div style={{ padding: 12, border: `1px solid ${C.border}`, borderRadius: 8, background: C.white }}>
-              <QRCodeSVG value={SITE_URL} size={176} bgColor={C.white} fgColor={C.navy} level="M" />
+              <QrCode />
             </div>
             <p style={{ fontSize: 14, color: C.muted, margin: 0, lineHeight: 1.5 }}>
               Scan this with your phone camera to open NairaPlate, then follow the steps here to add it to your
