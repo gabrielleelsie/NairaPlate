@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
 
+import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
+import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
+
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
   DEMO_CONVERSIONS,
