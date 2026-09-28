@@ -46,6 +46,7 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX = 1140;
+const MEDIA_PATH = "/api/public/media";
 
 function Section({
   bg,
@@ -368,26 +369,26 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
-      webm: "/media/nairaplate-price-calculator-demo.webm",
-      mp4: "/media/nairaplate-price-calculator-demo.mp4",
-      poster: "/media/nairaplate-price-calculator-poster.jpg",
+      webm: `${MEDIA_PATH}/nairaplate-price-calculator-demo.webm`,
+      mp4: `${MEDIA_PATH}/nairaplate-price-calculator-demo.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-price-calculator-poster.jpg`,
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
       featured: true,
     },
     {
-      webm: "/media/nairaplate-walkthrough.webm",
-      mp4: "/media/nairaplate-walkthrough.mp4",
-      poster: "/media/nairaplate-walkthrough-poster.jpg",
+      webm: `${MEDIA_PATH}/nairaplate-walkthrough.webm`,
+      mp4: `${MEDIA_PATH}/nairaplate-walkthrough.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-walkthrough-poster.jpg`,
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
-      webm: "/media/nairaplate-admin-demo.webm",
-      mp4: "/media/nairaplate-admin-demo.mp4",
-      poster: "/media/nairaplate-admin-poster.jpg",
+      webm: `${MEDIA_PATH}/nairaplate-admin-demo.webm`,
+      mp4: `${MEDIA_PATH}/nairaplate-admin-demo.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-admin-poster.jpg`,
       title: "Multi-tenant platform control",
       caption:
         "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
