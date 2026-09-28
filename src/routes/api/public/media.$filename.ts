@@ -22,9 +22,11 @@ async function serveMedia(request: Request, filename: string, headOnly = false) 
   if (!media) return new Response("Not found", { status: 404 });
 
   const range = request.headers.get("range");
+  const requestHeaders = new Headers();
+  if (range) requestHeaders.set("Range", range);
   const upstream = await fetch(`${MEDIA_ORIGIN}${media.path}`, {
     method: headOnly ? "HEAD" : "GET",
-    headers: range ? { Range: range } : undefined,
+    headers: requestHeaders,
   });
   if (!upstream.ok && upstream.status !== 206) {
     return new Response("Media unavailable", { status: 502 });
