@@ -277,7 +277,9 @@ function InstallGuide() {
 
   return (
     <Section bg={C.light} id="download">
-      <Heading>Get NairaPlate on Your Phone.</Heading>
+      <Heading>
+        {platform === "desktop" ? "Get NairaPlate on Your Computer." : "Get NairaPlate on Your Phone."}
+      </Heading>
       <div style={{ ...cardStyle, maxWidth: 480, margin: "32px auto 0" }}>
         {platform === "android" && (
           <>
@@ -351,9 +353,39 @@ function InstallGuide() {
         {platform === "desktop" && (
           <>
             <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
-              Use NairaPlate as a web app on this computer.
+              Add NairaPlate to your computer so your counter staff can open it like an app:
             </p>
-            <PrimaryLink to="/app">Open Kitchen POS Web Station</PrimaryLink>
+            <ol
+              style={{
+                margin: "0 0 20px",
+                paddingLeft: 20,
+                textAlign: "left",
+                display: "grid",
+                gap: 10,
+                fontSize: 14,
+                color: C.text,
+                lineHeight: 1.5,
+              }}
+            >
+              <li>
+                In <strong>Chrome</strong> or <strong>Edge</strong>, click the <strong>install icon</strong> in the
+                address bar (a small screen with a down arrow), then click <strong>Install</strong>.
+              </li>
+              <li>
+                No icon? Open the browser <strong>⋮ menu</strong> and choose <strong>Install NairaPlate</strong> or{" "}
+                <strong>Apps → Install this site as an app</strong>.
+              </li>
+              <li>
+                NairaPlate now opens in its own window from your desktop or taskbar — like any other app.
+              </li>
+            </ol>
+            <PrimaryLink to="/signup">Start Free Trial</PrimaryLink>
+            <p style={{ fontSize: 14, color: C.muted, marginTop: 16, marginBottom: 0 }}>
+              Already have a kitchen account?{" "}
+              <Link to="/app" style={{ color: C.blue, fontWeight: 600, textDecoration: "underline" }}>
+                Sign in to your station →
+              </Link>
+            </p>
           </>
         )}
       </div>
