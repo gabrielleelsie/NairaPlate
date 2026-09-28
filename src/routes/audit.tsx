@@ -38,6 +38,8 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   business_created: "Business signed up",
   business_approved: "Business approved",
   business_rejected: "Business rejected",
+  email_undelivered: "Email not delivered",
+  contact_message_handled: "Contact message handled",
 };
 
 type Row = { id: string; actor_id: string | null; actor_role: string | null; action: string; details: string | null; created_at: string };

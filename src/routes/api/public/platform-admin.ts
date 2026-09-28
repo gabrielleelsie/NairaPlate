@@ -15,7 +15,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
-import { sendSecurityAlert, sendOwnerStatusEmail } from "@/lib/email.server";
+import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered } from "@/lib/email.server";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -35,6 +35,8 @@ const ActionSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("unlock_staff"), business_id: z.string().trim().min(1).max(100), staff_id: z.string().uuid() }),
   z.object({ action: z.literal("platform_health") }),
+  z.object({ action: z.literal("list_messages"), handled: z.boolean() }),
+  z.object({ action: z.literal("mark_message_handled"), message_id: z.string().uuid() }),
   z.object({
     action: z.literal("audit_query"),
     business_id: z.string().trim().max(100).optional(),
@@ -230,9 +232,52 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: owner } = await admin.from("staff_users")
             .select("email").eq("business_id", body.business_id).eq("role", "owner")
             .not("email", "is", null).limit(1).maybeSingle();
-          if (owner?.email) await sendOwnerStatusEmail(owner.email, before.name, body.status, body.reason ?? null);
+          if (owner?.email) {
+            const r = await sendOwnerStatusEmail(owner.email, before.name, body.status, body.reason ?? null);
+            if (!r.sent) {
+              await logEmailUndelivered(admin, {
+                businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+                subjectOf: `${before.name} (${body.status})`, reason: r.reason ?? "email request failed or timed out",
+              });
+            }
+          } else {
+            await logEmailUndelivered(admin, {
+              businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+              subjectOf: `${before.name} (${body.status})`, reason: "the owner has no email address on file",
+            });
+          }
 
           return json({ ok: true, status: body.status, was: before.status });
+        }
+
+        // ---------- list_messages: website contact messages (tier 1, read-only) ----------
+        if (body.action === "list_messages") {
+          const [{ data, error }, { count }] = await Promise.all([
+            admin.from("contact_messages")
+              .select("id, name, business_name, contact, message, created_at, handled, handled_at")
+              .eq("handled", body.handled).order("created_at", { ascending: false }).limit(200),
+            admin.from("contact_messages").select("id", { count: "exact", head: true }).eq("handled", false),
+          ]);
+          if (error) return json({ error: "Could not load messages." }, 500);
+          return json({ messages: data ?? [], unhandled: count ?? 0 });
+        }
+
+        // ---------- mark_message_handled (tier 1). Audit records the sender's name only. ----------
+        if (body.action === "mark_message_handled") {
+          const { data: m } = await admin.from("contact_messages")
+            .select("id, name, handled").eq("id", body.message_id).maybeSingle();
+          if (!m) return json({ error: "Message not found." }, 404);
+          if (m.handled) return json({ ok: true });
+          const { error } = await admin.from("contact_messages")
+            .update({ handled: true, handled_by: adminId, handled_at: new Date().toISOString() })
+            .eq("id", m.id);
+          if (error) return json({ error: "Could not update the message." }, 500);
+          await writeAudit(admin, {
+            business_id: PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin",
+            action: "contact_message_handled", entity_type: "contact_messages", entity_id: m.id,
+            details: `${adminName} marked the message from ${m.name} as handled`,
+          });
+          return json({ ok: true });
         }
 
         // ---------- unlock_staff: clear a PIN lockout (tier 1, low risk) ----------
@@ -286,7 +331,20 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: owner } = await admin.from("staff_users")
             .select("email").eq("business_id", body.business_id).eq("role", "owner")
             .not("email", "is", null).limit(1).maybeSingle();
-          if (owner?.email) await sendOwnerStatusEmail(owner.email, before.name, "suspended", body.reason);
+          if (owner?.email) {
+            const r = await sendOwnerStatusEmail(owner.email, before.name, "suspended", body.reason);
+            if (!r.sent) {
+              await logEmailUndelivered(admin, {
+                businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+                subjectOf: `${before.name} (suspended)`, reason: r.reason ?? "email request failed or timed out",
+              });
+            }
+          } else {
+            await logEmailUndelivered(admin, {
+              businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+              subjectOf: `${before.name} (suspended)`, reason: "the owner has no email address on file",
+            });
+          }
 
           return json({ ok: true });
         }
@@ -440,7 +498,8 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             money: ["drawer_discrepancy", "order_adjusted", "order_voided", "order_refunded", "payout_logged", "price_decided", "purchase_logged"],
             recipes: ["cost_changed", "recipe_version_saved", "price_published", "batch_logged", "wastage_logged"],
             platform_ops: ["platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked",
-              "business_approved", "business_rejected", "business_suspended", "business_reactivated"],
+              "business_approved", "business_rejected", "business_suspended", "business_reactivated",
+              "email_undelivered", "security_alert_undelivered", "contact_message_handled"],
           };
 
           const limit = body.limit ?? 50;

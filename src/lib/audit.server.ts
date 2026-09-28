@@ -12,8 +12,9 @@ export type AuditEntry = {
     | "drawer_discrepancy"
     // Platform admin support actions. Every one names the individual admin in actor_id.
     | "platform_unlock_staff" | "emergency_owner_pin_reset"
-    | "emergency_reset_blocked" | "security_alert_undelivered"
-    | "business_approved" | "business_rejected" | "business_suspended" | "business_reactivated";
+    | "emergency_reset_blocked" | "security_alert_undelivered" | "email_undelivered"
+    | "business_approved" | "business_rejected" | "business_suspended" | "business_reactivated"
+    | "contact_message_handled";
   entity_type?: string | null;
   entity_id?: string | null;
   details?: string | null;

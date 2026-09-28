@@ -4,7 +4,7 @@
 // The PIN is hashed here (same scheme as create_staff); the hash never reaches the browser.
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { sendSignupAlert } from "@/lib/email.server";
+import { sendSignupAlert, logEmailUndelivered, NO_ADMIN_EMAIL_REASON } from "@/lib/email.server";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -74,13 +74,26 @@ export const Route = createFileRoute("/api/public/business-signup")({
         }
 
         // Tell the platform admins a kitchen is waiting. Never blocks the signup.
+        // Every skip or failure is written to the audit trail so it is never invisible.
         let email_sent = false;
         const { data: admins } = await admin.from("staff_users")
           .select("email").eq("role", "platform_admin").eq("is_active", true).not("email", "is", null);
-        for (const a of admins ?? []) {
-          if (!a.email) continue;
-          const r = await sendSignupAlert(a.email, d.name, d.business_id, d.owner_name);
+        const recipients = (admins ?? []).map((a) => a.email).filter(Boolean) as string[];
+        if (recipients.length === 0) {
+          await logEmailUndelivered(admin, {
+            businessId: d.business_id, kind: "Signup alert",
+            subjectOf: `${d.name} (${d.business_id})`, reason: NO_ADMIN_EMAIL_REASON,
+          });
+        }
+        for (const email of recipients) {
+          const r = await sendSignupAlert(email, d.name, d.business_id, d.owner_name);
           email_sent = email_sent || r.sent;
+          if (!r.sent) {
+            await logEmailUndelivered(admin, {
+              businessId: d.business_id, kind: "Signup alert",
+              subjectOf: `${d.name} (${d.business_id})`, reason: r.reason ?? "email request failed or timed out",
+            });
+          }
         }
         return json({ ok: true, business_id: d.business_id, email_sent });
       },
