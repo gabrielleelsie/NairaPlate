@@ -4,6 +4,7 @@ import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-
 
 import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
 import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
+import calcDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
 
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
@@ -315,6 +316,13 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
+      src: calcDemoAsset.url,
+      title: "The price calculator",
+      caption:
+        "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
+      featured: true,
+    },
+    {
       src: walkthroughAsset.url,
       title: "NairaPlate in action",
       caption:
@@ -339,7 +347,11 @@ function DemoVideos() {
         style={{ display: "grid", gap: 32, gridTemplateColumns: "1fr 1fr", marginTop: 40 }}
       >
         {videos.map((v) => (
-          <figure key={v.src} style={{ margin: 0 }}>
+          <figure
+            key={v.src}
+            className={v.featured ? "np-video-featured" : undefined}
+            style={v.featured ? { gridColumn: "1 / -1", margin: 0 } : { margin: 0 }}
+          >
             <div style={{ ...cardStyle, overflow: "hidden", padding: 0 }}>
               <video
                 controls
@@ -349,9 +361,26 @@ function DemoVideos() {
                 style={{ display: "block", width: "100%", aspectRatio: "16 / 9", background: C.navy }}
               />
             </div>
-            <figcaption style={{ marginTop: 16 }}>
-              <div style={{ color: C.navy, fontSize: 18, fontWeight: 700 }}>{v.title}</div>
-              <p style={{ color: C.muted, fontSize: 15, lineHeight: 1.6, margin: "6px 0 0" }}>
+            <figcaption style={{ marginTop: 16, maxWidth: 640, marginInline: "auto" }}>
+              <div
+                style={{
+                  color: C.navy,
+                  fontSize: v.featured ? 20 : 18,
+                  fontWeight: 700,
+                  textAlign: v.featured ? "center" : "left",
+                }}
+              >
+                {v.title}
+              </div>
+              <p
+                style={{
+                  color: C.muted,
+                  fontSize: 15,
+                  lineHeight: 1.6,
+                  margin: "6px 0 0",
+                  textAlign: v.featured ? "center" : "left",
+                }}
+              >
                 {v.caption}
               </p>
             </figcaption>
