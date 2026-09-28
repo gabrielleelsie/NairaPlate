@@ -53,6 +53,11 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX = 1140;
+const MEDIA_ORIGIN = "https://id-preview--bbbf4c9a-1779-4134-b130-41f2d8e91702.lovable.app";
+
+function mediaUrl(path: string) {
+  return `${MEDIA_ORIGIN}${path}`;
+}
 
 function Section({
   bg,
@@ -375,23 +380,23 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
-      src: calcDemoAsset.url,
-      poster: calcPosterAsset.url,
+      src: mediaUrl(calcDemoAsset.url),
+      poster: mediaUrl(calcPosterAsset.url),
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
       featured: true,
     },
     {
-      src: walkthroughAsset.url,
-      poster: walkPosterAsset.url,
+      src: mediaUrl(walkthroughAsset.url),
+      poster: mediaUrl(walkPosterAsset.url),
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
-      src: adminDemoAsset.url,
-      poster: adminPosterAsset.url,
+      src: mediaUrl(adminDemoAsset.url),
+      poster: mediaUrl(adminPosterAsset.url),
       title: "Multi-tenant platform control",
       caption:
         "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
