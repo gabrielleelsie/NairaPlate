@@ -40,7 +40,7 @@ async function send(to: string, subject: string, html: string): Promise<SendResu
       return { sent: false, reason: `provider error ${res.status}` };
     }
     const data = (await res.json().catch(() => ({}))) as { id?: string };
-    return { sent: true, id: data.id };
+    return data.id ? { sent: true, id: data.id } : { sent: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     console.error(aborted ? "resend send timed out" : "resend send failed: network error");
