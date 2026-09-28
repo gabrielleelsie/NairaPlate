@@ -94,6 +94,7 @@ function MarketingPage() {
         <InstallGuide />
         <Features />
         <LiveCalculator />
+        <DemoVideos />
         <TrialOffer />
         <WhatsAppSection />
       </main>
