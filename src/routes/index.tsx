@@ -228,7 +228,7 @@ function InstallGuide() {
             </p>
             <button
               className="np-primary-btn"
-              onClick={() => deferred?.prompt()}
+              onClick={onInstallClick}
               style={{
                 background: C.blue,
                 color: C.white,
@@ -242,6 +242,32 @@ function InstallGuide() {
             >
               Install App
             </button>
+            {showManualSteps && (
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: 16,
+                  border: `1px solid ${C.blue}`,
+                  borderRadius: 8,
+                  textAlign: "left",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
+                  Your browser didn't offer a one-tap install — do it manually:
+                </p>
+                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                  1. Tap the <strong>⋮ menu</strong> (top-right of your browser)
+                </p>
+                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                  2. Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>
+                </p>
+                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                  3. Tap <strong>Add</strong> — the NairaPlate icon appears on your home screen
+                </p>
+              </div>
+            )}
           </>
         )}
         {platform === "ios" && (
