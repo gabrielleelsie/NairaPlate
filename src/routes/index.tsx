@@ -227,8 +227,11 @@ function Hero() {
   );
 }
 
+const SITE_URL = "https://nairaplate.com";
+
 function InstallGuide() {
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
+  const [tab, setTab] = useState<"android" | "ios">("android");
   const [androidBrowser, setAndroidBrowser] = useState<"samsung" | "other">("other");
   const [deferred, setDeferred] = useState<{
     prompt: () => Promise<void>;
@@ -240,10 +243,14 @@ function InstallGuide() {
     const ua = navigator.userAgent;
     if (/Android/i.test(ua)) {
       setPlatform("android");
+      setTab("android");
       if (/SamsungBrowser/i.test(ua)) setAndroidBrowser("samsung");
+    } else if (/iPad|iPhone|iPod/.test(ua)) {
+      setPlatform("ios");
+      setTab("ios");
+    } else {
+      setPlatform("desktop");
     }
-    else if (/iPad|iPhone|iPod/.test(ua)) setPlatform("ios");
-    else setPlatform("desktop");
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -276,119 +283,137 @@ function InstallGuide() {
     setDeferred(null);
   };
 
+  const tabButtonStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: "12px 10px",
+    borderRadius: 8,
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: "pointer",
+    border: `2px solid ${C.blue}`,
+    background: active ? C.blue : "transparent",
+    color: active ? C.white : C.blue,
+  });
+
   return (
     <Section bg={C.light} id="download">
-      <Heading>
-        {platform === "desktop" ? "Get NairaPlate on Your Computer." : "Get NairaPlate on Your Phone."}
-      </Heading>
-      <div style={{ ...cardStyle, maxWidth: 480, margin: "32px auto 0" }}>
-        {platform === "android" && (
-          <>
-            <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
-              Install NairaPlate to your home screen.
+      <Heading>Install NairaPlate on Your Phone.</Heading>
+      <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "16px 0 0", maxWidth: 640 }}>
+        NairaPlate runs like any other app on Android and iPhone — tap the icon on your home screen and it opens
+        straight into your kitchen. No app store, no download size, no updates to wait for.
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 32, marginTop: 32, alignItems: "stretch" }}>
+        {platform === "desktop" && (
+          <div
+            style={{
+              ...cardStyle,
+              flex: "0 1 300px",
+              display: "grid",
+              justifyItems: "center",
+              alignContent: "start",
+              gap: 16,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.navy }}>Reading this on a computer?</div>
+            <div style={{ padding: 12, border: `1px solid ${C.border}`, borderRadius: 8, background: C.white }}>
+              <QRCodeSVG value={SITE_URL} size={176} bgColor={C.white} fgColor={C.navy} level="M" />
+            </div>
+            <p style={{ fontSize: 14, color: C.muted, margin: 0, lineHeight: 1.5 }}>
+              Scan this with your phone camera to open NairaPlate, then follow the steps here to add it to your
+              home screen.
             </p>
-            <PrimaryButton
-              type="button"
-              onClick={onInstallClick}
-              aria-expanded={showManualSteps}
-              aria-controls="android-install-steps"
-            >
-              {deferred ? "Install App" : "Show Install Steps"}
-            </PrimaryButton>
-            {showManualSteps && (
-              <div
-                id="android-install-steps"
-                role="status"
-                aria-live="polite"
-                style={{
-                  marginTop: 20,
-                  padding: 16,
-                  border: `1px solid ${C.blue}`,
-                  borderRadius: 8,
-                  textAlign: "left",
-                  display: "grid",
-                  gap: 10,
-                }}
-              >
-                <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
-                  Install NairaPlate from your browser menu:
-                </p>
-                {androidBrowser === "samsung" ? (
-                  <>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      1. Tap the <strong>☰ menu</strong> at the bottom-right of Samsung Internet
-                    </p>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      2. Tap <strong>Add page to</strong>, then <strong>Home screen</strong>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      1. Tap the <strong>⋮ browser menu</strong>
-                    </p>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
-                    </p>
-                  </>
-                )}
-                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                  3. Confirm <strong>Install</strong> or <strong>Add</strong>. The NairaPlate icon will appear on your phone.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-        {platform === "ios" && (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <Share size={32} color={C.blue} />
-              <span style={{ fontSize: 16, color: C.text }}>1. Tap the Share icon</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <Plus size={32} color={C.blue} />
-              <span style={{ fontSize: 16, color: C.text }}>2. Tap 'Add to Home Screen'</span>
-            </div>
           </div>
         )}
-        {platform === "desktop" && (
-          <>
-            <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
-              Add NairaPlate to your computer so your counter staff can open it like an app:
-            </p>
-            <ol
-              style={{
-                margin: "0 0 20px",
-                paddingLeft: 20,
-                textAlign: "left",
-                display: "grid",
-                gap: 10,
-                fontSize: 14,
-                color: C.text,
-                lineHeight: 1.5,
-              }}
-            >
-              <li>
-                In <strong>Chrome</strong> or <strong>Edge</strong>, click the <strong>install icon</strong> in the
-                address bar (a small screen with a down arrow), then click <strong>Install</strong>.
-              </li>
-              <li>
-                No icon? Open the browser <strong>⋮ menu</strong> and choose <strong>Install NairaPlate</strong> or{" "}
-                <strong>Apps → Install this site as an app</strong>.
-              </li>
-              <li>
-                NairaPlate now opens in its own window from your desktop or taskbar — like any other app.
-              </li>
-            </ol>
-            <PrimaryLink to="/signup">Start Free Trial</PrimaryLink>
-            <p style={{ fontSize: 14, color: C.muted, marginTop: 16, marginBottom: 0 }}>
-              Already have a kitchen account?{" "}
-              <Link to="/app" style={{ color: C.blue, fontWeight: 600, textDecoration: "underline" }}>
-                Sign in to your station →
-              </Link>
-            </p>
-          </>
-        )}
+
+        <div style={{ ...cardStyle, flex: "1 1 380px", minWidth: 300, maxWidth: 560 }}>
+          <div role="tablist" aria-label="Choose your phone type" style={{ display: "flex", gap: 8 }}>
+            <button type="button" role="tab" aria-selected={tab === "android"} onClick={() => setTab("android")} style={tabButtonStyle(tab === "android")}>
+              Android (Chrome &amp; Samsung)
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "ios"} onClick={() => setTab("ios")} style={tabButtonStyle(tab === "ios")}>
+              iPhone (Safari)
+            </button>
+          </div>
+
+          {tab === "android" && (
+            <div role="tabpanel" style={{ marginTop: 24 }}>
+              <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
+                Add NairaPlate to your Android home screen.
+              </p>
+              <PrimaryButton
+                type="button"
+                onClick={onInstallClick}
+                aria-expanded={showManualSteps}
+                aria-controls="android-install-steps"
+              >
+                {deferred ? "Install App" : "Show Install Steps"}
+              </PrimaryButton>
+              {showManualSteps && (
+                <div
+                  id="android-install-steps"
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginTop: 20,
+                    padding: 16,
+                    border: `1px solid ${C.blue}`,
+                    borderRadius: 8,
+                    textAlign: "left",
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
+                    Install NairaPlate from your browser menu:
+                  </p>
+                  {androidBrowser === "samsung" ? (
+                    <>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        1. Tap the <strong>☰ menu</strong> at the bottom-right of Samsung Internet
+                      </p>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        2. Tap <strong>Add page to</strong>, then <strong>Home screen</strong>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        1. Tap the <strong>⋮ browser menu</strong>
+                      </p>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
+                      </p>
+                    </>
+                  )}
+                  <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                    3. Confirm <strong>Install</strong> or <strong>Add</strong>. The NairaPlate icon will appear on your phone.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "ios" && (
+            <div role="tabpanel" style={{ marginTop: 24, display: "grid", gap: 16, textAlign: "left" }}>
+              <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, margin: 0 }}>
+                Add NairaPlate to your iPhone home screen using Safari:
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <Share size={32} color={C.blue} />
+                <span style={{ fontSize: 16, color: C.text }}>1. Open nairaplate.com in Safari and tap the <strong>Share</strong> icon (the square with an arrow)</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <Plus size={32} color={C.blue} />
+                <span style={{ fontSize: 16, color: C.text }}>2. Scroll down and tap <strong>'Add to Home Screen'</strong></span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <Check size={32} color={C.blue} />
+                <span style={{ fontSize: 16, color: C.text }}>3. Tap <strong>Add</strong> — the NairaPlate icon appears on your home screen</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   );
