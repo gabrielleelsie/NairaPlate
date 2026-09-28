@@ -1,38 +1,52 @@
-// Server-only email dispatch through the Resend connector gateway.
+// Server-only email dispatch, sent directly through the owner's Resend account (plain fetch, Worker-safe).
 // Never throws: a failed send must not roll back or block the action that triggered it.
 // When email is not configured, the full payload is written to the audit trail instead,
 // so a security alert is never silently lost.
+// Never logs the API key or email bodies.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-const FROM = "NairaPlate <onboarding@resend.dev>";
+const RESEND_URL = "https://api.resend.com/emails";
+const TIMEOUT_MS = 8000;
 
-export type SendResult = { sent: boolean; reason?: string };
+export type SendResult = { sent: boolean; reason?: string; id?: string };
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h1)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    .replace(/\n\s*\n+/g, "\n\n")
+    .trim();
+}
 
 async function send(to: string, subject: string, html: string): Promise<SendResult> {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const resendKey = process.env["RESEND_API_KEY"];
-  if (!lovableKey || !resendKey) return { sent: false, reason: "email not configured" };
+  const apiKey = process.env["RESEND_DIRECT_API_KEY"];
+  const from = process.env["EMAIL_FROM"];
+  if (!apiKey || !from) return { sent: false, reason: "email not configured" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${GATEWAY_URL}/emails`, {
+    const res = await fetch(RESEND_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": resendKey,
-      },
-      body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ from, to: [to], subject, html, text: htmlToText(html) }),
+      signal: controller.signal,
     });
     if (!res.ok) {
-      const body = await res.text();
+      const body = (await res.text()).slice(0, 300);
       console.error(`resend send failed [${res.status}]: ${body}`);
       return { sent: false, reason: `provider error ${res.status}` };
     }
-    return { sent: true };
+    const data = (await res.json().catch(() => ({}))) as { id?: string };
+    return data.id ? { sent: true, id: data.id } : { sent: true };
   } catch (err) {
-    console.error("resend send failed", err);
-    return { sent: false, reason: "network error" };
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.error(aborted ? "resend send timed out" : "resend send failed: network error");
+    return { sent: false, reason: aborted ? "timeout" : "network error" };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
