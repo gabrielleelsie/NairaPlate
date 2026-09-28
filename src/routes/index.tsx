@@ -2,12 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
 
-import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
-import adminPosterAsset from "@/assets/nairaplate-admin-poster.jpg.asset.json";
-import priceCalculatorDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
-import priceCalculatorPosterAsset from "@/assets/nairaplate-price-calculator-poster.jpg.asset.json";
-import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
-import walkthroughPosterAsset from "@/assets/nairaplate-walkthrough-poster.jpg.asset.json";
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
   DEMO_CONVERSIONS,
@@ -52,8 +46,7 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX = 1140;
-const MEDIA_ORIGIN = "https://id-preview--bbbf4c9a-1779-4134-b130-41f2d8e91702.lovable.app";
-const mediaUrl = (path: string) => `${MEDIA_ORIGIN}${path}`;
+const MEDIA_PATH = "/api/public/media";
 
 function Section({
   bg,
@@ -376,23 +369,23 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
-      mp4: mediaUrl(priceCalculatorDemoAsset.url),
-      poster: mediaUrl(priceCalculatorPosterAsset.url),
+      mp4: `${MEDIA_PATH}/nairaplate-price-calculator-demo.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-price-calculator-poster.jpg`,
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
       featured: true,
     },
     {
-      mp4: mediaUrl(walkthroughAsset.url),
-      poster: mediaUrl(walkthroughPosterAsset.url),
+      mp4: `${MEDIA_PATH}/nairaplate-walkthrough.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-walkthrough-poster.jpg`,
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
-      mp4: mediaUrl(adminDemoAsset.url),
-      poster: mediaUrl(adminPosterAsset.url),
+      mp4: `${MEDIA_PATH}/nairaplate-admin-demo.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-admin-poster.jpg`,
       title: "Multi-tenant platform control",
       caption:
         "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
