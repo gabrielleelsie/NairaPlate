@@ -2,6 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
 
+import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
+import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
+import calcDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
+
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
   DEMO_CONVERSIONS,
@@ -13,6 +17,7 @@ import {
   C,
   FloatingWhatsApp,
   OutlineLink,
+  PrimaryButton,
   PrimaryLink,
   SecondaryButton,
   SiteFooter,
@@ -94,6 +99,7 @@ function MarketingPage() {
         <InstallGuide />
         <Features />
         <LiveCalculator />
+        <DemoVideos />
         <TrialOffer />
         <WhatsAppSection />
       </main>
@@ -186,21 +192,52 @@ function Hero() {
 
 function InstallGuide() {
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
-  const [deferred, setDeferred] = useState<{ prompt: () => void } | null>(null);
+  const [androidBrowser, setAndroidBrowser] = useState<"samsung" | "other">("other");
+  const [deferred, setDeferred] = useState<{
+    prompt: () => Promise<void>;
+    userChoice?: Promise<{ outcome: "accepted" | "dismissed" }>;
+  } | null>(null);
+  const [showManualSteps, setShowManualSteps] = useState(false);
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    if (/Android/i.test(ua)) setPlatform("android");
+    if (/Android/i.test(ua)) {
+      setPlatform("android");
+      if (/SamsungBrowser/i.test(ua)) setAndroidBrowser("samsung");
+    }
     else if (/iPad|iPhone|iPod/.test(ua)) setPlatform("ios");
     else setPlatform("desktop");
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferred(e as unknown as { prompt: () => void });
+      setDeferred(
+        e as unknown as {
+          prompt: () => Promise<void>;
+          userChoice?: Promise<{ outcome: "accepted" | "dismissed" }>;
+        },
+      );
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
+
+  const onInstallClick = async () => {
+    // Always reveal instructions first. Some mobile browsers do not support
+    // a one-tap prompt, and install prompts are unavailable inside previews.
+    setShowManualSteps(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById("android-install-steps")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    if (!deferred) return;
+
+    await deferred.prompt();
+    const choice = await deferred.userChoice;
+    if (choice?.outcome === "accepted") {
+      setShowManualSteps(false);
+    }
+    setDeferred(null);
+  };
 
   return (
     <Section bg={C.light} id="download">
@@ -211,22 +248,56 @@ function InstallGuide() {
             <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
               Install NairaPlate to your home screen.
             </p>
-            <button
-              className="np-primary-btn"
-              onClick={() => deferred?.prompt()}
-              style={{
-                background: C.blue,
-                color: C.white,
-                borderRadius: 8,
-                padding: "14px 28px",
-                border: "none",
-                fontSize: 16,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+            <PrimaryButton
+              type="button"
+              onClick={onInstallClick}
+              aria-expanded={showManualSteps}
+              aria-controls="android-install-steps"
             >
-              Install App
-            </button>
+              {deferred ? "Install App" : "Show Install Steps"}
+            </PrimaryButton>
+            {showManualSteps && (
+              <div
+                id="android-install-steps"
+                role="status"
+                aria-live="polite"
+                style={{
+                  marginTop: 20,
+                  padding: 16,
+                  border: `1px solid ${C.blue}`,
+                  borderRadius: 8,
+                  textAlign: "left",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
+                  Install NairaPlate from your browser menu:
+                </p>
+                {androidBrowser === "samsung" ? (
+                  <>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      1. Tap the <strong>☰ menu</strong> at the bottom-right of Samsung Internet
+                    </p>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      2. Tap <strong>Add page to</strong>, then <strong>Home screen</strong>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      1. Tap the <strong>⋮ browser menu</strong>
+                    </p>
+                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
+                    </p>
+                  </>
+                )}
+                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                  3. Confirm <strong>Install</strong> or <strong>Add</strong>. The NairaPlate icon will appear on your phone.
+                </p>
+              </div>
+            )}
           </>
         )}
         {platform === "ios" && (
@@ -292,6 +363,84 @@ function Features() {
             <h3 style={{ fontSize: 18, fontWeight: 600, color: C.navy, margin: "12px 0 8px" }}>{f.title}</h3>
             <p style={{ fontSize: 15, fontWeight: 400, color: C.muted, lineHeight: 1.5, margin: 0 }}>{f.body}</p>
           </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function DemoVideos() {
+  const videos = [
+    {
+      src: calcDemoAsset.url,
+      title: "The price calculator",
+      caption:
+        "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
+      featured: true,
+    },
+    {
+      src: walkthroughAsset.url,
+      title: "NairaPlate in action",
+      caption:
+        "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
+    },
+    {
+      src: adminDemoAsset.url,
+      title: "Multi-tenant platform control",
+      caption:
+        "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
+    },
+  ];
+  return (
+    <Section bg={C.white} id="demo">
+      <Heading>See NairaPlate working</Heading>
+      <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "16px 0 0", maxWidth: 640 }}>
+        Watch the real product — no slides, no mockups. These are recordings of the actual app
+        running a real kitchen.
+      </p>
+      <div
+        className="np-video-grid"
+        style={{ display: "grid", gap: 32, gridTemplateColumns: "1fr 1fr", marginTop: 40 }}
+      >
+        {videos.map((v) => (
+          <figure
+            key={v.src}
+            className={v.featured ? "np-video-featured" : undefined}
+            style={v.featured ? { gridColumn: "1 / -1", margin: 0 } : { margin: 0 }}
+          >
+            <div style={{ ...cardStyle, overflow: "hidden", padding: 0 }}>
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                src={v.src}
+                style={{ display: "block", width: "100%", aspectRatio: "16 / 9", background: C.navy }}
+              />
+            </div>
+            <figcaption style={{ marginTop: 16, maxWidth: 640, marginInline: "auto" }}>
+              <div
+                style={{
+                  color: C.navy,
+                  fontSize: v.featured ? 20 : 18,
+                  fontWeight: 700,
+                  textAlign: v.featured ? "center" : "left",
+                }}
+              >
+                {v.title}
+              </div>
+              <p
+                style={{
+                  color: C.muted,
+                  fontSize: 15,
+                  lineHeight: 1.6,
+                  margin: "6px 0 0",
+                  textAlign: v.featured ? "center" : "left",
+                }}
+              >
+                {v.caption}
+              </p>
+            </figcaption>
+          </figure>
         ))}
       </div>
     </Section>
