@@ -369,6 +369,7 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
+      webm: `${MEDIA_PATH}/nairaplate-price-calculator-demo.webm`,
       mp4: `${MEDIA_PATH}/nairaplate-price-calculator-demo.mp4`,
       poster: `${MEDIA_PATH}/nairaplate-price-calculator-poster.jpg`,
       title: "The price calculator",
@@ -377,6 +378,7 @@ function DemoVideos() {
       featured: true,
     },
     {
+      webm: `${MEDIA_PATH}/nairaplate-walkthrough.webm`,
       mp4: `${MEDIA_PATH}/nairaplate-walkthrough.mp4`,
       poster: `${MEDIA_PATH}/nairaplate-walkthrough-poster.jpg`,
       title: "NairaPlate in action",
@@ -384,6 +386,7 @@ function DemoVideos() {
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
+      webm: `${MEDIA_PATH}/nairaplate-admin-demo.webm`,
       mp4: `${MEDIA_PATH}/nairaplate-admin-demo.mp4`,
       poster: `${MEDIA_PATH}/nairaplate-admin-poster.jpg`,
       title: "Multi-tenant platform control",
@@ -416,6 +419,7 @@ function DemoVideos() {
                 poster={v.poster}
                 style={{ display: "block", width: "100%", aspectRatio: "16 / 9", background: C.navy }}
               >
+                <source src={v.webm} type="video/webm" />
                 <source src={v.mp4} type="video/mp4" />
                 Your browser cannot play this video.
               </video>

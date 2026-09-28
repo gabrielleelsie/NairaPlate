@@ -1,19 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
+import adminDemoWebmAsset from "@/assets/nairaplate-admin-demo.webm.asset.json";
 import adminPosterAsset from "@/assets/nairaplate-admin-poster.jpg.asset.json";
 import priceCalculatorDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
+import priceCalculatorDemoWebmAsset from "@/assets/nairaplate-price-calculator-demo.webm.asset.json";
 import priceCalculatorPosterAsset from "@/assets/nairaplate-price-calculator-poster.jpg.asset.json";
 import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
+import walkthroughWebmAsset from "@/assets/nairaplate-walkthrough.webm.asset.json";
 import walkthroughPosterAsset from "@/assets/nairaplate-walkthrough-poster.jpg.asset.json";
 
 const MEDIA_ORIGIN = "https://id-preview--bbbf4c9a-1779-4134-b130-41f2d8e91702.lovable.app";
 const MEDIA: Record<string, { path: string; type: string }> = {
   "nairaplate-price-calculator-demo.mp4": { path: priceCalculatorDemoAsset.url, type: "video/mp4" },
+  "nairaplate-price-calculator-demo.webm": { path: priceCalculatorDemoWebmAsset.url, type: "video/webm" },
   "nairaplate-price-calculator-poster.jpg": { path: priceCalculatorPosterAsset.url, type: "image/jpeg" },
   "nairaplate-walkthrough.mp4": { path: walkthroughAsset.url, type: "video/mp4" },
+  "nairaplate-walkthrough.webm": { path: walkthroughWebmAsset.url, type: "video/webm" },
   "nairaplate-walkthrough-poster.jpg": { path: walkthroughPosterAsset.url, type: "image/jpeg" },
   "nairaplate-admin-demo.mp4": { path: adminDemoAsset.url, type: "video/mp4" },
+  "nairaplate-admin-demo.webm": { path: adminDemoWebmAsset.url, type: "video/webm" },
   "nairaplate-admin-poster.jpg": { path: adminPosterAsset.url, type: "image/jpeg" },
 };
 
