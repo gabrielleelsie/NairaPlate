@@ -15,7 +15,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
-import { sendSecurityAlert, sendOwnerStatusEmail } from "@/lib/email.server";
+import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered } from "@/lib/email.server";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -230,7 +230,20 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: owner } = await admin.from("staff_users")
             .select("email").eq("business_id", body.business_id).eq("role", "owner")
             .not("email", "is", null).limit(1).maybeSingle();
-          if (owner?.email) await sendOwnerStatusEmail(owner.email, before.name, body.status, body.reason ?? null);
+          if (owner?.email) {
+            const r = await sendOwnerStatusEmail(owner.email, before.name, body.status, body.reason ?? null);
+            if (!r.sent) {
+              await logEmailUndelivered(admin, {
+                businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+                subjectOf: `${before.name} (${body.status})`, reason: r.reason ?? "email request failed or timed out",
+              });
+            }
+          } else {
+            await logEmailUndelivered(admin, {
+              businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+              subjectOf: `${before.name} (${body.status})`, reason: "the owner has no email address on file",
+            });
+          }
 
           return json({ ok: true, status: body.status, was: before.status });
         }
@@ -286,7 +299,20 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: owner } = await admin.from("staff_users")
             .select("email").eq("business_id", body.business_id).eq("role", "owner")
             .not("email", "is", null).limit(1).maybeSingle();
-          if (owner?.email) await sendOwnerStatusEmail(owner.email, before.name, "suspended", body.reason);
+          if (owner?.email) {
+            const r = await sendOwnerStatusEmail(owner.email, before.name, "suspended", body.reason);
+            if (!r.sent) {
+              await logEmailUndelivered(admin, {
+                businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+                subjectOf: `${before.name} (suspended)`, reason: r.reason ?? "email request failed or timed out",
+              });
+            }
+          } else {
+            await logEmailUndelivered(admin, {
+              businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
+              subjectOf: `${before.name} (suspended)`, reason: "the owner has no email address on file",
+            });
+          }
 
           return json({ ok: true });
         }
@@ -440,7 +466,8 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             money: ["drawer_discrepancy", "order_adjusted", "order_voided", "order_refunded", "payout_logged", "price_decided", "purchase_logged"],
             recipes: ["cost_changed", "recipe_version_saved", "price_published", "batch_logged", "wastage_logged"],
             platform_ops: ["platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked",
-              "business_approved", "business_rejected", "business_suspended", "business_reactivated"],
+              "business_approved", "business_rejected", "business_suspended", "business_reactivated",
+              "email_undelivered", "security_alert_undelivered"],
           };
 
           const limit = body.limit ?? 50;

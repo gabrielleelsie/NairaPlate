@@ -89,7 +89,13 @@ type AuditEvent = {
 };
 
 const naira = (kobo: number) => "₦" + (kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 });
-const words = (s: string) => s.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
+// Plain-English names for events whose raw action name would not read well.
+const ACTION_LABEL: Record<string, string> = {
+  email_undelivered: "Email not delivered",
+  security_alert_undelivered: "Security alert not delivered",
+};
+const words = (s: string) =>
+  ACTION_LABEL[s] ?? s.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
 
 function PlatformConsole() {
   const { session, loading } = useStaffSession();
@@ -624,7 +630,8 @@ const CATEGORIES: { key: string; label: string }[] = [
 ];
 
 const ACTION_TONE = (a: string) =>
-  a.includes("failed") || a.includes("locked") || a.includes("blocked") || a.includes("discrepancy") || a.includes("suspended")
+  a.includes("failed") || a.includes("locked") || a.includes("blocked") || a.includes("discrepancy")
+  || a.includes("suspended") || a.includes("undelivered")
     ? "bg-red-100 text-red-800"
     : a.startsWith("business_") || a.startsWith("platform_") || a.startsWith("emergency_")
       ? "bg-indigo-100 text-indigo-800"

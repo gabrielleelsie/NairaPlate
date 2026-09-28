@@ -2,7 +2,7 @@
 // Rejects oversized payloads and never echoes anything back beyond ok/error.
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { sendContactMessage } from "@/lib/email.server";
+import { sendContactMessage, logEmailUndelivered, NO_ADMIN_EMAIL_REASON } from "@/lib/email.server";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -44,16 +44,30 @@ export const Route = createFileRoute("/api/public/contact")({
           .eq("is_active", true)
           .not("email", "is", null);
 
+        // Platform-level email: logged against the same "platform" business_id security alerts use.
+        // Only the sender's name is recorded — never the message text.
         let sent = false;
-        for (const a of admins ?? []) {
-          if (!a.email) continue;
-          const r = await sendContactMessage(a.email, {
+        const recipients = (admins ?? []).map((a) => a.email).filter(Boolean) as string[];
+        const subjectOf = `enquiry from ${d.name}`;
+        if (recipients.length === 0) {
+          await logEmailUndelivered(admin, {
+            businessId: "platform", kind: "Contact message", subjectOf, reason: NO_ADMIN_EMAIL_REASON,
+          });
+        }
+        for (const email of recipients) {
+          const r = await sendContactMessage(email, {
             name: d.name,
             businessName: d.business_name || null,
             contact: d.contact,
             message: d.message,
           });
           sent = sent || r.sent;
+          if (!r.sent) {
+            await logEmailUndelivered(admin, {
+              businessId: "platform", kind: "Contact message", subjectOf,
+              reason: r.reason ?? "email request failed or timed out",
+            });
+          }
         }
         if (!sent) return json({ error: "We couldn't send that just now — please message us on WhatsApp." }, 502);
         return json({ ok: true });
