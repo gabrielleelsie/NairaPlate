@@ -229,6 +229,39 @@ function Hero() {
 
 const SITE_URL = "https://nairaplate.com";
 
+// Encoded once at module load — the QR never changes, so no React state or hooks are needed.
+const QR_MODULES = (() => {
+  try {
+    return QRCode.create(SITE_URL, { errorCorrectionLevel: "M" }).modules;
+  } catch {
+    return null;
+  }
+})();
+
+function QrCode() {
+  if (!QR_MODULES) return null;
+  const { size, data } = QR_MODULES;
+  const rects: string[] = [];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (data[y * size + x]) rects.push(`M${x} ${y}h1v1h-1z`);
+    }
+  }
+  return (
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      shapeRendering="crispEdges"
+      width={176}
+      height={176}
+      role="img"
+      aria-label="QR code linking to nairaplate.com"
+    >
+      <rect width={size} height={size} fill={C.white} />
+      <path d={rects.join("")} fill={C.navy} />
+    </svg>
+  );
+}
+
 function InstallGuide() {
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
   const [tab, setTab] = useState<"android" | "ios">("android");
