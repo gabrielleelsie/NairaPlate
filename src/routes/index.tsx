@@ -73,17 +73,21 @@ function Heading({ children, onNavy }: { children: React.ReactNode; onNavy?: boo
 }
 
 /** Cost of the Eba & Egusi example — the app's own computeRecipeCost(), same formula as the kitchen screens. */
-function useEbaEgusi(marginPct: number) {
+function useEbaEgusi(marginPct: number, garriSpikePct = 0) {
   return useMemo(
     () =>
       computeRecipeCost({
         items: EBA_EGUSI_ITEMS,
-        ingredients: DEMO_INGREDIENTS,
+        ingredients: DEMO_INGREDIENTS.map((i) =>
+          i.id === "garri"
+            ? { ...i, current_cost_kobo: Math.round(i.current_cost_kobo * (1 + garriSpikePct / 100)) }
+            : i,
+        ),
         conversions: DEMO_CONVERSIONS,
         yield_portions: EBA_EGUSI_PLATES,
         target_margin_bps: Math.round(marginPct * 100),
       }),
-    [marginPct],
+    [marginPct, garriSpikePct],
   );
 }
 
@@ -93,16 +97,50 @@ function MarketingPage() {
       <SiteHeader />
       <main>
         <Hero />
-        <InstallGuide />
-        <Features />
         <LiveCalculator />
         <DemoVideos />
+        <Features />
+        <WhoItsFor />
+        <InstallGuide />
         <TrialOffer />
         <WhatsAppSection />
       </main>
       <SiteFooter />
       <FloatingWhatsApp />
     </div>
+  );
+}
+
+const AUDIENCES = [
+  "Bukas & mama-put kitchens",
+  "Bakeries & pastry shops",
+  "Event caterers",
+  "Cloud kitchens on delivery apps",
+  "Quick-service restaurants",
+];
+
+function WhoItsFor() {
+  return (
+    <Section bg={C.white}>
+      <Heading>Made for Every Nigerian Food Business That Sells by the Plate.</Heading>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 24 }}>
+        {AUDIENCES.map((a) => (
+          <span
+            key={a}
+            style={{
+              border: `1px solid ${C.blue}`,
+              color: C.navy,
+              borderRadius: 999,
+              padding: "10px 18px",
+              fontSize: 15,
+              fontWeight: 600,
+            }}
+          >
+            {a}
+          </span>
+        ))}
+      </div>
+    </Section>
   );
 }
 
@@ -123,21 +161,22 @@ function Hero() {
       >
         <div style={{ flex: "1 1 460px", minWidth: 280 }}>
           <h1 className="np-h1" style={{ color: C.white, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>
-            Stop Guessing Plate Costs. Run Your Nigerian Kitchen by the Numbers.
+            Know What Every Plate Really Costs — Before Market Prices Eat Your Profit.
           </h1>
           <p
             className="np-sub"
             style={{ color: C.onNavy, fontWeight: 400, lineHeight: 1.5, maxWidth: 640, marginTop: 20 }}
           >
-            Track food costs in real Nigerian market units (mudu, paint rubber, derica), protect your dish margins
-            when market prices jump, and control your cash drawer with simple staff PINs.
+            NairaPlate's live plate calculator turns today's market prices — in mudu, paint rubber and derica — into
+            the true cost of every dish and the price you should charge. When garri or pepper jumps, it tells you
+            which dishes are losing money.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 32 }}>
             <PrimaryLink to="/signup">Start 14-Day Free Trial</PrimaryLink>
             <SecondaryButton
-              onClick={() => document.getElementById("download")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() => document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth" })}
             >
-              Download the App
+              Try the Calculator
             </SecondaryButton>
           </div>
           <div style={{ marginTop: 24 }}>
@@ -325,34 +364,34 @@ function InstallGuide() {
 const FEATURES = [
   {
     icon: Scale,
-    title: "18 Real Market Units, Not Foreign Ones.",
+    title: "Buying: Real Prices In, Real Units.",
     body:
-      "Mudus, milk cups, paint rubbers, basins, heaps, and jerry cans — the units you actually buy in, not grams and pounds.",
+      "Log purchases in 18 Nigerian market units — mudu, paint rubber, basin, jerry can. Every purchase updates ingredient prices, so the calculator always uses today's cost.",
   },
   {
     icon: Bell,
-    title: "The Margin Alarm.",
+    title: "Kitchen: The Margin Alarm.",
     body:
-      "The moment garri, pepper, or palm oil rises more than 5%, every dish using it is flagged automatically for a pricing decision.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Staff PIN Security, Zero Shared Passwords.",
-    body:
-      "Cashiers sell and close the drawer. Cooks log batches and wastage. Owners see the full P&L and 7-day cashflow. Nobody sees more than their role allows.",
+      "When an ingredient rises more than 5%, every dish using it is flagged for a pricing decision. Batches and wastage are logged so nothing hides in the pot.",
   },
   {
     icon: Wallet,
-    title: "Every Naira Reconciled.",
+    title: "Selling: Every Naira Reconciled.",
     body:
-      "Cash drawers are closed with an actual count, not an assumption. Voided sales stay in the record with a reason — nothing is ever silently deleted.",
+      "Cashier POS with cash drawer counts, delivery-app payout checks, and voids kept on record with a reason — sales always match the plate cost behind them.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Oversight: Owner-Level Truth.",
+    body:
+      "Staff PINs limit what each role sees. Owners get the full P&L, 7-day cashflow and an audit log that can't be edited. Past sales keep their original recipe cost.",
   },
 ];
 
 function Features() {
   return (
-    <Section bg={C.white}>
-      <Heading>Built for How Nigerian Kitchens Actually Run.</Heading>
+    <Section bg={C.light}>
+      <Heading>The Whole Kitchen Keeps the Calculator Honest.</Heading>
       <div className="np-feature-grid" style={{ marginTop: 32 }}>
         {FEATURES.map((f) => (
           <div key={f.title} style={cardStyle}>
@@ -458,7 +497,9 @@ function LiveCalculator() {
   const [margin, setMargin] = useState(35);
   const [touched, setTouched] = useState(false);
   const [calloutOpen, setCalloutOpen] = useState(false);
+  const [spike, setSpike] = useState(false);
   const result = useEbaEgusi(margin);
+  const spiked = useEbaEgusi(margin, 20);
 
   const onMarginChange = (value: number) => {
     setMargin(value);
@@ -469,7 +510,10 @@ function LiveCalculator() {
   };
 
   return (
-    <Section bg={C.light}>
+    <Section bg={C.white} id="calculator">
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.blue, letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>
+        THE NAIRAPLATE PLATE CALCULATOR
+      </div>
       <Heading>See the Real Cost of a Plate, Right Now.</Heading>
       <p
         style={{
@@ -531,6 +575,43 @@ function LiveCalculator() {
             {formatNaira(result.suggested_price_kobo)}
           </div>
         </div>
+
+        <button
+          type="button"
+          aria-pressed={spike}
+          onClick={() => setSpike((s) => !s)}
+          style={{
+            marginTop: 20,
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: 8,
+            border: `1px solid ${C.blue}`,
+            background: spike ? C.blue : C.white,
+            color: spike ? C.white : C.blue,
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {spike ? "Hide the price jump" : "What if garri goes up 20% at the market?"}
+        </button>
+        {spike && (
+          <div style={{ marginTop: 12, padding: 16, borderRadius: 8, background: C.light, display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.text }}>
+              <span>New cost per plate</span>
+              <strong style={{ color: C.navy }}>{formatNaira(spiked.cost_per_plate_kobo)}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.text }}>
+              <span>New price to keep {margin}% margin</span>
+              <strong style={{ color: C.success }}>{formatNaira(spiked.suggested_price_kobo)}</strong>
+            </div>
+            <p style={{ fontSize: 14, color: C.muted, margin: 0, lineHeight: 1.5 }}>
+              Keep selling at {formatNaira(result.suggested_price_kobo)} and you quietly lose{" "}
+              {formatNaira(spiked.suggested_price_kobo - result.suggested_price_kobo)} of margin on every plate. In
+              the app, the Margin Alarm flags this the moment you log the new garri price.
+            </p>
+          </div>
+        )}
 
         {calloutOpen && (
           <div
