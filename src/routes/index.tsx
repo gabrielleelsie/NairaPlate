@@ -1,13 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
-
-import walkthroughAsset from "@/assets/nairaplate-walkthrough.mp4.asset.json";
-import adminDemoAsset from "@/assets/nairaplate-admin-demo.mp4.asset.json";
-import calcDemoAsset from "@/assets/nairaplate-price-calculator-demo.mp4.asset.json";
-import calcPosterAsset from "@/assets/nairaplate-price-calculator-poster.jpg.asset.json";
-import walkPosterAsset from "@/assets/nairaplate-walkthrough-poster.jpg.asset.json";
-import adminPosterAsset from "@/assets/nairaplate-admin-poster.jpg.asset.json";
 
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
@@ -53,6 +47,7 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX = 1140;
+const MEDIA_PATH = "/api/public/media";
 
 function Section({
   bg,
@@ -79,17 +74,21 @@ function Heading({ children, onNavy }: { children: React.ReactNode; onNavy?: boo
 }
 
 /** Cost of the Eba & Egusi example — the app's own computeRecipeCost(), same formula as the kitchen screens. */
-function useEbaEgusi(marginPct: number) {
+function useEbaEgusi(marginPct: number, garriSpikePct = 0) {
   return useMemo(
     () =>
       computeRecipeCost({
         items: EBA_EGUSI_ITEMS,
-        ingredients: DEMO_INGREDIENTS,
+        ingredients: DEMO_INGREDIENTS.map((i) =>
+          i.id === "garri"
+            ? { ...i, current_cost_kobo: Math.round(i.current_cost_kobo * (1 + garriSpikePct / 100)) }
+            : i,
+        ),
         conversions: DEMO_CONVERSIONS,
         yield_portions: EBA_EGUSI_PLATES,
         target_margin_bps: Math.round(marginPct * 100),
       }),
-    [marginPct],
+    [marginPct, garriSpikePct],
   );
 }
 
@@ -99,16 +98,50 @@ function MarketingPage() {
       <SiteHeader />
       <main>
         <Hero />
-        <InstallGuide />
-        <Features />
         <LiveCalculator />
         <DemoVideos />
+        <Features />
+        <WhoItsFor />
+        <InstallGuide />
         <TrialOffer />
         <WhatsAppSection />
       </main>
       <SiteFooter />
       <FloatingWhatsApp />
     </div>
+  );
+}
+
+const AUDIENCES = [
+  "Bukas & mama-put kitchens",
+  "Bakeries & pastry shops",
+  "Event caterers",
+  "Cloud kitchens on delivery apps",
+  "Quick-service restaurants",
+];
+
+function WhoItsFor() {
+  return (
+    <Section bg={C.white}>
+      <Heading>Made for Every Nigerian Food Business That Sells by the Plate.</Heading>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 24 }}>
+        {AUDIENCES.map((a) => (
+          <span
+            key={a}
+            style={{
+              border: `1px solid ${C.blue}`,
+              color: C.navy,
+              borderRadius: 999,
+              padding: "10px 18px",
+              fontSize: 15,
+              fontWeight: 600,
+            }}
+          >
+            {a}
+          </span>
+        ))}
+      </div>
+    </Section>
   );
 }
 
@@ -129,21 +162,22 @@ function Hero() {
       >
         <div style={{ flex: "1 1 460px", minWidth: 280 }}>
           <h1 className="np-h1" style={{ color: C.white, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>
-            Stop Guessing Plate Costs. Run Your Nigerian Kitchen by the Numbers.
+            Know What Every Plate Really Costs — Before Market Prices Eat Your Profit.
           </h1>
           <p
             className="np-sub"
             style={{ color: C.onNavy, fontWeight: 400, lineHeight: 1.5, maxWidth: 640, marginTop: 20 }}
           >
-            Track food costs in real Nigerian market units (mudu, paint rubber, derica), protect your dish margins
-            when market prices jump, and control your cash drawer with simple staff PINs.
+            NairaPlate's live plate calculator turns today's market prices — in mudu, paint rubber and derica — into
+            the true cost of every dish and the price you should charge. When garri or pepper jumps, it tells you
+            which dishes are losing money.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 32 }}>
             <PrimaryLink to="/signup">Start 14-Day Free Trial</PrimaryLink>
             <SecondaryButton
-              onClick={() => document.getElementById("download")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() => document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth" })}
             >
-              Download the App
+              Try the Calculator
             </SecondaryButton>
           </div>
           <div style={{ marginTop: 24 }}>
@@ -193,8 +227,44 @@ function Hero() {
   );
 }
 
+const SITE_URL = "https://nairaplate.com";
+
+// Encoded once at module load — the QR never changes, so no React state or hooks are needed.
+const QR_MODULES = (() => {
+  try {
+    return QRCode.create(SITE_URL, { errorCorrectionLevel: "M" }).modules;
+  } catch {
+    return null;
+  }
+})();
+
+function QrCode() {
+  if (!QR_MODULES) return null;
+  const { size, data } = QR_MODULES;
+  const rects: string[] = [];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (data[y * size + x]) rects.push(`M${x} ${y}h1v1h-1z`);
+    }
+  }
+  return (
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      shapeRendering="crispEdges"
+      width={176}
+      height={176}
+      role="img"
+      aria-label="QR code linking to nairaplate.com"
+    >
+      <rect width={size} height={size} fill={C.white} />
+      <path d={rects.join("")} fill={C.navy} />
+    </svg>
+  );
+}
+
 function InstallGuide() {
   const [platform, setPlatform] = useState<"android" | "ios" | "desktop">("desktop");
+  const [tab, setTab] = useState<"android" | "ios">("android");
   const [androidBrowser, setAndroidBrowser] = useState<"samsung" | "other">("other");
   const [deferred, setDeferred] = useState<{
     prompt: () => Promise<void>;
@@ -206,10 +276,14 @@ function InstallGuide() {
     const ua = navigator.userAgent;
     if (/Android/i.test(ua)) {
       setPlatform("android");
+      setTab("android");
       if (/SamsungBrowser/i.test(ua)) setAndroidBrowser("samsung");
+    } else if (/iPad|iPhone|iPod/.test(ua)) {
+      setPlatform("ios");
+      setTab("ios");
+    } else {
+      setPlatform("desktop");
     }
-    else if (/iPad|iPhone|iPod/.test(ua)) setPlatform("ios");
-    else setPlatform("desktop");
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -242,87 +316,137 @@ function InstallGuide() {
     setDeferred(null);
   };
 
+  const tabButtonStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: "12px 10px",
+    borderRadius: 8,
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: "pointer",
+    border: `2px solid ${C.blue}`,
+    background: active ? C.blue : "transparent",
+    color: active ? C.white : C.blue,
+  });
+
   return (
     <Section bg={C.light} id="download">
-      <Heading>Get NairaPlate on Your Phone.</Heading>
-      <div style={{ ...cardStyle, maxWidth: 480, margin: "32px auto 0" }}>
-        {platform === "android" && (
-          <>
-            <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
-              Install NairaPlate to your home screen.
+      <Heading>Install NairaPlate on Your Phone.</Heading>
+      <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "16px 0 0", maxWidth: 640 }}>
+        NairaPlate runs like any other app on Android and iPhone — tap the icon on your home screen and it opens
+        straight into your kitchen. No app store, no download size, no updates to wait for.
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 32, marginTop: 32, alignItems: "stretch" }}>
+        {platform === "desktop" && (
+          <div
+            style={{
+              ...cardStyle,
+              flex: "0 1 300px",
+              display: "grid",
+              justifyItems: "center",
+              alignContent: "start",
+              gap: 16,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.navy }}>Reading this on a computer?</div>
+            <div style={{ padding: 12, border: `1px solid ${C.border}`, borderRadius: 8, background: C.white }}>
+              <QrCode />
+            </div>
+            <p style={{ fontSize: 14, color: C.muted, margin: 0, lineHeight: 1.5 }}>
+              Scan this with your phone camera to open NairaPlate, then follow the steps here to add it to your
+              home screen.
             </p>
-            <PrimaryButton
-              type="button"
-              onClick={onInstallClick}
-              aria-expanded={showManualSteps}
-              aria-controls="android-install-steps"
-            >
-              {deferred ? "Install App" : "Show Install Steps"}
-            </PrimaryButton>
-            {showManualSteps && (
-              <div
-                id="android-install-steps"
-                role="status"
-                aria-live="polite"
-                style={{
-                  marginTop: 20,
-                  padding: 16,
-                  border: `1px solid ${C.blue}`,
-                  borderRadius: 8,
-                  textAlign: "left",
-                  display: "grid",
-                  gap: 10,
-                }}
-              >
-                <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
-                  Install NairaPlate from your browser menu:
-                </p>
-                {androidBrowser === "samsung" ? (
-                  <>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      1. Tap the <strong>☰ menu</strong> at the bottom-right of Samsung Internet
-                    </p>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      2. Tap <strong>Add page to</strong>, then <strong>Home screen</strong>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      1. Tap the <strong>⋮ browser menu</strong>
-                    </p>
-                    <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                      2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
-                    </p>
-                  </>
-                )}
-                <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
-                  3. Confirm <strong>Install</strong> or <strong>Add</strong>. The NairaPlate icon will appear on your phone.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-        {platform === "ios" && (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <Share size={32} color={C.blue} />
-              <span style={{ fontSize: 16, color: C.text }}>1. Tap the Share icon</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <Plus size={32} color={C.blue} />
-              <span style={{ fontSize: 16, color: C.text }}>2. Tap 'Add to Home Screen'</span>
-            </div>
           </div>
         )}
-        {platform === "desktop" && (
-          <>
-            <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
-              Use NairaPlate as a web app on this computer.
-            </p>
-            <PrimaryLink to="/app">Open Kitchen POS Web Station</PrimaryLink>
-          </>
-        )}
+
+        <div style={{ ...cardStyle, flex: "1 1 380px", minWidth: 300, maxWidth: 560 }}>
+          <div role="tablist" aria-label="Choose your phone type" style={{ display: "flex", gap: 8 }}>
+            <button type="button" role="tab" aria-selected={tab === "android"} onClick={() => setTab("android")} style={tabButtonStyle(tab === "android")}>
+              Android (Chrome &amp; Samsung)
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "ios"} onClick={() => setTab("ios")} style={tabButtonStyle(tab === "ios")}>
+              iPhone (Safari)
+            </button>
+          </div>
+
+          {tab === "android" && (
+            <div role="tabpanel" style={{ marginTop: 24 }}>
+              <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 0 }}>
+                Add NairaPlate to your Android home screen.
+              </p>
+              <PrimaryButton
+                type="button"
+                onClick={onInstallClick}
+                aria-expanded={showManualSteps}
+                aria-controls="android-install-steps"
+              >
+                {deferred ? "Install App" : "Show Install Steps"}
+              </PrimaryButton>
+              {showManualSteps && (
+                <div
+                  id="android-install-steps"
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginTop: 20,
+                    padding: 16,
+                    border: `1px solid ${C.blue}`,
+                    borderRadius: 8,
+                    textAlign: "left",
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.navy, margin: 0 }}>
+                    Install NairaPlate from your browser menu:
+                  </p>
+                  {androidBrowser === "samsung" ? (
+                    <>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        1. Tap the <strong>☰ menu</strong> at the bottom-right of Samsung Internet
+                      </p>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        2. Tap <strong>Add page to</strong>, then <strong>Home screen</strong>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        1. Tap the <strong>⋮ browser menu</strong>
+                      </p>
+                      <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                        2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
+                      </p>
+                    </>
+                  )}
+                  <p style={{ fontSize: 14, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                    3. Confirm <strong>Install</strong> or <strong>Add</strong>. The NairaPlate icon will appear on your phone.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "ios" && (
+            <div role="tabpanel" style={{ marginTop: 24, display: "grid", gap: 16, textAlign: "left" }}>
+              <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, margin: 0 }}>
+                Add NairaPlate to your iPhone home screen using Safari:
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <Share size={32} color={C.blue} />
+                <span style={{ fontSize: 16, color: C.text }}>1. Open nairaplate.com in Safari and tap the <strong>Share</strong> icon (the square with an arrow)</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <Plus size={32} color={C.blue} />
+                <span style={{ fontSize: 16, color: C.text }}>2. Scroll down and tap <strong>'Add to Home Screen'</strong></span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <Check size={32} color={C.blue} />
+                <span style={{ fontSize: 16, color: C.text }}>3. Tap <strong>Add</strong> — the NairaPlate icon appears on your home screen</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   );
@@ -331,34 +455,34 @@ function InstallGuide() {
 const FEATURES = [
   {
     icon: Scale,
-    title: "18 Real Market Units, Not Foreign Ones.",
+    title: "Buying: Real Prices In, Real Units.",
     body:
-      "Mudus, milk cups, paint rubbers, basins, heaps, and jerry cans — the units you actually buy in, not grams and pounds.",
+      "Log purchases in 18 Nigerian market units — mudu, paint rubber, basin, jerry can. Every purchase updates ingredient prices, so the calculator always uses today's cost.",
   },
   {
     icon: Bell,
-    title: "The Margin Alarm.",
+    title: "Kitchen: The Margin Alarm.",
     body:
-      "The moment garri, pepper, or palm oil rises more than 5%, every dish using it is flagged automatically for a pricing decision.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Staff PIN Security, Zero Shared Passwords.",
-    body:
-      "Cashiers sell and close the drawer. Cooks log batches and wastage. Owners see the full P&L and 7-day cashflow. Nobody sees more than their role allows.",
+      "When an ingredient rises more than 5%, every dish using it is flagged for a pricing decision. Batches and wastage are logged so nothing hides in the pot.",
   },
   {
     icon: Wallet,
-    title: "Every Naira Reconciled.",
+    title: "Selling: Every Naira Reconciled.",
     body:
-      "Cash drawers are closed with an actual count, not an assumption. Voided sales stay in the record with a reason — nothing is ever silently deleted.",
+      "Cashier POS with cash drawer counts, delivery-app payout checks, and voids kept on record with a reason — sales always match the plate cost behind them.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Oversight: Owner-Level Truth.",
+    body:
+      "Staff PINs limit what each role sees. Owners get the full P&L, 7-day cashflow and an audit log that can't be edited. Past sales keep their original recipe cost.",
   },
 ];
 
 function Features() {
   return (
-    <Section bg={C.white}>
-      <Heading>Built for How Nigerian Kitchens Actually Run.</Heading>
+    <Section bg={C.light}>
+      <Heading>The Whole Kitchen Keeps the Calculator Honest.</Heading>
       <div className="np-feature-grid" style={{ marginTop: 32 }}>
         {FEATURES.map((f) => (
           <div key={f.title} style={cardStyle}>
@@ -375,23 +499,26 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
-      src: calcDemoAsset.url,
-      poster: calcPosterAsset.url,
+      webm: `${MEDIA_PATH}/nairaplate-price-calculator-demo.webm`,
+      mp4: `${MEDIA_PATH}/nairaplate-price-calculator-demo.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-price-calculator-poster.jpg`,
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
       featured: true,
     },
     {
-      src: walkthroughAsset.url,
-      poster: walkPosterAsset.url,
+      webm: `${MEDIA_PATH}/nairaplate-walkthrough.webm`,
+      mp4: `${MEDIA_PATH}/nairaplate-walkthrough.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-walkthrough-poster.jpg`,
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
     },
     {
-      src: adminDemoAsset.url,
-      poster: adminPosterAsset.url,
+      webm: `${MEDIA_PATH}/nairaplate-admin-demo.webm`,
+      mp4: `${MEDIA_PATH}/nairaplate-admin-demo.mp4`,
+      poster: `${MEDIA_PATH}/nairaplate-admin-poster.jpg`,
       title: "Multi-tenant platform control",
       caption:
         "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
@@ -410,7 +537,7 @@ function DemoVideos() {
       >
         {videos.map((v) => (
           <figure
-            key={v.src}
+            key={v.mp4}
             className={v.featured ? "np-video-featured" : undefined}
             style={v.featured ? { gridColumn: "1 / -1", margin: 0 } : { margin: 0 }}
           >
@@ -419,10 +546,13 @@ function DemoVideos() {
                 controls
                 playsInline
                 preload="metadata"
-                src={v.src}
                 poster={v.poster}
                 style={{ display: "block", width: "100%", aspectRatio: "16 / 9", background: C.navy }}
-              />
+              >
+                <source src={v.webm} type="video/webm" />
+                <source src={v.mp4} type="video/mp4" />
+                Your browser cannot play this video.
+              </video>
             </div>
             <figcaption style={{ marginTop: 16, maxWidth: 640, marginInline: "auto" }}>
               <div
@@ -458,7 +588,9 @@ function LiveCalculator() {
   const [margin, setMargin] = useState(35);
   const [touched, setTouched] = useState(false);
   const [calloutOpen, setCalloutOpen] = useState(false);
+  const [spike, setSpike] = useState(false);
   const result = useEbaEgusi(margin);
+  const spiked = useEbaEgusi(margin, 20);
 
   const onMarginChange = (value: number) => {
     setMargin(value);
@@ -469,7 +601,10 @@ function LiveCalculator() {
   };
 
   return (
-    <Section bg={C.light}>
+    <Section bg={C.white} id="calculator">
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.blue, letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>
+        THE NAIRAPLATE PLATE CALCULATOR
+      </div>
       <Heading>See the Real Cost of a Plate, Right Now.</Heading>
       <p
         style={{
@@ -531,6 +666,43 @@ function LiveCalculator() {
             {formatNaira(result.suggested_price_kobo)}
           </div>
         </div>
+
+        <button
+          type="button"
+          aria-pressed={spike}
+          onClick={() => setSpike((s) => !s)}
+          style={{
+            marginTop: 20,
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: 8,
+            border: `1px solid ${C.blue}`,
+            background: spike ? C.blue : C.white,
+            color: spike ? C.white : C.blue,
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {spike ? "Hide the price jump" : "What if garri goes up 20% at the market?"}
+        </button>
+        {spike && (
+          <div style={{ marginTop: 12, padding: 16, borderRadius: 8, background: C.light, display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.text }}>
+              <span>New cost per plate</span>
+              <strong style={{ color: C.navy }}>{formatNaira(spiked.cost_per_plate_kobo)}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.text }}>
+              <span>New price to keep {margin}% margin</span>
+              <strong style={{ color: C.success }}>{formatNaira(spiked.suggested_price_kobo)}</strong>
+            </div>
+            <p style={{ fontSize: 14, color: C.muted, margin: 0, lineHeight: 1.5 }}>
+              Keep selling at {formatNaira(result.suggested_price_kobo)} and you quietly lose{" "}
+              {formatNaira((spiked.suggested_price_kobo ?? 0) - (result.suggested_price_kobo ?? 0))} of margin on every plate. In
+              the app, the Margin Alarm flags this the moment you log the new garri price.
+            </p>
+          </div>
+        )}
 
         {calloutOpen && (
           <div

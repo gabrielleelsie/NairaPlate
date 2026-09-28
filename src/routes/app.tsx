@@ -250,7 +250,9 @@ function PinScreen({
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-brand-navy px-4 py-8 sm:py-12">
-      <Logo layout="stacked" variant="white" size={72} className="mb-6 sm:mb-8" />
+      <Link to="/" aria-label="Back to NairaPlate home" className="mb-6 transition-opacity hover:opacity-80 sm:mb-8">
+        <Logo layout="stacked" variant="white" size={72} />
+      </Link>
       <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-auth sm:p-8">{children}</div>
     </main>
   );

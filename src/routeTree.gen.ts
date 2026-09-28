@@ -42,6 +42,7 @@ import { Route as ApiPublicContactRouteImport } from './routes/api/public/contac
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
+import { Route as ApiPublicMediaFilenameRouteImport } from './routes/api/public/media.$filename'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -209,6 +210,11 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
   path: '/api/public/staff-pin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMediaFilenameRoute = ApiPublicMediaFilenameRouteImport.update({
+  id: '/api/public/media/$filename',
+  path: '/api/public/media/$filename',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/media/$filename': typeof ApiPublicMediaFilenameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/media/$filename': typeof ApiPublicMediaFilenameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/media/$filename': typeof ApiPublicMediaFilenameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -352,6 +361,7 @@ export interface FileRouteTypes {
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/media/$filename'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/media/$filename'
   id:
     | '__root__'
     | '/'
@@ -422,6 +433,7 @@ export interface FileRouteTypes {
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/media/$filename'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -458,6 +470,7 @@ export interface RootRouteChildren {
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
+  ApiPublicMediaFilenameRoute: typeof ApiPublicMediaFilenameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -693,6 +706,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStaffPinLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/media/$filename': {
+      id: '/api/public/media/$filename'
+      path: '/api/public/media/$filename'
+      fullPath: '/api/public/media/$filename'
+      preLoaderRoute: typeof ApiPublicMediaFilenameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -730,6 +750,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
+  ApiPublicMediaFilenameRoute: ApiPublicMediaFilenameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
