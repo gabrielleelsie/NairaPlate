@@ -2,6 +2,7 @@
 // Both "/" and "/contact" import these — the code exists once.
 import { Link } from "@tanstack/react-router";
 import { MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 
 /** The one WhatsApp link used by the hero, section 6, the floating button and the contact page. */
@@ -172,12 +173,22 @@ export function WhatsAppButton({
 
 /** Rendered on "/" only. */
 export function FloatingWhatsApp() {
+  const [scrolledPastHero, setScrolledPastHero] = useState(false);
+
+  useEffect(() => {
+    const updateVisibility = () => setScrolledPastHero(window.scrollY >= 700);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, []);
+
   return (
     <a
       href={WHATSAPP_HREF}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with NairaPlate on WhatsApp"
+      className={`np-floating-whatsapp${scrolledPastHero ? " np-floating-whatsapp-visible" : ""}`}
       style={{
         position: "fixed",
         bottom: 24,
@@ -267,7 +278,7 @@ export function SiteFooter() {
   return (
     <footer style={{ background: C.navy, padding: "48px 24px 32px" }}>
       <div style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gap: 20, justifyItems: "start" }}>
-        <Logo layout="stacked" variant="white" size={40} />
+        <Logo layout="inline" variant="white" size={40} />
         <p style={{ color: C.onNavy, fontSize: 16, lineHeight: 1.6, margin: 0 }}>
           NairaPlate — real-time food costing for Nigerian kitchens.
         </p>
