@@ -511,29 +511,29 @@ function Features() {
 function DemoVideos() {
   const videos = [
     {
-      webm: `${MEDIA_PATH}/nairaplate-price-calculator-demo.webm`,
-      mp4: `${MEDIA_PATH}/nairaplate-price-calculator-demo.mp4`,
-      poster: `${MEDIA_PATH}/nairaplate-price-calculator-poster.jpg`,
+      webm: `${MEDIA_PATH}/nairaplate-price-calculator-demo.webm?v=2`,
+      mp4: `${MEDIA_PATH}/nairaplate-price-calculator-demo.mp4?v=2`,
+      poster: `${MEDIA_PATH}/nairaplate-price-calculator-poster.jpg?v=2`,
       title: "The price calculator",
       caption:
-        "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
+        "Watch ingredient prices turn into the real cost of a dish, and the price you should charge to protect your margin.",
       featured: false,
     },
     {
-      webm: `${MEDIA_PATH}/nairaplate-walkthrough.webm`,
-      mp4: `${MEDIA_PATH}/nairaplate-walkthrough.mp4`,
-      poster: `${MEDIA_PATH}/nairaplate-walkthrough-poster.jpg`,
+      webm: `${MEDIA_PATH}/nairaplate-walkthrough.webm?v=2`,
+      mp4: `${MEDIA_PATH}/nairaplate-walkthrough.mp4?v=2`,
+      poster: `${MEDIA_PATH}/nairaplate-walkthrough-poster.jpg?v=2`,
       title: "NairaPlate in action",
       caption:
-        "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
+        "A day in the kitchen: PIN sign-in, purchases, price alerts, recipe costs, sales and the cash drawer, and the owner's profit and loss.",
     },
   ];
   return (
     <Section bg={C.light} id="demo">
       <Heading>See NairaPlate working</Heading>
       <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "16px 0 0", maxWidth: 640 }}>
-        Watch the real product — no slides, no mockups. These are recordings of the actual app
-        running a real kitchen.
+        Two short animated demos of how NairaPlate works. The numbers are examples, worked out
+        with the same costing as the calculator on this page.
       </p>
       <div
         className="np-video-grid"

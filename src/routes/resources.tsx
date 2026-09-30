@@ -154,7 +154,7 @@ function ResourcesPage() {
                 <PlayCircle size={28} color={C.blue} aria-hidden="true" />
                 <h2 style={{ color: C.navy, fontSize: 22, fontWeight: 800, margin: 0 }}>Demo videos</h2>
                 <p style={{ color: C.muted, fontSize: 16, lineHeight: 1.6, margin: 0, flexGrow: 1 }}>
-                  Watch recordings of the real app: the price calculator at work, and a full walkthrough of a kitchen
+                  Watch two short demos: the price calculator at work, and a walkthrough of a day in a kitchen
                   using NairaPlate.
                 </p>
                 <div>
