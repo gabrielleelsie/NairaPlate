@@ -15,7 +15,7 @@ export function Logo({ size = 48, variant = "color", layout = "inline", classNam
       viewBox="-640 -640 1280 1280"
       width={size}
       height={size}
-      className="shrink-0"
+      className={cn("shrink-0", isWhite ? "text-brand-inverse" : "text-brand-blue")}
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
