@@ -77,6 +77,8 @@
 }
 
 :root {
+  /* Bump when the built CSS must get a new file name, so phones drop the old cached copy. */
+  --np-css-rev: 2;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
