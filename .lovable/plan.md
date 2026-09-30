@@ -39,6 +39,14 @@ The reverse order would break things: new code reading `access_ends_at` would fa
    - It raises "Billing and status fields can only be changed by NairaPlate" if status, access_ends_at, plan, trial_started_at, rejection_reason, reviewed_at or reviewed_by changes and the caller is not the server role.
    - Name and target margin still save as today.
 6. **Backfill:** today's approved businesses get plan 'trial', trial_started_at = now(), and access_ends_at = 23:59:59 Lagos time on day 7 (go-live day counts as day 1). All other businesses keep NULL.
+7. **Protect staff PINs (same migration):**
+   - `revoke select, insert, update, delete on public.staff_users from authenticated, anon;`
+   - `grant select (id, business_id, role, display_name, phone, email, is_active, created_at) on public.staff_users to authenticated;`
+   - pin_hash, pin_salt, failed_attempts and locked_until are not granted to authenticated or anon. The server role keeps full access.
+   - The staff_users row rules stay; staff_users_select still gets the access check. The insert, update and delete rules stay but no longer apply.
+   - Browser code check (done): only `select("id,display_name")` in orders.tsx, audit.tsx and PricingReview.tsx. No `select("*")` or embedded staff selects anywhere in src, so no code change is needed.
+   - Rollback adds: `grant select, insert, update, delete on public.staff_users to authenticated;`
+   - Extra checks: as a signed-in owner, `select pin_hash` fails with a permission error while `select id, display_name` works; PIN login, create staff, reset PIN and change role still work; orders, audit and pricing review still show staff names.
 
 ## Server changes
 
