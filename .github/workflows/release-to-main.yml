@@ -1,0 +1,54 @@
+name: Release to main
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: "Branch Lovable saves to"
+        required: true
+        default: "NAIRAPLATECALC"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-to-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main with full history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Bring the source branch into main
+        env:
+          SOURCE: ${{ inputs.source_branch }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$SOURCE" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
+            echo "::error::Branch name has characters that are not allowed."; exit 1
+          fi
+          if [ "$SOURCE" = "main" ]; then
+            echo "::error::The source branch cannot be main."; exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$SOURCE"
+          if git merge-base --is-ancestor "origin/$SOURCE" HEAD; then
+            echo "Nothing to release: main already has everything on $SOURCE."
+            echo "Nothing to release: main already has everything on \`$SOURCE\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! git merge -m "Release: bring $SOURCE into main" "origin/$SOURCE"; then
+            git merge --abort || true
+            echo "::error::main and $SOURCE changed the same lines. Nothing was pushed. Fix the conflict by hand."
+            exit 1
+          fi
+          git push origin HEAD:main
+          echo "Released \`$SOURCE\` to main at $(git rev-parse --short HEAD)." >> "$GITHUB_STEP_SUMMARY"
