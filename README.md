@@ -22,3 +22,10 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## How a change goes live
+
+1. Changes are saved on the `NAIRAPLATECALC` branch (Lovable saves there, and so do pull requests).
+2. In GitHub, open Actions, choose "Release to main", and run it with `NAIRAPLATECALC` as the source branch.
+3. That brings the branch into `main`. Cloudflare builds `main` and deploys it to nairaplate.com.
+4. Database changes are separate: they are SQL files in `supabase/external/`, run in the Supabase SQL editor before the code that needs them.
