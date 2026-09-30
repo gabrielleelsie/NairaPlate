@@ -23,6 +23,7 @@ import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as OurStoryRouteImport } from './routes/our-story'
 import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as PresentationRouteImport } from './routes/presentation'
@@ -111,6 +112,11 @@ const IngredientsRoute = IngredientsRouteImport.update({
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OurStoryRoute = OurStoryRouteImport.update({
+  id: '/our-story',
+  path: '/our-story',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PayoutsRoute = PayoutsRouteImport.update({
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/orders': typeof OrdersRoute
+  '/our-story': typeof OurStoryRoute
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/orders': typeof OrdersRoute
+  '/our-story': typeof OurStoryRoute
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
   '/orders': typeof OrdersRoute
+  '/our-story': typeof OurStoryRoute
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
@@ -333,6 +342,7 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ingredients'
     | '/orders'
+    | '/our-story'
     | '/payouts'
     | '/pos'
     | '/presentation'
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ingredients'
     | '/orders'
+    | '/our-story'
     | '/payouts'
     | '/pos'
     | '/presentation'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ingredients'
     | '/orders'
+    | '/our-story'
     | '/payouts'
     | '/pos'
     | '/presentation'
@@ -439,6 +451,7 @@ export interface RootRouteChildren {
   FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
   OrdersRoute: typeof OrdersRoute
+  OurStoryRoute: typeof OurStoryRoute
   PayoutsRoute: typeof PayoutsRoute
   PosRoute: typeof PosRoute
   PresentationRoute: typeof PresentationRoute
@@ -558,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders'
       preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/our-story': {
+      id: '/our-story'
+      path: '/our-story'
+      fullPath: '/our-story'
+      preLoaderRoute: typeof OurStoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payouts': {
@@ -711,6 +731,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,
   OrdersRoute: OrdersRoute,
+  OurStoryRoute: OurStoryRoute,
   PayoutsRoute: PayoutsRoute,
   PosRoute: PosRoute,
   PresentationRoute: PresentationRoute,
