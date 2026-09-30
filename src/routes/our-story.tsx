@@ -75,7 +75,7 @@ function OurStoryPage() {
         <section className="np-section" style={{ background: C.white }}>
           <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
             {STORY_PARAGRAPHS.map((paragraph) => (
-              <p key={paragraph} style={{ color: C.text, fontSize: 18, lineHeight: 1.7, margin: "0 0 26px" }}>{paragraph}</p>
+              <p className="np-body-lg" key={paragraph} style={{ color: C.text, fontSize: 18, lineHeight: 1.7, margin: "0 0 26px" }}>{paragraph}</p>
             ))}
           </div>
         </section>

@@ -204,6 +204,7 @@
   .np-h1 { font-size: 34px; }
   .np-h2 { font-size: 28px; }
   .np-sub { font-size: 17px; }
+  .np-body-lg { font-size: 17px !important; }
   .np-hide-sm { display: none; }
   .np-trial-desktop { display: none; }
   .np-trial-mobile { display: inline; }

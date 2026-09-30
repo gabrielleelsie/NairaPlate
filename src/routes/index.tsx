@@ -798,7 +798,7 @@ function StoryTeaser() {
         <div style={{ display: "grid", gap: 20 }}>
           <div className="np-section-label">OUR STORY</div>
           <Heading>Every plate of food has a true cost, and that cost can change constantly.</Heading>
-          <p style={{ color: C.muted, fontSize: 18, lineHeight: 1.6, margin: 0 }}>
+          <p className="np-body-lg" style={{ color: C.muted, fontSize: 18, lineHeight: 1.6, margin: 0 }}>
             For Nigerian food businesses, the cost of running a kitchen is closely tied to what is happening in the market. The price of egusi, oil, garri, rice, meat and other ingredients can change from one purchase to the next. NairaPlate is designed to bring clarity to that problem.
           </p>
           <div><Link to="/our-story" style={{ color: C.blue, fontSize: 17, fontWeight: 700, textDecorationLine: "underline", textDecorationThickness: 2, textUnderlineOffset: 4 }}>Read our story</Link></div>
