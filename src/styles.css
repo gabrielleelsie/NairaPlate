@@ -229,6 +229,8 @@
   .np-story-photo { width: 100%; }
   .np-story-hero-grid { display: flex; flex-direction: column-reverse; gap: 32px; }
   .np-story-hero-photo { width: 100%; height: min(540px, 110vw); }
+  .np-hero-actions { width: 100%; flex-direction: column; }
+  .np-hero-actions > * { width: 100%; text-align: center; justify-content: center; }
 }
 
 @media (max-width: 639px) {
