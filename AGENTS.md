@@ -15,3 +15,5 @@
 - Public sales videos and posters are served directly from `public/media` via `MEDIA_PATH = "/media"` in `src/routes/index.tsx`. Why: this works on the live Cloudflare site (confirmed 30 September 2026) and does not depend on the Lovable preview domain. Do not reintroduce a media proxy route.
 - Contact form messages are saved to `contact_messages` before any email is tried; visitors see success once saved. Why: a failed email must never lose a lead.
 - Public marketing navigation and brand styling are shared through `SiteHeader`, `SiteFooter`, `Logo`, and the `np-public` style scope; `/our-story` is a standalone content route. Why: public pages stay consistent without changing logged-in app typography or behavior.
+- Changes to the live NairaPlate database are SQL files in `supabase/external/`, run by the owner in their own SQL editor and verified before any code release. Why: the live app uses an external database the agent cannot migrate.
+- Business access (trial/paid plan) date rules live only in `src/lib/subscription.ts`; the database guard and `business_has_access()` enforce the same rule. Why: one Lagos-time definition of when access ends.
