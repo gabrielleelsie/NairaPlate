@@ -290,6 +290,13 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           if (biz.status !== "approved" && biz.status !== "suspended")
             return json({ error: "Only approved or suspended businesses can take a payment." }, 400);
 
+          // A second click or a re-sent form must never add a second term for the same transfer.
+          if (!body.preview) {
+            const { data: dup } = await admin.from("subscription_payments").select("id")
+              .eq("business_id", biz.id).eq("payment_reference", body.payment_reference).limit(1).maybeSingle();
+            if (dup) return json({ error: "A payment with that reference is already recorded for this business." }, 409);
+          }
+
           const term = termFor(biz.access_ends_at ? new Date(biz.access_ends_at) : null, new Date(), body.plan);
           const result = { period_start: term.start.toISOString(), period_end: term.end.toISOString() };
           if (body.preview) return json({ ok: true, preview: true, ...result });

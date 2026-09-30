@@ -72,7 +72,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
     <>
       {gate.kind === "warn" && (
         <div className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">
-          Your NairaPlate plan ends {gate.daysLeft === 1 ? "today" : `in ${gate.daysLeft} days`}. Message us on WhatsApp to renew and keep working without a break.
+          Your NairaPlate plan ends {gate.daysLeft === 1 ? "today at 11:59 pm" : gate.daysLeft === 2 ? "tomorrow at 11:59 pm" : `in ${gate.daysLeft - 1} days`}. Message us on WhatsApp to renew and keep working without a break.
         </div>
       )}
       {children}
