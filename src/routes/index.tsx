@@ -517,7 +517,7 @@ function DemoVideos() {
       title: "The price calculator",
       caption:
         "Watch ingredient prices turn into the real cost of a dish — and the price you should charge to protect your margin.",
-      featured: true,
+      featured: false,
     },
     {
       webm: `${MEDIA_PATH}/nairaplate-walkthrough.webm`,
@@ -526,14 +526,6 @@ function DemoVideos() {
       title: "NairaPlate in action",
       caption:
         "A full walkthrough of the app — live costing, margin pricing, purchase logging, and the owner dashboard.",
-    },
-    {
-      webm: `${MEDIA_PATH}/nairaplate-admin-demo.webm`,
-      mp4: `${MEDIA_PATH}/nairaplate-admin-demo.mp4`,
-      poster: `${MEDIA_PATH}/nairaplate-admin-poster.jpg`,
-      title: "Multi-tenant platform control",
-      caption:
-        "How we onboard, monitor, and support every kitchen on NairaPlate from one platform admin dashboard.",
     },
   ];
   return (
@@ -591,6 +583,12 @@ function DemoVideos() {
             </figcaption>
           </figure>
         ))}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 40 }}>
+        <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "0 0 16px" }}>
+          Prefer to click through at your own pace?
+        </p>
+        <OutlineLink to="/presentation">Take the product tour</OutlineLink>
       </div>
     </Section>
   );
