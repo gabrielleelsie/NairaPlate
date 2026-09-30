@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X } from "lucide-react";
+import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X, MessageCircle } from "lucide-react";
+
+import chefJpg from "@/assets/nairaplate-chef-logo.jpg";
+import chefWebp from "@/assets/nairaplate-chef-logo.webp";
 
 import { computeRecipeCost, formatNaira } from "@/lib/costing";
 import {
@@ -13,6 +16,7 @@ import {
 import {
   C,
   FloatingWhatsApp,
+  FONT_STACK,
   OutlineLink,
   PrimaryButton,
   PrimaryLink,
@@ -67,7 +71,7 @@ function Section({
 
 function Heading({ children, onNavy }: { children: React.ReactNode; onNavy?: boolean }) {
   return (
-    <h2 className="np-h2" style={{ color: onNavy ? C.white : C.navy, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
+    <h2 className="np-h2" style={{ color: onNavy ? C.white : C.navy, margin: 0 }}>
       {children}
     </h2>
   );
@@ -94,7 +98,7 @@ function useEbaEgusi(marginPct: number, garriSpikePct = 0) {
 
 function MarketingPage() {
   return (
-    <div style={{ fontFamily: '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
       <main>
         <Hero />
@@ -102,9 +106,9 @@ function MarketingPage() {
         <DemoVideos />
         <Features />
         <WhoItsFor />
+        <StoryTeaser />
         <InstallGuide />
         <TrialOffer />
-        <WhatsAppSection />
       </main>
       <SiteFooter />
       <FloatingWhatsApp />
@@ -122,7 +126,7 @@ const AUDIENCES = [
 
 function WhoItsFor() {
   return (
-    <Section bg={C.white}>
+    <Section bg={C.light}>
       <Heading>Made for Every Nigerian Food Business That Sells by the Plate.</Heading>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 24 }}>
         {AUDIENCES.map((a) => (
@@ -130,6 +134,7 @@ function WhoItsFor() {
             key={a}
             style={{
               border: `1px solid ${C.blue}`,
+              background: C.white,
               color: C.navy,
               borderRadius: 999,
               padding: "10px 18px",
@@ -148,31 +153,39 @@ function WhoItsFor() {
 function Hero() {
   const result = useEbaEgusi(35);
   return (
-    <section className="np-hero" style={{ background: C.navy }}>
+    <section
+      className="np-hero"
+      style={{
+        background: `radial-gradient(circle at 78% 55%, rgba(22,119,210,0.35) 0%, rgba(22,119,210,0) 45%), ${C.navy}`,
+      }}
+    >
       <div
+        className="np-hero-grid"
         style={{
           maxWidth: MAX,
           margin: "0 auto",
           padding: "0 24px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 40,
-          alignItems: "center",
         }}
       >
-        <div style={{ flex: "1 1 460px", minWidth: 280 }}>
-          <h1 className="np-h1" style={{ color: C.white, fontWeight: 700, lineHeight: 1.15, margin: 0 }}>
+        <div className="np-hero-copy">
+          <div
+            className="np-hero-pill"
+            style={{ color: C.onNavy, background: "rgba(234,244,255,0.10)", border: "1px solid rgba(234,244,255,0.25)", borderRadius: 999, padding: "8px 14px", fontSize: 14, fontWeight: 600 }}
+          >
+            Food costing for Nigerian kitchens
+          </div>
+          <h1 className="np-h1 np-hero-title" style={{ color: C.white, margin: 0 }}>
             Know What Every Plate Really Costs — Before Market Prices Eat Your Profit.
           </h1>
           <p
-            className="np-sub"
-            style={{ color: C.onNavy, fontWeight: 400, lineHeight: 1.5, maxWidth: 640, marginTop: 20 }}
+            className="np-sub np-hero-subtitle"
+            style={{ color: C.onNavy, fontWeight: 400, lineHeight: 1.6, maxWidth: 600, margin: 0 }}
           >
             NairaPlate's live plate calculator turns today's market prices — in mudu, paint rubber and derica — into
             the true cost of every dish and the price you should charge. When garri or pepper jumps, it tells you
             which dishes are losing money.
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 32 }}>
+          <div className="np-hero-actions">
             <PrimaryLink to="/signup">Start 14-Day Free Trial</PrimaryLink>
             <SecondaryButton
               onClick={() => document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth" })}
@@ -180,45 +193,42 @@ function Hero() {
               Try the Calculator
             </SecondaryButton>
           </div>
-          <div style={{ marginTop: 24 }}>
+          <div className="np-hero-whatsapp">
             <a
               href={WHATSAPP_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="np-text-link"
-              style={{ color: C.white, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+              style={{ color: C.white, fontSize: 16, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
             >
+              <MessageCircle size={18} color={C.onNavy} />
               Chat on WhatsApp
             </a>
           </div>
         </div>
 
-        <div style={{ flex: "1 1 380px", minWidth: 280 }}>
-          <div style={cardStyle}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, letterSpacing: 0.4 }}>RECIPE BUILDER</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.navy, marginTop: 4 }}>Eba &amp; Egusi</div>
-            <div style={{ fontSize: 14, color: C.muted, marginTop: 2 }}>{EBA_EGUSI_PLATES} plates · target margin 35%</div>
-            <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
-              {result.lines.map((l) => (
-                <div key={l.ingredient_id} style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
-                  <span style={{ color: C.text }}>
-                    {l.quantity} {l.unit} {l.ingredient_name}
-                  </span>
-                  <span style={{ color: C.navy, fontWeight: 600 }}>{formatNaira(l.line_cost_kobo)}</span>
-                </div>
-              ))}
+        <div className="np-hero-media">
+          <picture>
+            <source srcSet={chefWebp} type="image/webp" />
+            <img
+              className="np-hero-photo"
+              src={chefJpg}
+              alt="NairaPlate brand illustration of a smiling Nigerian chef in a blue apron and Ankara headwrap"
+              width={480}
+              height={600}
+              loading="eager"
+              fetchPriority="high"
+            />
+          </picture>
+          <div className="np-cost-card" style={{ background: C.white, borderRadius: 16, padding: "18px 20px", boxShadow: "0 14px 36px rgba(11,31,51,0.35)", display: "grid", gap: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.8, color: C.muted }}>EBA &amp; EGUSI · {EBA_EGUSI_PLATES} PLATES</div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, color: C.muted, fontSize: 14 }}>
+              <span>Cost per plate</span>
+              <span style={{ color: C.navy, fontWeight: 700 }}>{formatNaira(result.cost_per_plate_kobo)}</span>
             </div>
-            <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 16, paddingTop: 16, display: "grid", gap: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.muted }}>
-                <span>Cost per plate</span>
-                <span style={{ color: C.navy, fontWeight: 700 }}>{formatNaira(result.cost_per_plate_kobo)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, color: C.muted }}>
-                <span>Selling price per plate</span>
-                <span style={{ color: C.success, fontWeight: 700, fontSize: 20 }}>
-                  {formatNaira(result.suggested_price_kobo)}
-                </span>
-              </div>
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, color: C.muted, fontSize: 14 }}>
+              <span>Sell at (35% margin)</span>
+              <span style={{ color: C.blue, fontSize: 22, fontWeight: 800 }}>{formatNaira(result.suggested_price_kobo)}</span>
             </div>
           </div>
         </div>
@@ -481,12 +491,14 @@ const FEATURES = [
 
 function Features() {
   return (
-    <Section bg={C.light}>
+    <Section bg={C.white}>
       <Heading>The Whole Kitchen Keeps the Calculator Honest.</Heading>
       <div className="np-feature-grid" style={{ marginTop: 32 }}>
         {FEATURES.map((f) => (
           <div key={f.title} style={cardStyle}>
-            <f.icon size={28} color={C.blue} />
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: C.light, display: "grid", placeItems: "center" }}>
+              <f.icon size={26} color={C.blue} />
+            </div>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: C.navy, margin: "12px 0 8px" }}>{f.title}</h3>
             <p style={{ fontSize: 15, fontWeight: 400, color: C.muted, lineHeight: 1.5, margin: 0 }}>{f.body}</p>
           </div>
@@ -525,7 +537,7 @@ function DemoVideos() {
     },
   ];
   return (
-    <Section bg={C.white} id="demo">
+    <Section bg={C.light} id="demo">
       <Heading>See NairaPlate working</Heading>
       <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: "16px 0 0", maxWidth: 640 }}>
         Watch the real product — no slides, no mockups. These are recordings of the actual app
@@ -602,8 +614,8 @@ function LiveCalculator() {
 
   return (
     <Section bg={C.white} id="calculator">
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.blue, letterSpacing: 1, textAlign: "center", marginBottom: 8 }}>
-        THE NAIRAPLATE PLATE CALCULATOR
+      <div className="np-section-label" style={{ textAlign: "center", marginBottom: 8 }}>
+        LIVE CALCULATOR
       </div>
       <Heading>See the Real Cost of a Plate, Right Now.</Heading>
       <p
@@ -620,7 +632,7 @@ function LiveCalculator() {
         This example uses fixed numbers for Eba &amp; Egusi. Your real kitchen has its own ingredients, your own
         market prices, and dozens of dishes — that's what the app actually tracks.
       </p>
-      <div style={{ ...cardStyle, maxWidth: 560, margin: "32px auto 0" }}>
+      <div style={{ ...cardStyle, background: C.light, borderRadius: 20, maxWidth: 560, margin: "32px auto 0" }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: C.navy }}>Eba &amp; Egusi</div>
         <div style={{ fontSize: 14, color: C.muted, marginTop: 2 }}>{EBA_EGUSI_PLATES} plates</div>
 
@@ -762,23 +774,35 @@ function TrialOffer() {
       <div style={{ display: "grid", gap: 12, marginTop: 24, maxWidth: 720 }}>
         {TRIAL_POINTS.map((t) => (
           <div key={t} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <Check size={22} color={C.success} style={{ flexShrink: 0, marginTop: 2 }} />
+            <Check size={22} color={C.onNavy} style={{ flexShrink: 0, marginTop: 2 }} />
             <span style={{ color: C.onNavy, fontSize: 16, lineHeight: 1.6 }}>{t}</span>
           </div>
         ))}
       </div>
-      <div style={{ textAlign: "center", marginTop: 32 }}>
+      <div className="np-trial-actions" style={{ marginTop: 32 }}>
         <PrimaryLink to="/signup">Start Your Free Trial</PrimaryLink>
+        <WhatsAppButton />
       </div>
     </Section>
   );
 }
 
-function WhatsAppSection() {
+function StoryTeaser() {
   return (
-    <Section bg={C.light}>
-      <div style={{ textAlign: "center" }}>
-        <WhatsAppButton large />
+    <Section bg={C.white} id="story">
+      <div className="np-story-grid">
+        <picture>
+          <source srcSet={chefWebp} type="image/webp" />
+          <img className="np-story-photo" src={chefJpg} alt="" width={380} height={460} loading="lazy" />
+        </picture>
+        <div style={{ display: "grid", gap: 20 }}>
+          <div className="np-section-label">OUR STORY</div>
+          <Heading>Every plate of food has a true cost, and that cost can change constantly.</Heading>
+          <p style={{ color: C.muted, fontSize: 18, lineHeight: 1.6, margin: 0 }}>
+            For Nigerian food businesses, the cost of running a kitchen is closely tied to what is happening in the market. The price of egusi, oil, garri, rice, meat and other ingredients can change from one purchase to the next. NairaPlate is designed to bring clarity to that problem.
+          </p>
+          <div><a href="/our-story" style={{ color: C.blue, fontSize: 17, fontWeight: 700, textDecorationLine: "underline", textDecorationThickness: 2, textUnderlineOffset: 4 }}>Read our story</a></div>
+        </div>
       </div>
     </Section>
   );
