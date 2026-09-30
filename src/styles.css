@@ -265,7 +265,11 @@
 
 .np-header-nav { display: flex; align-items: center; gap: 32px; }
 .np-phone-menu-button, .np-phone-menu-panel, .np-phone-menu-backdrop { display: none; }
-@media (max-width: 639px) {
+/* Below 1024px the header switches to the menu button: five links plus the trial button do not fit on one row. */
+@media (max-width: 1023px) {
+  .np-header-nav .np-hide-sm { display: none; }
+  .np-trial-desktop { display: none; }
+  .np-trial-mobile { display: inline; }
   .np-site-header { height: 64px !important; }
   .np-site-header-row { padding-left: 16px !important; padding-right: 16px !important; gap: 10px !important; }
   .np-header-nav { gap: 10px; }
