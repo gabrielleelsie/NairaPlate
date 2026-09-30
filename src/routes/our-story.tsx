@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import chefJpg from "@/assets/nairaplate-chef-logo.jpg";
 import chefWebp from "@/assets/nairaplate-chef-logo.webp";
@@ -64,6 +64,12 @@ function OurStoryPage() {
         <section style={{ background: C.navy, padding: "72px 24px 80px" }}>
           <div className="np-story-hero-grid" style={{ maxWidth: 1140, margin: "0 auto" }}>
             <div>
+              <Link
+                to="/"
+                style={{ color: C.onNavy, display: "inline-block", fontSize: 16, fontWeight: 700, marginBottom: 24, textDecoration: "none" }}
+              >
+                ← Back to home
+              </Link>
               <div className="np-section-label" style={{ color: C.onNavy }}>OUR STORY</div>
               <h1 className="np-h1" style={{ color: C.white, margin: "18px 0 0" }}>Every plate of food has a true cost.</h1>
               <p className="np-sub" style={{ color: C.onNavy, lineHeight: 1.6, margin: "20px 0 0" }}>And that cost can change constantly.</p>
