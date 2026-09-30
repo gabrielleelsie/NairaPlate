@@ -353,3 +353,8 @@
   .np-floating-whatsapp-visible { display: flex !important; }
 }
 @media (max-width: 767px) { .np-video-grid { grid-template-columns: 1fr !important; } }
+
+/* FAQ accordion: hide the browser marker, turn the plus into a minus when open */
+.np-faq-item > summary::-webkit-details-marker { display: none; }
+.np-faq-item[open] .np-faq-icon { transform: rotate(45deg); }
+.np-faq-item > summary:focus-visible { outline: 3px solid #1677D2; outline-offset: 2px; border-radius: 14px; }

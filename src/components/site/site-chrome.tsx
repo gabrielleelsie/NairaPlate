@@ -327,6 +327,7 @@ export function SiteHeader() {
               <Link to="/our-story" onClick={closeMenu}>Our Story</Link>
               <Link to="/presentation" onClick={closeMenu}>Product Tour</Link>
               <Link to="/resources" onClick={closeMenu}>Resources</Link>
+              <Link to="/faq" onClick={closeMenu}>FAQ</Link>
               <Link to="/contact" onClick={closeMenu}>Contact</Link>
               <Link to="/app" onClick={closeMenu}>Staff Login</Link>
               <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
@@ -362,6 +363,7 @@ export function SiteFooter() {
           <Link to="/our-story" className="np-footer-link" style={linkStyle}>Our Story</Link>
           <Link to="/presentation" className="np-footer-link" style={linkStyle}>Product Tour</Link>
           <Link to="/resources" className="np-footer-link" style={linkStyle}>Resources</Link>
+          <Link to="/faq" className="np-footer-link" style={linkStyle}>FAQ</Link>
           <Link to="/contact" className="np-footer-link" style={linkStyle}>Contact</Link>
           <Link to="/app" className="np-footer-link" style={linkStyle}>Staff Login</Link>
           <Link to="/signup" className="np-footer-link" style={linkStyle}>Start Free Trial</Link>
