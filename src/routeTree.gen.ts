@@ -30,6 +30,7 @@ import { Route as PresentationRouteImport } from './routes/presentation'
 import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as ShoppingListRouteImport } from './routes/shopping-list'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StaffRouteImport } from './routes/staff'
@@ -149,6 +150,11 @@ const ReportRoute = ReportRouteImport.update({
   path: '/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResourcesRoute = ResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShoppingListRoute = ShoppingListRouteImport.update({
   id: '/shopping-list',
   path: '/shopping-list',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
+  '/resources': typeof ResourcesRoute
   '/shopping-list': typeof ShoppingListRoute
   '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
@@ -274,6 +281,7 @@ export interface FileRoutesByTo {
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
+  '/resources': typeof ResourcesRoute
   '/shopping-list': typeof ShoppingListRoute
   '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
+  '/resources': typeof ResourcesRoute
   '/shopping-list': typeof ShoppingListRoute
   '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/recipes'
     | '/report'
+    | '/resources'
     | '/shopping-list'
     | '/signup'
     | '/staff'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/recipes'
     | '/report'
+    | '/resources'
     | '/shopping-list'
     | '/signup'
     | '/staff'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/recipes'
     | '/report'
+    | '/resources'
     | '/shopping-list'
     | '/signup'
     | '/staff'
@@ -458,6 +470,7 @@ export interface RootRouteChildren {
   PurchasesRoute: typeof PurchasesRoute
   RecipesRoute: typeof RecipesRoute
   ReportRoute: typeof ReportRoute
+  ResourcesRoute: typeof ResourcesRoute
   ShoppingListRoute: typeof ShoppingListRoute
   SignupRoute: typeof SignupRoute
   StaffRoute: typeof StaffRoute
@@ -622,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shopping-list': {
       id: '/shopping-list'
       path: '/shopping-list'
@@ -738,6 +758,7 @@ const rootRouteChildren: RootRouteChildren = {
   PurchasesRoute: PurchasesRoute,
   RecipesRoute: RecipesRoute,
   ReportRoute: ReportRoute,
+  ResourcesRoute: ResourcesRoute,
   ShoppingListRoute: ShoppingListRoute,
   SignupRoute: SignupRoute,
   StaffRoute: StaffRoute,
