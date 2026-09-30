@@ -14,3 +14,4 @@
 - Market-unit values and person-facing labels come only from `MARKET_UNIT_OPTIONS` in `staff-session.ts`; raw values remain unchanged in storage. Why: every screen offers the same Nigerian units without leaking underscores.
 - Public sales videos and posters stream through the allowlisted `/api/public/media/$filename` route with byte-range forwarding. Why: Cloudflare excludes `public/media`, while browsers abort direct cross-origin playback.
 - Contact form messages are saved to `contact_messages` before any email is tried; visitors see success once saved. Why: a failed email must never lose a lead.
+- Public marketing navigation and brand styling are shared through `SiteHeader`, `SiteFooter`, `Logo`, and the `np-public` style scope; `/our-story` is a standalone content route. Why: public pages stay consistent without changing logged-in app typography or behavior.

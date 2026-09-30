@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { C, FONT_STACK } from "@/components/site/site-chrome";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -66,9 +67,9 @@ function Signup() {
 
   if (done)
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <main className="np-public flex min-h-screen items-center justify-center px-4" style={{ background: C.light, fontFamily: FONT_STACK }}>
         <div className="w-full max-w-md space-y-4">
-          <h1 className="text-3xl font-semibold text-foreground">Thank you</h1>
+          <h1 className="text-3xl font-extrabold" style={{ color: C.navy }}>Thank you</h1>
           <p className="text-foreground">Your business is pending approval. You'll be able to sign in once it's approved.</p>
           <p className="text-sm text-muted-foreground">Your business code is <strong>{code.trim().toLowerCase()}</strong>. Keep it — you'll need it with your PIN to sign in.</p>
           <Link className="text-sm underline" to="/app">Back to sign in</Link>
@@ -77,12 +78,12 @@ function Signup() {
     );
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
+    <main className="np-public flex min-h-screen flex-col items-center justify-center px-4 py-10" style={{ background: C.light, fontFamily: FONT_STACK }}>
       <Link to="/" className="mb-6 text-sm font-medium text-muted-foreground underline-offset-4 hover:underline">
         ← Back to home
       </Link>
       <form onSubmit={submit} className="w-full max-w-md space-y-4">
-        <h1 className="text-3xl font-semibold text-foreground">Register your business</h1>
+        <h1 className="text-3xl font-extrabold" style={{ color: C.navy }}>Register your business</h1>
         <p className="text-muted-foreground">We'll check your details, then switch your account on.</p>
         <div className="space-y-1"><Label htmlFor="bn">Business name</Label>
           <Input id="bn" value={name} onChange={(e) => setName(e.target.value)} placeholder="Mama Put Kitchen" /></div>
