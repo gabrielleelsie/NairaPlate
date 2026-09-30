@@ -9,16 +9,16 @@ export const WHATSAPP_HREF =
   "https://wa.me/2349124766666?text=Hello%20NairaPlate%2C%20I%20would%20like%20to%20try%20the%20app%20in%20my%20restaurant";
 
 export const C = {
-  navy: "#0B2239",
-  blue: "#0078D4",
-  blueHover: "#005FA8",
+  navy: "#0B1F33",
+  blue: "#1677D2",
+  blueHover: "#115FA8",
   white: "#FFFFFF",
-  light: "#F5F8FB",
+  light: "#EAF4FF",
   text: "#1A1A1A",
   muted: "#5A6472",
-  onNavy: "#E8F0FA",
-  mutedOnNavy: "#9FB3C8",
-  border: "#E1E8F0",
+  onNavy: "#EAF4FF",
+  mutedOnNavy: "#B9CFE6",
+  border: "#D3E4F7",
   success: "#1E8E5A",
   error: "#D92D20",
   whatsapp: "#25D366",
@@ -26,14 +26,14 @@ export const C = {
 } as const;
 
 export const FONT_STACK =
-  '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'Figtree, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 export const cardStyle: React.CSSProperties = {
   background: C.white,
   border: `1px solid ${C.border}`,
-  borderRadius: 12,
+  borderRadius: 20,
   padding: 24,
-  boxShadow: "0 2px 8px rgba(11,34,57,0.06)",
+  boxShadow: "0 2px 8px rgba(11,31,51,0.08)",
 };
 
 export function PrimaryButton({
@@ -49,11 +49,12 @@ export function PrimaryButton({
       style={{
         background: disabled ? C.disabled : C.blue,
         color: C.white,
-        borderRadius: 8,
-        padding: "14px 28px",
+        borderRadius: 12,
+        minHeight: 48,
+        padding: "12px 28px",
         border: "none",
-        fontSize: 16,
-        fontWeight: 600,
+        fontSize: 17,
+        fontWeight: 700,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
@@ -71,10 +72,11 @@ export function PrimaryLink({ to, children }: { to: string; children: React.Reac
         display: "inline-block",
         background: C.blue,
         color: C.white,
-        borderRadius: 8,
-        padding: "14px 28px",
-        fontSize: 16,
-        fontWeight: 600,
+        borderRadius: 12,
+        minHeight: 48,
+        padding: "12px 28px",
+        fontSize: 17,
+        fontWeight: 700,
         textDecoration: "none",
       }}
     >
@@ -83,7 +85,7 @@ export function PrimaryLink({ to, children }: { to: string; children: React.Reac
   );
 }
 
-/** Secondary outline button for light backgrounds — text/border #0078D4 instead of white. */
+/** Secondary outline button for light backgrounds. */
 export function OutlineLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link
@@ -94,10 +96,11 @@ export function OutlineLink({ to, children }: { to: string; children: React.Reac
         background: "transparent",
         border: `2px solid ${C.blue}`,
         color: C.blue,
-        borderRadius: 8,
-        padding: "12px 26px",
-        fontSize: 16,
-        fontWeight: 600,
+        borderRadius: 12,
+        minHeight: 48,
+        padding: "10px 26px",
+        fontSize: 17,
+        fontWeight: 700,
         textDecoration: "none",
         cursor: "pointer",
       }}
@@ -122,10 +125,11 @@ export function SecondaryButton({
         background: "transparent",
         border: `2px solid ${C.white}`,
         color: C.white,
-        borderRadius: 8,
-        padding: "12px 26px",
-        fontSize: 16,
-        fontWeight: 600,
+        borderRadius: 12,
+        minHeight: 48,
+        padding: "10px 26px",
+        fontSize: 17,
+        fontWeight: 700,
         cursor: "pointer",
       }}
     >
@@ -152,10 +156,11 @@ export function WhatsAppButton({
         gap: 10,
         background: C.whatsapp,
         color: C.white,
-        borderRadius: 8,
-        padding: large ? "18px 36px" : "14px 28px",
-        fontSize: 16,
-        fontWeight: 600,
+        borderRadius: 12,
+        minHeight: 48,
+        padding: large ? "16px 34px" : "12px 28px",
+        fontSize: 17,
+        fontWeight: 700,
         textDecoration: "none",
       }}
     >
@@ -203,7 +208,7 @@ export function SiteHeader() {
         height: 72,
         background: C.white,
         borderBottom: `1px solid ${C.border}`,
-        boxShadow: "0 1px 4px rgba(11,34,57,0.04)",
+        boxShadow: "0 1px 4px rgba(11,31,51,0.05)",
       }}
     >
       <div
@@ -224,20 +229,28 @@ export function SiteHeader() {
         </Link>
         <nav className="np-header-nav">
           <Link
+            to="/our-story"
+            className="np-text-link np-hide-sm"
+            style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+          >
+            Our Story
+          </Link>
+          <Link
             to="/contact"
             className="np-text-link np-hide-sm"
-            style={{ color: C.blue, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+            style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
           >
             Contact
           </Link>
           <Link
             to="/app"
             className="np-text-link"
-            style={{ color: C.blue, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+            style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
           >
             Staff Login
           </Link>
-          <PrimaryLink to="/signup">Start Free Trial</PrimaryLink>
+          <span className="np-trial-desktop"><PrimaryLink to="/signup">Start Free Trial</PrimaryLink></span>
+          <span className="np-trial-mobile"><PrimaryLink to="/signup">Free Trial</PrimaryLink></span>
         </nav>
       </div>
     </header>
@@ -259,6 +272,7 @@ export function SiteFooter() {
           NairaPlate — real-time food costing for Nigerian kitchens.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+          <Link to="/our-story" className="np-footer-link" style={linkStyle}>Our Story</Link>
           <Link to="/contact" className="np-footer-link" style={linkStyle}>Contact</Link>
           <Link to="/app" className="np-footer-link" style={linkStyle}>Staff Login</Link>
           <Link to="/signup" className="np-footer-link" style={linkStyle}>Start Free Trial</Link>

@@ -12,23 +12,21 @@ export function Logo({ size = 48, variant = "color", layout = "inline", classNam
   const mark = (
     <svg
       aria-hidden="true"
-      viewBox="0 0 48 48"
+      viewBox="-640 -640 1280 1280"
       width={size}
       height={size}
       className="shrink-0"
-      fill="none"
+      fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <circle cx="24" cy="24" r="18" stroke="currentColor" strokeWidth="3" />
-      <path d="M13.5 29.5C17 32 20.4 33 24 33C28.1 33 31.8 31.7 35 29" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path
-        d="M17 26L23 20L28 24L36 15M30.5 15H36V20.5"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={isWhite ? "text-brand-inverse" : "text-brand-blue"}
-      />
+      <g stroke="currentColor" strokeWidth="48" strokeLinejoin="round">
+        <path d="M-316.8 -512.9A605 605 0 0 0 -587.8 125.6L-491.8 101.2A506 506 0 0 1 -267.6 -426.9Z" />
+        <path d="M-556.9 226.9A605 605 0 0 0 -237.5 554.7L-201.5 462.4A506 506 0 0 1 -463.6 193.4Z" />
+        <path d="M-137.0 588.3A605 605 0 1 0 -222.4 -561.0L-181.7 -470.7A506 506 0 1 1 -110.1 493.0Z" />
+      </g>
+      <rect x="-142.5" y="-241.0" width="376" height="110" rx="55.0" />
+      <rect x="-300.5" y="-55.5" width="616" height="110" rx="55.0" />
+      <rect x="-159.5" y="130.0" width="389" height="110" rx="55.0" />
     </svg>
   );
 
@@ -39,11 +37,12 @@ export function Logo({ size = 48, variant = "color", layout = "inline", classNam
   return (
     <span
       className={cn(
-        "inline-flex font-bold tracking-normal",
-        layout === "stacked" ? "flex-col items-center gap-1" : "items-center gap-2.5",
+        "inline-flex items-center font-extrabold",
+        layout === "stacked" ? "flex-col gap-2.5" : "gap-2.5",
         isWhite ? "text-brand-inverse" : "text-brand-navy",
         className,
       )}
+      style={{ fontFamily: 'Figtree, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', letterSpacing: "-0.3px" }}
     >
       {mark}
       <span className={layout === "stacked" ? "text-2xl" : "text-xl"}>NairaPlate</span>
