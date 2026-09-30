@@ -226,9 +226,9 @@ export function SiteHeader() {
       if (event.key === "Escape") setMenuOpen(false);
     };
 
-    // The menu only exists below 640px; close it if the screen widens (e.g. a tablet is rotated)
+    // The menu only exists below 1024px; close it if the screen widens (e.g. a tablet is rotated)
     // so the page is never left unable to scroll behind a hidden menu.
-    const wideScreen = window.matchMedia("(min-width: 640px)");
+    const wideScreen = window.matchMedia("(min-width: 1024px)");
     const closeOnWide = () => {
       if (wideScreen.matches) setMenuOpen(false);
     };
@@ -283,6 +283,13 @@ export function SiteHeader() {
             style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
           >
             Our Story
+          </Link>
+          <Link
+            to="/resources"
+            className="np-text-link np-hide-sm"
+            style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+          >
+            Resources
           </Link>
           <Link
             to="/contact"
