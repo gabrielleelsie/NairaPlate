@@ -10,6 +10,7 @@
 // not the price on the day of the sale. The result carries this in `limitations`.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeRecipeCost, type CostConversion, type CostIngredient, type CostRecipeItem } from "@/lib/costing";
+import { DAY_MS, fromLagosWallClock, lagosDateKey, toLagosWallClock } from "@/lib/lagos-time";
 
 export type DateRange = { from: Date; to: Date }; // inclusive from, exclusive to
 
@@ -26,7 +27,8 @@ export type PnlResult = {
   limitations: string[];
 };
 
-const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+// Days are Nigeria calendar days (WAT), so a sale at 00:30 in Lagos counts on the right day.
+const dayKey = (d: Date) => lagosDateKey(d);
 
 type SoldItem = { recipe_id: string; recipe_version_id?: string | null; quantity: number };
 
@@ -86,7 +88,7 @@ export async function calculateBusinessPnl(
 
   // Daily buckets across the whole range, so days with no sales show as 0 on the chart.
   const daily = new Map<string, number>();
-  for (let d = new Date(date_range.from); d < date_range.to; d.setUTCDate(d.getUTCDate() + 1)) daily.set(dayKey(d), 0);
+  for (let t = date_range.from.getTime(); t < date_range.to.getTime(); t += DAY_MS) daily.set(dayKey(new Date(t)), 0);
 
   let gross_sales_kobo = 0;
   let recipeCost = 0;
@@ -144,20 +146,22 @@ export async function compareBusinessPnl(
   return { current: cur, previous: prev };
 }
 
-// Period helpers (UTC). weekOffset/monthOffset 0 = current, 1 = previous.
+// Period helpers in Nigeria time (weeks start Monday 00:00 WAT). weekOffset/monthOffset 0 = current, 1 = previous.
 export function weekRange(weekOffset = 0, now = new Date()): DateRange {
-  const day = (now.getUTCDay() + 6) % 7; // Monday = 0
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - day - 7 * weekOffset));
+  const n = toLagosWallClock(now);
+  const day = (n.getUTCDay() + 6) % 7; // Monday = 0
+  const from = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() - day - 7 * weekOffset));
   const to = new Date(from);
   to.setUTCDate(to.getUTCDate() + 7);
-  return { from, to };
+  return { from: fromLagosWallClock(from), to: fromLagosWallClock(to) };
 }
 
 export function monthRange(monthOffset = 0, now = new Date()): DateRange {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth() - monthOffset;
+  const n = toLagosWallClock(now);
+  const y = n.getUTCFullYear();
+  const m = n.getUTCMonth() - monthOffset;
   return {
-    from: new Date(Date.UTC(y, m, 1)),
-    to: new Date(Date.UTC(y, m + 1, 1)),
+    from: fromLagosWallClock(new Date(Date.UTC(y, m, 1))),
+    to: fromLagosWallClock(new Date(Date.UTC(y, m + 1, 1))),
   };
 }

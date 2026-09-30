@@ -187,3 +187,8 @@ export async function sendContactMessage(
     ].filter(Boolean), "info"),
   );
 }
+
+/** Sends one owner's daily summary. The HTML is built by daily-summary.server.ts. */
+export async function sendDailySummaryEmail(to: string, subject: string, html: string): Promise<SendResult> {
+  return send(to, subject, html);
+}

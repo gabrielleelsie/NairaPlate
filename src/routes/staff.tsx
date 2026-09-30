@@ -102,6 +102,11 @@ function StaffScreen() {
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
       {notice && <p className="mt-3 text-sm text-foreground">{notice}</p>}
 
+      <DailySummaryCard
+        onDone={(msg) => { setError(null); setNotice(msg); }}
+        onError={(m) => { setNotice(null); setError(m); }}
+      />
+
       <AddStaffForm
         onDone={(msg) => {
           setError(null);
@@ -137,6 +142,56 @@ function StaffScreen() {
         ))}
       </ul>
     </Shell>
+  );
+}
+
+// Daily summary email: the signed-in owner's own email address, and on/off for the business.
+function DailySummaryCard({ onDone, onError }: { onDone: (m: string) => void; onError: (m: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    callAdmin({ action: "get_summary_prefs" }).then(({ status, data }) => {
+      if (status === 200) { setEmail(data.email ?? ""); setEnabled(data.enabled !== false); }
+      setLoaded(true);
+    });
+  }, []);
+
+  return (
+    <form
+      className="mt-6 rounded-lg border border-border p-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        const { status, data } = await callAdmin({ action: "set_summary_prefs", email: email.trim(), enabled });
+        setBusy(false);
+        if (status !== 200) return onError(data.error ?? "Could not save.");
+        onDone(!enabled
+          ? "Daily summary emails are switched off."
+          : email.trim()
+            ? `Saved. The daily summary will go to ${email.trim()} each evening at 8:00 pm on days with sales.`
+            : "Saved, but add your email address to receive the daily summary.");
+      }}
+    >
+      <h2 className="text-lg font-medium text-foreground">Daily summary email</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Each evening at 8:00 pm Nigeria time, on days with at least one paid order, owners get an email with the
+        day&apos;s sales, food cost and profit.
+      </p>
+      <div className="mt-3 space-y-2">
+        <Label htmlFor="summary-email">Your email address</Label>
+        <Input id="summary-email" type="email" autoComplete="email" placeholder="you@example.com"
+          value={email} disabled={!loaded} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <label className="mt-3 flex items-center gap-2 text-sm text-foreground">
+        <input type="checkbox" className="h-4 w-4" checked={enabled} disabled={!loaded}
+          onChange={(e) => setEnabled(e.target.checked)} />
+        Send the daily summary for this business
+      </label>
+      <Button type="submit" className="mt-4" disabled={!loaded || busy}>{busy ? "Saving…" : "Save"}</Button>
+    </form>
   );
 }
 

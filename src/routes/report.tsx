@@ -150,10 +150,9 @@ function CompareRow({ label, cur, prev, money, inverse, strong, format }: {
 }
 
 function dateLabel(r: { from: Date; to: Date }) {
-  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", timeZone: "UTC" };
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", timeZone: "Africa/Lagos" };
   const f = r.from.toLocaleDateString("en-GB", opts);
-  const t = new Date(r.to);
-  t.setUTCDate(t.getUTCDate() - 1);
+  const t = new Date(r.to.getTime() - 24 * 60 * 60 * 1000); // last day of the period
   return `${f} – ${t.toLocaleDateString("en-GB", opts)}`;
 }
 

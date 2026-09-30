@@ -8,6 +8,8 @@
 //   { action: "create_staff", display_name, role, pin }        -> new staff row (hash + salt made here)
 //   { action: "deactivate_staff", staff_id }                   -> is_active = false (row is never deleted)
 //   { action: "reset_pin", staff_id, pin }                     -> new salt + hash, clears lockout
+//   { action: "get_summary_prefs" }                            -> caller's own email + business daily summary on/off
+//   { action: "set_summary_prefs", email, enabled }            -> saves both ("" clears the email)
 import { createFileRoute } from "@tanstack/react-router";
 import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
@@ -33,6 +35,13 @@ const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("reset_pin"), staff_id: z.string().uuid(), pin: PinSchema }),
   // new_role is validated separately (step b) so a bad value gets its own clear 400 message.
   z.object({ action: z.literal("change_role"), staff_id: z.string().uuid(), new_role: z.unknown() }),
+  // Daily summary email: the caller's own email address, and whether the business gets the summary.
+  z.object({ action: z.literal("get_summary_prefs") }),
+  z.object({
+    action: z.literal("set_summary_prefs"),
+    email: z.union([z.string().trim().max(120).email("That email doesn't look right."), z.literal("")]),
+    enabled: z.boolean(),
+  }),
 ]);
 
 function json(body: unknown, status = 200) {
@@ -138,6 +147,25 @@ export const Route = createFileRoute("/api/public/staff-admin")({
             is_active: s.is_active,
           }));
           return json({ staff });
+        }
+
+        // ---------- daily summary preferences (own email + business on/off) ----------
+        if (body.action === "get_summary_prefs") {
+          const [{ data: me }, { data: biz }] = await Promise.all([
+            admin.from("staff_users").select("email").eq("id", callerId).eq("business_id", business_id).maybeSingle(),
+            admin.from("businesses").select("daily_summary_enabled").eq("id", business_id).maybeSingle(),
+          ]);
+          return json({ email: me?.email ?? "", enabled: biz?.daily_summary_enabled !== false });
+        }
+        if (body.action === "set_summary_prefs") {
+          const { error: eErr } = await admin.from("staff_users")
+            .update({ email: body.email === "" ? null : body.email })
+            .eq("id", callerId).eq("business_id", business_id);
+          if (eErr) return json({ error: "Could not save your email." }, 500);
+          const { error: bErr } = await admin.from("businesses")
+            .update({ daily_summary_enabled: body.enabled }).eq("id", business_id);
+          if (bErr) return json({ error: "Could not save the summary setting." }, 500);
+          return json({ ok: true });
         }
 
         // ---------- create_staff ----------

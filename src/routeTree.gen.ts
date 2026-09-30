@@ -41,9 +41,11 @@ import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$sup
 import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public/business-signup'
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
 import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
+import { Route as ApiPublicDailySummaryRouteImport } from './routes/api/public/daily-summary'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
+import { Route as ApiPublicSummaryUnsubscribeRouteImport } from './routes/api/public/summary-unsubscribe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -206,6 +208,11 @@ const ApiPublicContactRoute = ApiPublicContactRouteImport.update({
   path: '/api/public/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDailySummaryRoute = ApiPublicDailySummaryRouteImport.update({
+  id: '/api/public/daily-summary',
+  path: '/api/public/daily-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -221,6 +228,12 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
   path: '/api/public/staff-pin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSummaryUnsubscribeRoute =
+  ApiPublicSummaryUnsubscribeRouteImport.update({
+    id: '/api/public/summary-unsubscribe',
+    path: '/api/public/summary-unsubscribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -255,9 +268,11 @@ export interface FileRoutesByFullPath {
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -292,9 +307,11 @@ export interface FileRoutesByTo {
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -330,9 +347,11 @@ export interface FileRoutesById {
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/contact': typeof ApiPublicContactRoute
+  '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -369,9 +388,11 @@ export interface FileRouteTypes {
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
     | '/api/public/contact'
+    | '/api/public/daily-summary'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/summary-unsubscribe'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -406,9 +427,11 @@ export interface FileRouteTypes {
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
     | '/api/public/contact'
+    | '/api/public/daily-summary'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/summary-unsubscribe'
   id:
     | '__root__'
     | '/'
@@ -443,9 +466,11 @@ export interface FileRouteTypes {
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
     | '/api/public/contact'
+    | '/api/public/daily-summary'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/summary-unsubscribe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -481,9 +506,11 @@ export interface RootRouteChildren {
   ApiPublicBusinessSignupRoute: typeof ApiPublicBusinessSignupRoute
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
   ApiPublicContactRoute: typeof ApiPublicContactRoute
+  ApiPublicDailySummaryRoute: typeof ApiPublicDailySummaryRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
+  ApiPublicSummaryUnsubscribeRoute: typeof ApiPublicSummaryUnsubscribeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -712,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/daily-summary': {
+      id: '/api/public/daily-summary'
+      path: '/api/public/daily-summary'
+      fullPath: '/api/public/daily-summary'
+      preLoaderRoute: typeof ApiPublicDailySummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -731,6 +765,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/staff-pin-login'
       fullPath: '/api/public/staff-pin-login'
       preLoaderRoute: typeof ApiPublicStaffPinLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/summary-unsubscribe': {
+      id: '/api/public/summary-unsubscribe'
+      path: '/api/public/summary-unsubscribe'
+      fullPath: '/api/public/summary-unsubscribe'
+      preLoaderRoute: typeof ApiPublicSummaryUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -769,9 +810,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBusinessSignupRoute: ApiPublicBusinessSignupRoute,
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
   ApiPublicContactRoute: ApiPublicContactRoute,
+  ApiPublicDailySummaryRoute: ApiPublicDailySummaryRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
+  ApiPublicSummaryUnsubscribeRoute: ApiPublicSummaryUnsubscribeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
