@@ -17,3 +17,4 @@
 - Public marketing navigation and brand styling are shared through `SiteHeader`, `SiteFooter`, `Logo`, and the `np-public` style scope; `/our-story` is a standalone content route. Why: public pages stay consistent without changing logged-in app typography or behavior.
 - Changes to the live NairaPlate database are SQL files in `supabase/external/`, run by the owner in their own SQL editor and verified before any code release. Why: the live app uses an external database the agent cannot migrate.
 - Business access (trial/paid plan) date rules live only in `src/lib/subscription.ts`; the database guard and `business_has_access()` enforce the same rule. Why: one Lagos-time definition of when access ends.
+- Video and poster links in `src/routes/index.tsx` carry a `?v=N` tag. Change N whenever the files in `public/media` are replaced under the same names. Why: browsers and the CDN keep old copies of a file under an unchanged address.
