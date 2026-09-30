@@ -35,13 +35,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Track food costs in real Nigerian market units, protect your margins when prices spike, and run your kitchen with secure staff PINs. Start a 14-day free trial.",
+          "Track food costs in real Nigerian market units, protect your margins when prices spike, and run your kitchen with secure staff PINs. Start a 7-day free trial.",
       },
       { property: "og:title", content: "NairaPlate — Real-Time Food Costing for Nigerian Kitchens" },
       {
         property: "og:description",
         content:
-          "Track food costs in real Nigerian market units, protect your margins when prices spike, and run your kitchen with secure staff PINs. Start a 14-day free trial.",
+          "Track food costs in real Nigerian market units, protect your margins when prices spike, and run your kitchen with secure staff PINs. Start a 7-day free trial.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -186,7 +186,7 @@ function Hero() {
             which dishes are losing money.
           </p>
           <div className="np-hero-actions">
-            <PrimaryLink to="/signup">Start 14-Day Free Trial</PrimaryLink>
+            <PrimaryLink to="/signup">Start 7-Day Free Trial</PrimaryLink>
             <SecondaryButton
               onClick={() => document.getElementById("calculator")?.scrollIntoView({ behavior: "smooth" })}
             >
@@ -762,7 +762,7 @@ function LiveCalculator() {
 }
 
 const TRIAL_POINTS = [
-  "14 days free, full access, every feature.",
+  "7 days free, full access, every feature.",
   "We help you set up your top 5 dishes and market-unit conversions so you're not starting from a blank screen.",
   "Daily WhatsApp summaries of your sales and profit during the trial, so you see the value before you're asked to pay.",
 ];
@@ -770,7 +770,7 @@ const TRIAL_POINTS = [
 function TrialOffer() {
   return (
     <Section bg={C.navy}>
-      <Heading onNavy>14 Days Free, With a Real Person Setting It Up For You.</Heading>
+      <Heading onNavy>7 Days Free, With a Real Person Setting It Up For You.</Heading>
       <div style={{ display: "grid", gap: 12, marginTop: 24, maxWidth: 720 }}>
         {TRIAL_POINTS.map((t) => (
           <div key={t} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>

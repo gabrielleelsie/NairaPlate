@@ -92,7 +92,7 @@ function OurStoryPage() {
               At its core, NairaPlate is about turning everyday kitchen activity into useful financial clarity.
             </p>
             <div className="np-trial-actions" style={{ marginTop: 32 }}>
-              <PrimaryLink to="/signup">Start 14-Day Free Trial</PrimaryLink>
+              <PrimaryLink to="/signup">Start 7-Day Free Trial</PrimaryLink>
               <a className="np-outline-btn" href="/#calculator" style={{ display: "inline-flex", alignItems: "center", minHeight: 48, padding: "10px 26px", border: `2px solid ${C.blue}`, borderRadius: 12, color: C.blue, fontSize: 17, fontWeight: 700, textDecoration: "none" }}>
                 Try the Calculator
               </a>

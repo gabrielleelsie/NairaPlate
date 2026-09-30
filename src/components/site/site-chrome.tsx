@@ -70,7 +70,10 @@ export function PrimaryLink({ to, children }: { to: string; children: React.Reac
       to={to}
       className="np-primary-btn"
       style={{
-        display: "inline-block",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxSizing: "border-box",
         background: C.blue,
         color: C.white,
         borderRadius: 12,
@@ -93,7 +96,10 @@ export function OutlineLink({ to, children }: { to: string; children: React.Reac
       to={to}
       className="np-outline-btn"
       style={{
-        display: "inline-block",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxSizing: "border-box",
         background: "transparent",
         border: `2px solid ${C.blue}`,
         color: C.blue,
@@ -220,12 +226,21 @@ export function SiteHeader() {
       if (event.key === "Escape") setMenuOpen(false);
     };
 
+    // The menu only exists below 640px; close it if the screen widens (e.g. a tablet is rotated)
+    // so the page is never left unable to scroll behind a hidden menu.
+    const wideScreen = window.matchMedia("(min-width: 640px)");
+    const closeOnWide = () => {
+      if (wideScreen.matches) setMenuOpen(false);
+    };
+
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", closeOnEscape);
+    wideScreen.addEventListener("change", closeOnWide);
 
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
+      wideScreen.removeEventListener("change", closeOnWide);
     };
   }, [menuOpen]);
 
@@ -311,7 +326,7 @@ export function SiteHeader() {
               </a>
             </div>
             <Link to="/signup" className="np-phone-menu-trial" onClick={closeMenu}>
-              Start 14-Day Free Trial
+              Start 7-Day Free Trial
             </Link>
           </nav>
         </>
