@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { accessState, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
+import { lagosDateKey } from "@/lib/lagos-time";
 import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
 
 export const Route = createFileRoute("/approvals")({
@@ -32,6 +34,11 @@ type Biz = {
   created_at: string; reviewed_at: string | null;
   owner_name: string | null; owner_contact: string | null;
   active_staff: number; locked_staff: number;
+  plan: string | null; trial_started_at: string | null; access_ends_at: string | null; has_access: boolean;
+};
+type Payment = {
+  id: string; plan: string; amount_kobo: number; payment_reference: string; paid_on: string;
+  period_start: string; period_end: string; recorded_by_name: string; created_at: string;
 };
 type StaffRow = {
   id: string; display_name: string; role: string; is_active: boolean;
@@ -40,7 +47,8 @@ type StaffRow = {
 type AuditRow = { id: string; action: string; actor_role: string | null; details: string | null; created_at: string };
 type FlagRow = { id: string; flag_type: string; severity: string | null; message: string | null; created_at: string };
 type Detail = {
-  business: { id: string; name: string; status: string; reason: string | null };
+  business: { id: string; name: string; status: string; reason: string | null; plan: string | null; access_ends_at: string | null; has_access: boolean };
+  payments: Payment[];
   staff: StaffRow[]; audit: AuditRow[]; flags: FlagRow[];
 };
 
@@ -70,12 +78,29 @@ function Badge({ status }: { status: string }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? "bg-slate-200 text-slate-700"}`}>{STATUS_WORD[status] ?? status}</span>;
 }
 
+/** Plan and access end date, e.g. "Free trial · 3 days left" or "Plan ended 2 Oct 2026". */
+function PlanBadge({ status, plan, access_ends_at }: { status: string; plan: string | null; access_ends_at: string | null }) {
+  if (status !== "approved" && status !== "suspended") return null;
+  const st = accessState({ status: "approved", access_ends_at, plan });
+  if (st.kind === "active") {
+    const soon = st.daysLeft <= 3;
+    return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${soon ? "bg-amber-100 text-amber-900" : "bg-sky-100 text-sky-900"}`}>
+      {PLAN_LABEL[plan ?? ""] ?? "Plan"} · {st.daysLeft === 1 ? "ends today" : `${st.daysLeft} days left`} (to {formatLagosDate(st.endsAt)})
+    </span>;
+  }
+  return <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
+    {access_ends_at ? `Plan ended ${formatLagosDate(access_ends_at)}` : "No plan"}
+  </span>;
+}
+const isExpired = (b: Biz) => b.status === "approved" && !b.has_access;
+const endsSoon = (b: Biz) => { const st = accessState(b); return st.kind === "active" && st.daysLeft <= 3; };
+
 type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "security";
 
 type Watch = { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] };
 type Health = {
   generated_at: string; latency_ms: number;
-  tenants: { total: number; approved: number; pending: number; suspended: number; rejected: number };
+  tenants: { total: number; approved: number; pending: number; suspended: number; rejected: number; on_trial?: number; active_paid?: number; expired?: number };
   people: { active_staff: number; locked_now: number; failed_logins_24h: number; successful_logins_24h: number; lockouts_24h: number };
   activity: { orders_today: number; gmv_today_kobo: number; gmv_week_kobo: number; events_24h: number };
   flags: { open_total: number; critical: number };
@@ -92,6 +117,7 @@ const naira = (kobo: number) => "₦" + (kobo / 100).toLocaleString("en-NG", { m
 // Plain-English names for events whose raw action name would not read well.
 const ACTION_LABEL: Record<string, string> = {
   email_undelivered: "Email not delivered",
+  subscription_payment_recorded: "Subscription payment recorded",
   security_alert_undelivered: "Security alert not delivered",
 };
 const words = (s: string) =>
@@ -137,7 +163,7 @@ function PlatformConsole() {
     const { status, data } = await callApi(body);
     setBusy(false);
     if (status !== 200) { setErr(String(data["error"] ?? "That didn't work.")); return null; }
-    setMsg(okText(data));
+    setMsg(okText(data) + (data["still_expired"] ? ` ${String(data["message"] ?? "")}` : ""));
     await load();
     if (focus) {
       const { data: d2 } = await callApi({ action: "business_detail", business_id: focus });
@@ -264,21 +290,29 @@ function Directory({ rows, search, setSearch, busy, act, onInspect }: {
   const [suspending, setSuspending] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [pin, setPin] = useState("");
+  const [filter, setFilter] = useState<"all" | "expired" | "soon">("all");
+  const shown = filter === "expired" ? rows.filter(isExpired) : filter === "soon" ? rows.filter(endsSoon) : rows;
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {([["all", `All (${rows.length})`], ["expired", `Expired (${rows.filter(isExpired).length})`], ["soon", `Ending within 3 days (${rows.filter(endsSoon).length})`]] as const).map(([k, label]) => (
+          <Button key={k} size="sm" variant={filter === k ? "default" : "outline"} onClick={() => setFilter(k)}>{label}</Button>
+        ))}
+      </div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Search by business code, name, owner or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      {rows.length === 0 && <p className="text-muted-foreground">No business matches that.</p>}
+      {shown.length === 0 && <p className="text-muted-foreground">No business matches that.</p>}
       <ul className="space-y-3">
-        {rows.map((r) => (
-          <li key={r.business_id} className="space-y-3 rounded-xl border border-border bg-card p-4">
+        {shown.map((r) => (
+          <li key={r.business_id} className={`space-y-3 rounded-xl border p-4 ${isExpired(r) ? "border-red-300 bg-red-50/50" : "border-border bg-card"}`}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-card-foreground">{r.business_name}</span>
               <span className="text-sm text-muted-foreground">({r.business_id})</span>
               <Badge status={r.status} />
+              <PlanBadge status={r.status} plan={r.plan} access_ends_at={r.access_ends_at} />
               {r.locked_staff > 0 && (
                 <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
                   <AlertTriangle className="size-3" />{r.locked_staff} locked out
@@ -311,6 +345,9 @@ function Directory({ rows, search, setSearch, busy, act, onInspect }: {
             ) : (
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => onInspect(r.business_id)}>Inspect</Button>
+                {(r.status === "approved" || r.status === "suspended") && (
+                  <Button variant="outline" size="sm" onClick={() => onInspect(r.business_id)}>Record payment</Button>
+                )}
                 {r.status === "pending" && (
                   <Button size="sm" disabled={busy} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90"
                     onClick={() => act({ action: "set_status", business_id: r.business_id, status: "approved" }, () => `${r.business_name} approved.`)}>Approve</Button>
@@ -381,7 +418,25 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
         <Button variant="outline" size="sm" onClick={() => onPick("")}>← All businesses</Button>
         <span className="font-semibold text-brand-navy">{detail.business.name}</span>
         <Badge status={detail.business.status} />
+        <PlanBadge status={detail.business.status} plan={detail.business.plan} access_ends_at={detail.business.access_ends_at} />
       </div>
+
+      {(detail.business.status === "approved" || detail.business.status === "suspended") && (
+        <RecordPayment businessId={detail.business.id} businessName={detail.business.name} suspended={detail.business.status === "suspended"} busy={busy} act={act} />
+      )}
+
+      <section className="space-y-2 rounded-xl border border-border bg-card p-4">
+        <h2 className="font-semibold text-card-foreground">Payments history</h2>
+        {(detail.payments ?? []).length === 0 && <p className="text-sm text-muted-foreground">No payments recorded yet.</p>}
+        <ul className="space-y-1 text-sm">
+          {(detail.payments ?? []).map((p) => (
+            <li key={p.id} className="text-muted-foreground">
+              <span className="text-foreground">{formatLagosDate(p.paid_on + "T12:00:00Z")}</span> · {PLAN_LABEL[p.plan] ?? p.plan} · {naira(Number(p.amount_kobo))} · ref {p.payment_reference}
+              {" "}— covers {formatLagosDate(p.period_start)} to {formatLagosDate(p.period_end)} · recorded by {p.recorded_by_name}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-4">
         <h2 className="font-semibold text-card-foreground">Staff and sign-in problems</h2>
@@ -477,6 +532,67 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
   );
 }
 
+function RecordPayment({ businessId, businessName, suspended, busy, act }: {
+  businessId: string; businessName: string; suspended: boolean; busy: boolean; act: Act;
+}) {
+  const today = lagosDateKey(new Date());
+  const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">("monthly");
+  const [amount, setAmount] = useState("");
+  const [ref, setRef] = useState("");
+  const [paidOn, setPaidOn] = useState(today);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [perr, setPerr] = useState<string | null>(null);
+  const kobo = Math.round(Number(amount.replace(/[^\d.]/g, "")) * 100);
+  const valid = kobo > 0 && ref.trim().length >= 2 && !!paidOn && paidOn <= today;
+  const payload = { action: "record_payment", business_id: businessId, plan, amount_kobo: kobo, payment_reference: ref.trim(), paid_on: paidOn };
+
+  useEffect(() => {
+    setPreview(null); setPerr(null);
+    let live = true;
+    callApi({ ...payload, amount_kobo: kobo > 0 ? kobo : 1, payment_reference: ref.trim() || "preview", preview: true }).then(({ status, data }) => {
+      if (!live) return;
+      if (status === 200) setPreview(`${formatLagosDate(String(data["period_start"]))} to ${formatLagosDate(String(data["period_end"]))}`);
+      else setPerr(String(data["error"] ?? "Could not work out the dates."));
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, businessId]);
+
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <h2 className="font-semibold text-card-foreground">Record payment</h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="rp-plan">Plan</Label>
+          <select id="rp-plan" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={plan}
+            onChange={(e) => setPlan(e.target.value as typeof plan)}>
+            <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="rp-amt">Amount paid (₦)</Label>
+          <Input id="rp-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 15000" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="rp-ref">Payment reference</Label>
+          <Input id="rp-ref" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Bank transfer reference" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="rp-date">Date paid</Label>
+          <Input id="rp-date" type="date" max={today} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+        </div>
+      </div>
+      {preview && <p className="text-sm text-foreground">This payment will cover <strong>{preview}</strong> (access ends 11:59 pm Lagos time).</p>}
+      {perr && <p className="text-sm text-destructive">{perr}</p>}
+      {suspended && <p className="text-sm text-amber-900">This business is suspended. Recording a payment does not reactivate it.</p>}
+      <Button disabled={busy || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {
+        const d = await act(payload, (r) => `Payment saved for ${businessName}. Access now runs until ${formatLagosDate(String(r["period_end"]))}.${r["still_suspended"] ? " The business is still suspended." : ""}`);
+        if (d) { setAmount(""); setRef(""); }
+      }}>Save payment</Button>
+    </section>
+  );
+}
+
 function MyAccount() {
   const [pins, setPins] = useState({ current: "", next: "" });
   const [note, setNote] = useState<string | null>(null);
@@ -560,6 +676,9 @@ function HealthBoard({ onInspect, onAudit }: { onInspect: (id: string) => void; 
           <Stat label="Waiting" value={String(h.tenants.pending)} tone={h.tenants.pending ? "warn" : undefined} hint="Signups to review" />
           <Stat label="Suspended" value={String(h.tenants.suspended)} tone={h.tenants.suspended ? "bad" : undefined} />
           <Stat label="Rejected" value={String(h.tenants.rejected)} />
+          <Stat label="On free trial" value={String(h.tenants.on_trial ?? 0)} />
+          <Stat label="Paid and active" value={String(h.tenants.active_paid ?? 0)} tone={h.tenants.active_paid ? "good" : undefined} />
+          <Stat label="Plan ended" value={String(h.tenants.expired ?? 0)} tone={h.tenants.expired ? "bad" : undefined} hint="Approved but locked" />
         </div>
       </section>
 
