@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import {
   C,
+  FONT_STACK,
   PrimaryButton,
   SiteFooter,
   SiteHeader,
@@ -87,11 +88,11 @@ function ContactPage() {
   }
 
   return (
-    <div style={{ fontFamily: '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
       <main className="np-section" style={{ background: C.light }}>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 24px" }}>
-          <h1 className="np-h2" style={{ color: C.navy, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
+          <h1 className="np-h2" style={{ color: C.navy, margin: 0 }}>
             Get in Touch.
           </h1>
           <p style={{ fontSize: 16, color: C.text, lineHeight: 1.6, marginTop: 12 }}>
