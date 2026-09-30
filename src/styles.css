@@ -264,10 +264,81 @@
 }
 
 .np-header-nav { display: flex; align-items: center; gap: 32px; }
+.np-phone-menu-button, .np-phone-menu-panel, .np-phone-menu-backdrop { display: none; }
 @media (max-width: 639px) {
-  .np-header-nav { gap: 12px; }
+  .np-site-header { height: 64px !important; }
+  .np-site-header-row { padding-left: 16px !important; padding-right: 16px !important; gap: 10px !important; }
+  .np-header-nav { gap: 10px; }
   .np-header-nav .np-primary-btn { padding: 10px 14px !important; font-size: 14px !important; white-space: nowrap; }
   .np-header-nav .np-text-link { font-size: 14px !important; white-space: nowrap; }
+  .np-phone-staff-link { display: none; }
+  .np-phone-menu-button {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: #0B1F33;
+    background: transparent;
+    border: 1px solid #D3E4F7;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .np-phone-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 64px 0 0;
+    z-index: 50;
+    background: transparent;
+  }
+  .np-phone-menu-panel {
+    display: block;
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    z-index: 51;
+    background: #FFFFFF;
+    border-bottom: 1px solid #D3E4F7;
+    box-shadow: 0 12px 24px rgba(11,31,51,0.12);
+    animation: np-menu-slide-down 160ms ease-out;
+  }
+  .np-phone-menu-links { padding: 0 16px; }
+  .np-phone-menu-links > a {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    gap: 10px;
+    color: #0B1F33;
+    border-bottom: 1px solid #D3E4F7;
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .np-phone-menu-trial {
+    display: flex;
+    min-height: 48px;
+    margin: 16px;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    background: #1677D2;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+}
+
+@keyframes np-menu-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .np-phone-menu-panel { animation: none; }
 }
 
 .np-show-sm { display: none; }
