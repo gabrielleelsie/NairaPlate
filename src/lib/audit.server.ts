@@ -14,7 +14,7 @@ export type AuditEntry = {
     | "platform_unlock_staff" | "emergency_owner_pin_reset"
     | "emergency_reset_blocked" | "security_alert_undelivered" | "email_undelivered"
     | "business_approved" | "business_rejected" | "business_suspended" | "business_reactivated"
-    | "contact_message_handled";
+    | "contact_message_handled" | "subscription_payment_recorded";
   entity_type?: string | null;
   entity_id?: string | null;
   details?: string | null;

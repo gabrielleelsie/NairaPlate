@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 
-export type StaffSession = { userId: string; businessId: string; role: string; name: string };
+export type StaffSession = { userId: string; businessId: string; role: string; name: string; accessLocked: boolean };
 
 /** Reads the signed-in staff member's business and role from their login (set by PIN sign-in). */
 export function useStaffSession() {
@@ -14,7 +14,8 @@ export function useStaffSession() {
       if (!u || typeof businessId !== "string" || typeof role !== "string") return setState({ loading: false, session: null });
       setState({
         loading: false,
-        session: { userId: u.id, businessId, role, name: String(u.user_metadata?.["display_name"] ?? "") },
+        session: { userId: u.id, businessId, role, name: String(u.user_metadata?.["display_name"] ?? ""),
+          accessLocked: u.app_metadata?.["access_locked"] === true },
       });
     });
   }, []);

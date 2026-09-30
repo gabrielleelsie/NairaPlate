@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
 import { expectedDrawerCash } from "@/lib/cash-drawer";
 import { z } from "zod";
+import { businessHasAccess, PLAN_ENDED } from "@/lib/subscription.server";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const DRAWER_ROLES = new Set(["cashier", "owner", "supa_admin"]);
@@ -33,6 +34,8 @@ export const Route = createFileRoute("/api/public/cash-drawer-close")({
         const business_id = typeof meta["business_id"] === "string" ? meta["business_id"] : "";
         const role = typeof meta["role"] === "string" ? meta["role"] : "";
         if (!business_id || !DRAWER_ROLES.has(role)) return json({ error: "Only cashiers and owners use the drawer." }, 403);
+
+        if (!(await businessHasAccess(admin, business_id))) return json({ error: PLAN_ENDED }, 403);
 
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "Enter the counted cash amount." }, 400);

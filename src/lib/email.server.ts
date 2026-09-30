@@ -192,3 +192,15 @@ export async function sendContactMessage(
 export async function sendDailySummaryEmail(to: string, subject: string, html: string): Promise<SendResult> {
   return send(to, subject, html);
 }
+
+/** Tells the owner a payment was recorded and when their access now ends. */
+export async function sendPaymentConfirmation(
+  to: string, businessName: string, planLabel: string, amountText: string, reference: string, endsText: string,
+): Promise<SendResult> {
+  const html = shell("Payment received — thank you", [
+    `We have recorded your payment for <strong>${businessName}</strong>.`,
+    `Plan: <strong>${planLabel}</strong> · Amount: <strong>${amountText}</strong> · Reference: ${reference}`,
+    `Your access now runs until <strong>${endsText}</strong> (11:59 pm Lagos time).`,
+  ], "info");
+  return send(to, `NairaPlate payment received — access until ${endsText}`, html);
+}

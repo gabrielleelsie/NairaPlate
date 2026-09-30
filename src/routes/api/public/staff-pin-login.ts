@@ -152,7 +152,7 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
         // Only the owner / supa admin is told the real reason and pointed at NairaPlate.
         const isManagement = staff.role === "owner" || staff.role === "supa_admin";
         const { data: biz, error: bizErr } = await admin
-          .from("businesses").select("status").eq("id", business_id).maybeSingle();
+          .from("businesses").select("status, access_ends_at").eq("id", business_id).maybeSingle();
         if (bizErr || !biz) return json({ error: "Could not check your business." }, 500);
         if (biz.status === "pending") {
           return json({ error: isManagement
@@ -170,10 +170,17 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
             : "Unable to sign in right now, contact your business owner" }, 403);
         }
 
+        // Trial or paid plan ended: owners still sign in, but only to see the locked screen
+        // (access_locked rides in server-set app_metadata; the database blocks their data anyway).
+        const expired = !biz.access_ends_at || new Date(biz.access_ends_at).getTime() <= now;
+        if (expired && !isManagement) {
+          return json({ error: "Unable to sign in right now, contact your business owner" }, 403);
+        }
+
         // Real Auth user whose id == staff_id; fresh random password on every login.
         const email = `staff-${staff.id}@nairaplate.local`;
         const password = crypto.randomUUID();
-        const app_metadata = { business_id, role: staff.role, staff_id: staff.id };
+        const app_metadata = { business_id, role: staff.role, staff_id: staff.id, access_locked: expired };
 
         const existing = await admin.auth.admin.getUserById(staff.id);
         if (existing.data?.user) {
