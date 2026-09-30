@@ -214,6 +214,7 @@
 }
 
 @media (max-width: 1023px) {
+  .np-hero-pill { display: none !important; }
   .np-hero-grid { grid-template-columns: 1fr; gap: 32px; }
   .np-hero-copy { display: contents; }
   .np-hero-copy .np-hero-title { order: 1; }
@@ -228,6 +229,10 @@
   .np-story-photo { width: 100%; }
   .np-story-hero-grid { display: flex; flex-direction: column-reverse; gap: 32px; }
   .np-story-hero-photo { width: 100%; height: min(540px, 110vw); }
+}
+
+@media (max-width: 639px) {
+  .np-story-closing { font-size: 24px !important; }
 }
 
 .np-feature-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }

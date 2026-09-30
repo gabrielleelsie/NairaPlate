@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { Check, Plus, Share, ShieldCheck, Scale, Bell, Wallet, X, MessageCircle } from "lucide-react";
@@ -801,7 +801,7 @@ function StoryTeaser() {
           <p style={{ color: C.muted, fontSize: 18, lineHeight: 1.6, margin: 0 }}>
             For Nigerian food businesses, the cost of running a kitchen is closely tied to what is happening in the market. The price of egusi, oil, garri, rice, meat and other ingredients can change from one purchase to the next. NairaPlate is designed to bring clarity to that problem.
           </p>
-          <div><a href="/our-story" style={{ color: C.blue, fontSize: 17, fontWeight: 700, textDecorationLine: "underline", textDecorationThickness: 2, textUnderlineOffset: 4 }}>Read our story</a></div>
+          <div><Link to="/our-story" style={{ color: C.blue, fontSize: 17, fontWeight: 700, textDecorationLine: "underline", textDecorationThickness: 2, textUnderlineOffset: 4 }}>Read our story</Link></div>
         </div>
       </div>
     </Section>
