@@ -1,7 +1,7 @@
 // Shared public-site chrome: header, footer, WhatsApp entry points and the design tokens.
 // Both "/" and "/contact" import these — the code exists once.
 import { Link } from "@tanstack/react-router";
-import { MessageCircle } from "lucide-react";
+import { Menu, MessageCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 
@@ -210,8 +210,30 @@ export function FloatingWhatsApp() {
 }
 
 export function SiteHeader() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <header
+      className="np-site-header"
       style={{
         position: "sticky",
         top: 0,
@@ -223,6 +245,7 @@ export function SiteHeader() {
       }}
     >
       <div
+        className="np-site-header-row"
         style={{
           maxWidth: 1140,
           margin: "0 auto",
@@ -255,15 +278,44 @@ export function SiteHeader() {
           </Link>
           <Link
             to="/app"
-            className="np-text-link"
+            className="np-text-link np-phone-staff-link"
             style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
           >
             Staff Login
           </Link>
           <span className="np-trial-desktop"><PrimaryLink to="/signup">Start Free Trial</PrimaryLink></span>
           <span className="np-trial-mobile"><PrimaryLink to="/signup">Free Trial</PrimaryLink></span>
+          <button
+            type="button"
+            className="np-phone-menu-button"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="np-phone-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          </button>
         </nav>
       </div>
+      {menuOpen && (
+        <>
+          <div className="np-phone-menu-backdrop" aria-hidden="true" onClick={closeMenu} />
+          <nav id="np-phone-menu" className="np-phone-menu-panel" aria-label="Main menu">
+            <div className="np-phone-menu-links">
+              <Link to="/our-story" onClick={closeMenu}>Our Story</Link>
+              <Link to="/contact" onClick={closeMenu}>Contact</Link>
+              <Link to="/app" onClick={closeMenu}>Staff Login</Link>
+              <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+                <MessageCircle size={20} color={C.whatsapp} aria-hidden="true" />
+                Chat on WhatsApp
+              </a>
+            </div>
+            <Link to="/signup" className="np-phone-menu-trial" onClick={closeMenu}>
+              Start 14-Day Free Trial
+            </Link>
+          </nav>
+        </>
+      )}
     </header>
   );
 }
