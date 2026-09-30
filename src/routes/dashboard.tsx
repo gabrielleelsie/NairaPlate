@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { calculateBusinessPnl, type PnlResult } from "@/lib/pnl";
+import { lagosLastDays } from "@/lib/lagos-time";
 import { formatNaira } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 
@@ -25,11 +26,8 @@ export const Route = createFileRoute("/dashboard")({
 const OWNER_ROLES = new Set(["owner", "supa_admin"]);
 const RANGES = [{ label: "Today", days: 1 }, { label: "7 days", days: 7 }, { label: "30 days", days: 30 }];
 
-function rangeFor(days: number) {
-  const to = new Date(); to.setUTCHours(24, 0, 0, 0); // end of today
-  const from = new Date(to); from.setUTCDate(from.getUTCDate() - days);
-  return { from, to };
-}
+// "Today" is today in Nigeria time (WAT), ending at midnight Lagos.
+const rangeFor = (days: number) => lagosLastDays(days);
 
 function Dashboard() {
   const { loading, session } = useStaffSession();
