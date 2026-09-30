@@ -47,7 +47,7 @@ export const Route = createFileRoute("/")({
 });
 
 const MAX = 1140;
-const MEDIA_PATH = "/api/public/media";
+const MEDIA_PATH = "/media";
 
 function Section({
   bg,
