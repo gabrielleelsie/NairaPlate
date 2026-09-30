@@ -15,7 +15,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
-import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered } from "@/lib/email.server";
+import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation } from "@/lib/email.server";
+import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
+import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -35,6 +37,15 @@ const ActionSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("unlock_staff"), business_id: z.string().trim().min(1).max(100), staff_id: z.string().uuid() }),
   z.object({ action: z.literal("platform_health") }),
+  z.object({
+    action: z.literal("record_payment"),
+    business_id: z.string().trim().min(1).max(100),
+    plan: z.enum(["monthly", "quarterly", "yearly"]),
+    amount_kobo: z.number().int().positive("Enter the amount paid.").max(1e12),
+    payment_reference: z.string().trim().min(2, "Enter the payment reference.").max(120),
+    paid_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the date it was paid."),
+    preview: z.boolean().optional(),
+  }),
   z.object({ action: z.literal("list_messages"), handled: z.boolean() }),
   z.object({ action: z.literal("mark_message_handled"), message_id: z.string().uuid() }),
   z.object({
@@ -132,7 +143,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         if (body.action === "list_businesses") {
           const { data: businesses, error } = await admin
             .from("businesses")
-            .select("id, name, status, rejection_reason, created_at, reviewed_at")
+            .select("id, name, status, rejection_reason, created_at, reviewed_at, plan, trial_started_at, access_ends_at")
             .neq("id", PLATFORM_BUSINESS)
             .order("created_at", { ascending: false });
           if (error) return json({ error: "Could not load businesses." }, 500);
@@ -152,6 +163,8 @@ export const Route = createFileRoute("/api/public/platform-admin")({
               reason: b.rejection_reason,
               created_at: b.created_at,
               reviewed_at: b.reviewed_at,
+              plan: b.plan, trial_started_at: b.trial_started_at, access_ends_at: b.access_ends_at,
+              has_access: b.status === "approved" && !!b.access_ends_at && new Date(b.access_ends_at).getTime() > now,
               owner_name: owner?.display_name ?? null,
               owner_contact: owner?.phone ?? owner?.email ?? null,
               active_staff: mine.filter((s) => s.is_active).length,
@@ -173,7 +186,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         // ---------- business_detail: staff roster + audit trail, never any PIN material ----------
         if (body.action === "business_detail") {
           const { data: biz } = await admin.from("businesses")
-            .select("id, name, status, rejection_reason, created_at").eq("id", body.business_id).maybeSingle();
+            .select("id, name, status, rejection_reason, created_at, plan, trial_started_at, access_ends_at").eq("id", body.business_id).maybeSingle();
           if (!biz) return json({ error: "Business not found." }, 404);
 
           const { data: staff } = await admin.from("staff_users")
@@ -189,9 +202,20 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             .eq("business_id", body.business_id).eq("acknowledged", false)
             .order("created_at", { ascending: false }).limit(25);
 
+          const { data: pays } = await admin.from("subscription_payments")
+            .select("id, plan, amount_kobo, payment_reference, paid_on, period_start, period_end, recorded_by, created_at")
+            .eq("business_id", body.business_id).order("created_at", { ascending: false });
+          const recorderIds = [...new Set((pays ?? []).map((p) => p.recorded_by))];
+          const { data: recorders } = recorderIds.length
+            ? await admin.from("staff_users").select("id, display_name").in("id", recorderIds)
+            : { data: [] as { id: string; display_name: string }[] };
+          const recName = new Map((recorders ?? []).map((r) => [r.id, r.display_name]));
+
           const now = Date.now();
           return json({
-            business: { ...biz, reason: biz.rejection_reason },
+            business: { ...biz, reason: biz.rejection_reason,
+              has_access: biz.status === "approved" && !!biz.access_ends_at && new Date(biz.access_ends_at).getTime() > now },
+            payments: (pays ?? []).map((p) => ({ ...p, recorded_by_name: recName.get(p.recorded_by) ?? "Platform admin" })),
             staff: (staff ?? []).map((s) => ({
               id: s.id, display_name: s.display_name, role: s.role, is_active: s.is_active,
               failed_attempts: s.failed_attempts ?? 0,
@@ -207,9 +231,10 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         // ---------- set_status: approve, reject, or reactivate a suspended kitchen ----------
         if (body.action === "set_status") {
           const { data: before } = await admin.from("businesses")
-            .select("id, name, status").eq("id", body.business_id).maybeSingle();
+            .select("id, name, status, access_ends_at").eq("id", body.business_id).maybeSingle();
           if (!before) return json({ error: "Business not found." }, 404);
 
+          // pending -> approved: the database guard starts the 7-day trial on this same update.
           const { error } = await admin.from("businesses")
             .update({
               status: body.status,
@@ -247,7 +272,58 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             });
           }
 
-          return json({ ok: true, status: body.status, was: before.status });
+          const stillExpired = body.status === "approved" && before.status === "suspended" &&
+            (!before.access_ends_at || new Date(before.access_ends_at).getTime() <= Date.now());
+          return json({
+            ok: true, status: body.status, was: before.status,
+            ...(stillExpired ? { still_expired: true, message: "Reactivated, but their plan has already ended. Record a payment to give them access." } : {}),
+          });
+        }
+
+        // ---------- record_payment: a confirmed manual payment extends access (tier 1) ----------
+        if (body.action === "record_payment") {
+          const today = lagosDateKey(new Date());
+          if (body.paid_on > today) return json({ error: "The payment date cannot be in the future." }, 400);
+          const { data: biz } = await admin.from("businesses")
+            .select("id, name, status, access_ends_at").eq("id", body.business_id).maybeSingle();
+          if (!biz) return json({ error: "Business not found." }, 404);
+          if (biz.status !== "approved" && biz.status !== "suspended")
+            return json({ error: "Only approved or suspended businesses can take a payment." }, 400);
+
+          const term = termFor(biz.access_ends_at ? new Date(biz.access_ends_at) : null, new Date(), body.plan);
+          const result = { period_start: term.start.toISOString(), period_end: term.end.toISOString() };
+          if (body.preview) return json({ ok: true, preview: true, ...result });
+
+          const { error: pe } = await admin.from("subscription_payments").insert({
+            business_id: biz.id, plan: body.plan, amount_kobo: body.amount_kobo,
+            payment_reference: body.payment_reference, paid_on: body.paid_on,
+            period_start: result.period_start, period_end: result.period_end, recorded_by: adminId,
+          });
+          if (pe) return json({ error: "Could not save the payment: " + pe.message }, 500);
+          // Status is never touched here: a suspended business stays suspended.
+          const { error: be } = await admin.from("businesses")
+            .update({ plan: body.plan, access_ends_at: result.period_end }).eq("id", biz.id);
+          if (be) return json({ error: "Payment saved but access was not extended: " + be.message }, 500);
+
+          const amountText = "₦" + (body.amount_kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+          const endsText = formatLagosDate(term.end);
+          await writeAudit(admin, {
+            business_id: biz.id, actor_id: adminId, actor_role: "platform_admin",
+            action: "subscription_payment_recorded", entity_type: "subscription_payments", entity_id: null,
+            details: `${adminName}: ${PLAN_LABEL[body.plan]} ${amountText} (ref ${body.payment_reference}, paid ${body.paid_on}) — access until ${endsText}`,
+          });
+
+          const { data: owner } = await admin.from("staff_users")
+            .select("email").eq("business_id", biz.id).eq("role", "owner")
+            .not("email", "is", null).limit(1).maybeSingle();
+          const subjectOf = `${biz.name} (payment ${body.payment_reference})`;
+          if (owner?.email) {
+            const r = await sendPaymentConfirmation(owner.email, biz.name, PLAN_LABEL[body.plan] ?? body.plan, amountText, body.payment_reference, endsText);
+            if (!r.sent) await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: r.reason ?? "email request failed or timed out" });
+          } else {
+            await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: "the owner has no email address on file" });
+          }
+          return json({ ok: true, ...result, still_suspended: biz.status === "suspended" });
         }
 
         // ---------- list_messages: website contact messages (tier 1, read-only) ----------
@@ -414,14 +490,14 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const startOfToday = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z").toISOString();
 
           const [bizRes, staffRes, ordersRes, flagsRes, auditRes, opsRes] = await Promise.all([
-            admin.from("businesses").select("id, name, status").neq("id", PLATFORM_BUSINESS),
+            admin.from("businesses").select("id, name, status, plan, access_ends_at").neq("id", PLATFORM_BUSINESS),
             admin.from("staff_users").select("business_id, display_name, role, is_active, locked_until").neq("business_id", PLATFORM_BUSINESS),
             admin.from("orders").select("business_id, total_kobo, status, created_at").gte("created_at", weekAgo),
             admin.from("margin_flags").select("business_id, flag_type, severity, message, created_at").eq("acknowledged", false)
               .order("created_at", { ascending: false }).limit(200),
             admin.from("audit_logs").select("business_id, action, created_at").gte("created_at", dayAgo).limit(2000),
             admin.from("audit_logs").select("id, business_id, action, actor_role, details, created_at")
-              .in("action", ["business_approved", "business_rejected", "business_suspended", "business_reactivated",
+              .in("action", ["business_approved", "business_rejected", "business_suspended", "business_reactivated", "subscription_payment_recorded",
                 "platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked", "security_alert_undelivered"])
               .order("created_at", { ascending: false }).limit(12),
           ]);
@@ -467,6 +543,9 @@ export const Route = createFileRoute("/api/public/platform-admin")({
               pending: byStatus["pending"] ?? 0,
               suspended: byStatus["suspended"] ?? 0,
               rejected: byStatus["rejected"] ?? 0,
+              on_trial: businesses.filter((b) => b.status === "approved" && b.plan === "trial" && b.access_ends_at && new Date(b.access_ends_at).getTime() > now).length,
+              active_paid: businesses.filter((b) => b.status === "approved" && b.plan && b.plan !== "trial" && b.access_ends_at && new Date(b.access_ends_at).getTime() > now).length,
+              expired: businesses.filter((b) => b.status === "approved" && (!b.access_ends_at || new Date(b.access_ends_at).getTime() <= now)).length,
             },
             people: {
               active_staff: staff.filter((s) => s.is_active).length,
@@ -499,7 +578,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             recipes: ["cost_changed", "recipe_version_saved", "price_published", "batch_logged", "wastage_logged"],
             platform_ops: ["platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked",
               "business_approved", "business_rejected", "business_suspended", "business_reactivated",
-              "email_undelivered", "security_alert_undelivered", "contact_message_handled"],
+              "email_undelivered", "security_alert_undelivered", "contact_message_handled", "subscription_payment_recorded"],
           };
 
           const limit = body.limit ?? 50;
