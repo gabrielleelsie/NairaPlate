@@ -6,7 +6,7 @@
 - [x] Log and verify one new milk-cup purchase.
 
 ## Subscriptions (7-day trial, paid plans, lockout)
-- [ ] Step 2: write explicit migration (81 ALTER POLICY, extend businesses_status_guard, DB-side trial start) — blocked on live policy text + guard function body from user
-- [ ] Step 3: user runs migration on live database, then the read-only check query
-- [ ] Step 4: code release — only after the user confirms Step 3
-- [ ] Live test with business "zz-test-delete"; report the audit entries it created
+- [x] Step 2: migration written
+- [x] Step 3: migration applied on live database; all 7 checks passed
+- [x] Step 4: code built (gate, locked screen, payments, admin UI) — user releases via Release to main
+- [ ] Live test with business "zz-test-delete" — needs the released code on the live site

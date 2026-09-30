@@ -14,6 +14,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { writeAudit } from "@/lib/audit.server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { businessHasAccess, PLAN_ENDED } from "@/lib/subscription.server";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 
@@ -126,6 +127,8 @@ export const Route = createFileRoute("/api/public/staff-admin")({
         if (!caller || !caller.is_active || !MANAGER_ROLES.has(caller.role)) {
           return json({ error: "Only owners can manage staff." }, 403);
         }
+
+        if (!(await businessHasAccess(admin, business_id))) return json({ error: PLAN_ENDED }, 403);
 
         const parsed = ActionSchema.safeParse(raw);
         if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, 400);
