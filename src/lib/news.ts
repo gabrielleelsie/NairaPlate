@@ -47,6 +47,15 @@ export const FEEDS: Feed[] = [
 /** The platform-wide switch an admin sets in Settings. On unless switched off. */
 export const NEWS_SCHEMA = z.object({ enabled: z.boolean() }).strict();
 
+export const READ_SAMPLE = 8;
+export const READ_SAMPLE_KEY = "news_last_read";
+export type ReadSample = { title: string; matched: boolean };
+
+/** The first few headlines an outlet's feed gave us, each marked with whether it matched. Shown to the platform admin so a "0 matched" is understandable. */
+export function sampleRead(items: { title: string; description?: string }[], max = READ_SAMPLE): ReadSample[] {
+  return items.slice(0, max).map((it) => ({ title: it.title.slice(0, 200), matched: matchHeadline(it.title, it.description ?? "") !== null }));
+}
+
 export const KEEP_DAYS = 30;
 export const SHOW_DAYS = 7;
 

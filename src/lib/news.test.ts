@@ -68,3 +68,18 @@ describe("helpers", () => {
     expect(agoLabel("2026-10-02T12:00:00Z", now)).toBe("just now");
   });
 });
+
+describe("sampleRead", () => {
+  it("keeps the first eight and marks which matched", async () => {
+    const { sampleRead } = await import("./news");
+    const items = Array.from({ length: 12 }, (_, i) => ({ title: i === 1 ? "Petrol price hike hits Lagos" : `Story ${i}` }));
+    const r = sampleRead(items);
+    expect(r).toHaveLength(8);
+    expect(r[1]).toEqual({ title: "Petrol price hike hits Lagos", matched: true });
+    expect(r[0]?.matched).toBe(false);
+  });
+  it("copes with no items", async () => {
+    const { sampleRead } = await import("./news");
+    expect(sampleRead([])).toEqual([]);
+  });
+});

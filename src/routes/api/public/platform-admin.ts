@@ -20,7 +20,7 @@ import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
 import { SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
-import { NEWS_SCHEMA } from "@/lib/news";
+import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
 import { REMINDER_KINDS, REMINDER_LABEL, REMINDER_SCHEMA, dueReminder, mergeReminders, renderReminder, type ReminderKind } from "@/lib/reminders";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -155,6 +155,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const stored: Record<string, unknown> = {};
           const meta: Record<string, { updated_at: string; updated_by_name: string | null }> = {};
           for (const r of rows ?? []) {
+            if (r.key === READ_SAMPLE_KEY) continue; // the news watch's own record of what it last read, not a setting
             stored[r.key] = r.value;
             meta[r.key] = { updated_at: r.updated_at, updated_by_name: r.updated_by_name ?? null };
           }
@@ -219,7 +220,9 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: st } = await admin.from("news_feed_status").select("source, feed_url, checked_at, last_ok_at, last_error, last_item_count, last_match_count").order("source");
           const { count } = await admin.from("news_items").select("id", { count: "exact", head: true });
           const { data: latest } = await admin.from("news_items").select("title, source, published_at").order("published_at", { ascending: false }).limit(5);
-          return json({ outlets: st ?? [], stored: count ?? 0, latest: latest ?? [] });
+          const { data: readRow } = await admin.from("platform_settings").select("value").eq("key", READ_SAMPLE_KEY).maybeSingle();
+          const rv = (readRow?.value ?? {}) as { read_at?: string; outlets?: Record<string, { title: string; matched: boolean }[]> };
+          return json({ outlets: st ?? [], stored: count ?? 0, latest: latest ?? [], read_at: rv.read_at ?? null, read_sample: rv.outlets ?? {} });
         }
 
         if (body.action === "send_test_reminder") {
