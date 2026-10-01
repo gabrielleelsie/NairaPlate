@@ -30,7 +30,7 @@ export type PnlResult = {
 // Days are Nigeria calendar days (WAT), so a sale at 00:30 in Lagos counts on the right day.
 const dayKey = (d: Date) => lagosDateKey(d);
 
-type SoldItem = { recipe_id: string; recipe_version_id?: string | null; quantity: number };
+type SoldItem = { recipe_id: string; recipe_version_id?: string | null; quantity: number; cost_per_plate_kobo?: number | string | null };
 
 export async function calculateBusinessPnl(
   supabase: SupabaseClient,
@@ -46,21 +46,24 @@ export async function calculateBusinessPnl(
     .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
     .gte("created_at", from).lt("created_at", to);
 
-  const [ordersV, wastage, ingredients, conversions, recipes, recipeItems, partials] = await Promise.all([
+  const [ordersF, ordersV, wastage, ingredients, conversions, recipes, recipeItems, partials, gradePrices] = await Promise.all([
+    ordersQuery("recipe_id,recipe_version_id,quantity,cost_per_plate_kobo"),
     ordersQuery("recipe_id,recipe_version_id,quantity"),
     supabase.from("wastage_logs").select("cost_kobo")
       .eq("business_id", business_id).gte("created_at", from).lt("created_at", to),
     supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").eq("business_id", business_id),
     supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty").eq("business_id", business_id),
     // ALL versions (old and current) — past sales need the version they were sold under.
-    supabase.from("recipes").select("id,name,yield_portions").eq("business_id", business_id),
+    supabase.from("recipes").select("id,name,yield_portions,cost_grade").eq("business_id", business_id),
     supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit").eq("business_id", business_id),
     // Partial refunds per order. If the refunds table isn't set up yet, treat as no refunds.
     supabase.from("order_adjustments").select("order_id,adjustment_amount_kobo")
       .eq("business_id", business_id).eq("type", "partial_refund"),
+    supabase.from("ingredient_grade_prices").select("ingredient_id,grade,cost_kobo").eq("business_id", business_id),
   ]);
   // Before the versioning script is run the column doesn't exist: fall back to recipe_id.
-  const orders = ordersV.error ? await ordersQuery("recipe_id,quantity") : ordersV;
+  // Newest column first (frozen cost), then the version column, then the oldest shape.
+  const orders = !ordersF.error ? ordersF : !ordersV.error ? ordersV : await ordersQuery("recipe_id,quantity");
   const failed = [orders, wastage, ingredients, conversions, recipes, recipeItems].find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
   const refundedByOrder = new Map<string, number>();
@@ -68,7 +71,11 @@ export async function calculateBusinessPnl(
     refundedByOrder.set(a.order_id, (refundedByOrder.get(a.order_id) ?? 0) + Number(a.adjustment_amount_kobo));
   }
 
-  const ings: CostIngredient[] = (ingredients.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo) }));
+  const gradeByIng = new Map<string, Record<string, number>>();
+  for (const g of gradePrices.error ? [] : gradePrices.data ?? []) {
+    gradeByIng.set(g.ingredient_id, { ...(gradeByIng.get(g.ingredient_id) ?? {}), [g.grade]: Number(g.cost_kobo) });
+  }
+  const ings: CostIngredient[] = (ingredients.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo), grade_prices: gradeByIng.get(i.id) }));
   const convs: CostConversion[] = (conversions.data ?? []).map((c) => ({ ...c, base_qty: Number(c.base_qty) }));
   const items = (recipeItems.data ?? []) as (CostRecipeItem & { recipe_id: string })[];
   const warnings: string[] = [];
@@ -79,7 +86,7 @@ export async function calculateBusinessPnl(
   for (const r of recipes.data ?? []) {
     const c = computeRecipeCost({
       items: items.filter((i) => i.recipe_id === r.id).map((i) => ({ ...i, quantity: Number(i.quantity) })),
-      ingredients: ings, conversions: convs, yield_portions: Number(r.yield_portions), target_margin_bps: 0,
+      ingredients: ings, conversions: convs, yield_portions: Number(r.yield_portions), target_margin_bps: 0, grade: (r as { cost_grade?: string | null }).cost_grade ?? null,
     });
     if (c.errors.length) perPlate.set(r.id, NaN);
     else perPlate.set(r.id, c.total_ingredient_cost_kobo / Number(r.yield_portions));
@@ -92,6 +99,7 @@ export async function calculateBusinessPnl(
 
   let gross_sales_kobo = 0;
   let recipeCost = 0;
+  let estimated = 0; // sold lines with no frozen cost (older sales): costed at today's prices
   for (const o of (orders.data ?? []) as unknown as { id: string; total_kobo: number; created_at: string; order_items: SoldItem[] | null }[]) {
     // Net sale = total minus every partial refund on that order.
     const total = Number(o.total_kobo) - (refundedByOrder.get(o.id) ?? 0);
@@ -99,6 +107,12 @@ export async function calculateBusinessPnl(
     const k = dayKey(new Date(o.created_at));
     daily.set(k, (daily.get(k) ?? 0) + total);
     for (const it of o.order_items ?? []) {
+      // A sale made after grade costing went live carries its own frozen cost per plate: use it as it is.
+      if (it.cost_per_plate_kobo !== null && it.cost_per_plate_kobo !== undefined) {
+        recipeCost += Number(it.cost_per_plate_kobo) * Number(it.quantity);
+        continue;
+      }
+      estimated += 1;
       const versionId = it.recipe_version_id ?? it.recipe_id; // the version stamped at sale time
       const pp = perPlate.get(versionId);
       if (pp === undefined || Number.isNaN(pp)) {
@@ -109,6 +123,9 @@ export async function calculateBusinessPnl(
     }
   }
 
+  if (estimated > 0) {
+    warnings.push(`${estimated} older sold item${estimated === 1 ? "" : "s"} had no saved cost, so ${estimated === 1 ? "its" : "their"} cost uses today's ingredient prices.`);
+  }
   const recipe_cost_of_goods_kobo = Math.round(recipeCost);
   const wastage_cost_kobo = (wastage.data ?? []).reduce((s, w) => s + Number(w.cost_kobo), 0);
   const cost_of_goods_kobo = recipe_cost_of_goods_kobo + wastage_cost_kobo;
