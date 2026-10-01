@@ -9,7 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { sameHex } from "@/lib/daily-summary.server";
-import { FEEDS, KEEP_DAYS, matchHeadline, parseFeed } from "@/lib/news";
+import { FEEDS, KEEP_DAYS, READ_SAMPLE_KEY, matchHeadline, parseFeed, sampleRead, type ReadSample } from "@/lib/news";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const FETCH_TIMEOUT_MS = 8000;
@@ -54,7 +54,9 @@ export const Route = createFileRoute("/api/public/news-watch")({
         if (!dry && (setting?.value as { enabled?: boolean } | null)?.enabled === false) return json({ skipped: "switched_off" });
 
         const now = new Date();
-        const results: { source: string; ok: boolean; error?: string; read: number; matched: number; stored: number; samples?: string[] }[] = [];
+        const { data: prevRead } = await admin.from("platform_settings").select("value").eq("key", READ_SAMPLE_KEY).maybeSingle();
+        const readSamples: Record<string, ReadSample[]> = { ...((prevRead?.value as { outlets?: Record<string, ReadSample[]> } | null)?.outlets ?? {}) };
+        const results: { source: string; ok: boolean; error?: string; read: number; matched: number; stored: number; samples?: string[]; read_sample?: ReadSample[] }[] = [];
         for (const feed of FEEDS) {
           const { xml, error } = await readFeed(feed.url);
           if (xml === null) {
@@ -63,6 +65,7 @@ export const Route = createFileRoute("/api/public/news-watch")({
             continue;
           }
           const items = parseFeed(xml);
+          if (items.length > 0) readSamples[feed.name] = sampleRead(items);
           const hits = items.flatMap((it) => {
             const m = matchHeadline(it.title, it.description);
             return m ? [{ it, m }] : [];
@@ -78,7 +81,7 @@ export const Route = createFileRoute("/api/public/news-watch")({
           results.push({
             source: feed.name, ok: items.length > 0, read: items.length, matched: hits.length, stored,
             ...(items.length === 0 ? { error: "the feed was reached but had no readable items" } : {}),
-            ...(dry ? { samples: hits.slice(0, 3).map((h) => h.it.title) } : {}),
+            ...(dry ? { samples: hits.slice(0, 3).map((h) => h.it.title), read_sample: sampleRead(items) } : {}),
           });
           if (!dry) {
             await admin.from("news_feed_status").upsert({
@@ -88,6 +91,7 @@ export const Route = createFileRoute("/api/public/news-watch")({
             });
           }
         }
+        if (!dry) await admin.from("platform_settings").upsert({ key: READ_SAMPLE_KEY, value: { read_at: now.toISOString(), outlets: readSamples }, updated_at: now.toISOString() });
         if (!dry) await admin.from("news_items").delete().lt("published_at", new Date(now.getTime() - KEEP_DAYS * 86_400_000).toISOString());
         return json({ dry_run: dry, outlets: results.length, ok: results.filter((r) => r.ok).length, results });
       },

@@ -317,15 +317,17 @@ function RemindersCard(props: CardProps & { value: ReminderSettings }) {
 
 type Outlet = { source: string; feed_url: string; checked_at: string; last_ok_at: string | null; last_error: string | null; last_item_count: number; last_match_count: number };
 type Latest = { title: string; source: string; published_at: string };
+type ReadItem = { title: string; matched: boolean };
 
 function NewsCard(props: CardProps & { on: boolean }) {
   const saver = useSaver("news", props);
   const [enabled, setEnabled] = useState(props.on);
-  const [status, setStatus] = useState<{ outlets: Outlet[]; stored: number; latest: Latest[] } | null>(null);
+  const [status, setStatus] = useState<{ outlets: Outlet[]; stored: number; latest: Latest[]; read: Record<string, ReadItem[]>; readAt: string | null } | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
   useEffect(() => setEnabled(props.on), [props.on]);
   useEffect(() => {
     props.callApi({ action: "news_status" }).then(({ status: s, data }) => {
-      if (s === 200) setStatus({ outlets: (data["outlets"] ?? []) as Outlet[], stored: Number(data["stored"] ?? 0), latest: (data["latest"] ?? []) as Latest[] });
+      if (s === 200) setStatus({ outlets: (data["outlets"] ?? []) as Outlet[], stored: Number(data["stored"] ?? 0), latest: (data["latest"] ?? []) as Latest[], read: (data["read_sample"] ?? {}) as Record<string, ReadItem[]>, readAt: (data["read_at"] as string | null) ?? null });
     });
   }, [props.callApi]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -352,6 +354,23 @@ function NewsCard(props: CardProps & { on: boolean }) {
                   {o.last_error ? `Last read failed: ${o.last_error}` : `Read ${o.last_item_count} items, ${o.last_match_count} matched`}
                   {o.last_ok_at ? ` · last worked ${fmt(o.last_ok_at)}` : ""}
                 </span>
+                {(status.read[o.source]?.length ?? 0) > 0 && (
+                  <div className="w-full">
+                    <button type="button" className="text-xs underline text-muted-foreground" aria-expanded={open === o.source} onClick={() => setOpen(open === o.source ? null : o.source)}>
+                      {open === o.source ? "Hide what was read" : "What was read"}
+                    </button>
+                    {open === o.source && (
+                      <ul className="mt-1 space-y-1 text-xs" data-testid={`read-${o.source}`}>
+                        {status.read[o.source]!.map((r, i) => (
+                          <li key={i} className={r.matched ? "text-foreground" : "text-muted-foreground"}>
+                            {r.matched ? "Kept: " : "Skipped: "}{r.title}
+                          </li>
+                        ))}
+                        <li className="text-muted-foreground">The newest headlines from this feed at the last read{status.readAt ? ` (${fmt(status.readAt)})` : ""}. A headline is kept only if it is about fuel, transport, rice, pepper, tomatoes or onions and mentions a price.</li>
+                      </ul>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
