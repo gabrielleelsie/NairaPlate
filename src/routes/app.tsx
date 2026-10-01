@@ -282,6 +282,7 @@ const STOCK: AppLink[] = [
   { to: "/shopping-list", label: "Shopping list", icon: ClipboardList },
   { to: "/ingredients", label: "Ingredients", icon: PackageSearch },
   { to: "/stock-take", label: "Stock take", icon: ClipboardList },
+  { to: "/flags", label: "Alerts", icon: AlertTriangle },
 ];
 const KITCHEN: AppLink[] = [
   { to: "/recipes", label: "Recipes", icon: BookOpen },
@@ -307,7 +308,7 @@ function HomeScreen({ name, role, onSignOut }: { name: string; role: string | nu
     ? [{ title: "Platform operations", links: [{ to: "/approvals", label: "Platform console", icon: ClipboardList }] }]
     : [
         ...(role === "cashier" || isOwner ? [{ title: "Sell", links: SELL }] : []),
-        ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: STOCK }] : []),
+        ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: isOwner ? STOCK.filter((l) => l.to !== "/flags") : STOCK }] : []),
         ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: isOwner ? KITCHEN.filter((l) => l.to !== "/stock-take") : KITCHEN }] : []),
         ...(isOwner ? [{ title: "Oversight", links: OVERSIGHT }] : []),
       ];
