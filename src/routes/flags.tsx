@@ -9,9 +9,9 @@ export const Route = createFileRoute("/flags")({
   head: () => ({
     meta: [
       { title: "Alerts — NairaPlate" },
-      { name: "description", content: "Drawer shortages and margin warnings that need attention." },
+      { name: "description", content: "Drawer shortages, low stock and margin warnings that need attention." },
       { property: "og:title", content: "Alerts — NairaPlate" },
-      { property: "og:description", content: "Drawer shortages and margin warnings that need attention." },
+      { property: "og:description", content: "Drawer shortages, low stock and margin warnings that need attention." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/flags")({
 });
 
 type Flag = { id: string; flag_type: string; severity: string | null; message: string | null; role: string | null; created_at: string };
-const OWNER_ROLES = new Set(["owner", "supa_admin"]);
+const ALERT_ROLES = new Set(["owner", "supa_admin", "purchaser"]);
 
 function Flags() {
   const { loading, session } = useStaffSession();
@@ -46,13 +46,13 @@ function Flags() {
   }
 
   if (loading) return <p className="p-6">Loading…</p>;
-  if (!session || !OWNER_ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Owners only.</p><Link className="underline" to="/app">Back</Link></main>;
+  if (!session || !ALERT_ROLES.has(session.role)) return <main className="p-6 space-y-3"><p>Only owners and purchasers can see alerts.</p><Link className="underline" to="/app">Back</Link></main>;
 
   return (
     <main className="mx-auto max-w-2xl p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Alerts</h1>
-        <div className="flex gap-3"><Link className="underline" to="/dashboard">Profit & loss</Link><Link className="underline" to="/app">Home</Link></div>
+        <div className="flex gap-3">{session.role !== "purchaser" && <Link className="underline" to="/dashboard">Profit & loss</Link>}<Link className="underline" to="/app">Home</Link></div>
       </div>
       {err && <p className="text-destructive">{err}</p>}
       {flags?.length === 0 && <p>Nothing needs your attention.</p>}
