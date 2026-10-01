@@ -20,6 +20,7 @@ const kobo2text = (k: number | null) => (k === null ? "" : String(k / 100));
 export function PlatformSettingsPanel({ callApi }: { callApi: Api }) {
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
   const [reminders, setReminders] = useState<ReminderSettings>(DEFAULT_REMINDERS);
+  const [newsOn, setNewsOn] = useState(true);
   const [custom, setCustom] = useState<string[]>([]);
   const [meta, setMeta] = useState<Meta>({});
   const [err, setErr] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export function PlatformSettingsPanel({ callApi }: { callApi: Api }) {
     if (status !== 200) return setErr(String(data["error"] ?? "Could not load settings."));
     setSettings(data["settings"] as PlatformSettings);
     setReminders(data["reminders"] as ReminderSettings);
+    setNewsOn((data["news"] as { enabled: boolean } | undefined)?.enabled !== false);
     setCustom((data["custom"] ?? []) as string[]);
     setMeta((data["meta"] ?? {}) as Meta);
     setErr(null); setLoaded(true);
@@ -49,13 +51,14 @@ export function PlatformSettingsPanel({ callApi }: { callApi: Api }) {
       <LockedCard {...props} value={settings.locked_screen} />
       <BannerCard {...props} value={settings.expiry_banner} />
       <RemindersCard {...props} value={reminders} />
+      <NewsCard {...props} on={newsOn} />
     </div>
   );
 }
 
 type CardProps = { callApi: Api; custom: string[]; meta: Meta; reload: () => Promise<void> };
 
-function useSaver(k: SettingKey | "reminders", { callApi, reload }: CardProps) {
+function useSaver(k: SettingKey | "reminders" | "news", { callApi, reload }: CardProps) {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -71,7 +74,7 @@ function useSaver(k: SettingKey | "reminders", { callApi, reload }: CardProps) {
 }
 
 function Card({ k, props, saver, children, onSave, onReset, error }: {
-  k: SettingKey | "reminders"; props: CardProps; saver: ReturnType<typeof useSaver>; children: React.ReactNode;
+  k: SettingKey | "reminders" | "news"; props: CardProps; saver: ReturnType<typeof useSaver>; children: React.ReactNode;
   onSave: () => void; onReset: () => void; error: string | null;
 }) {
   const isCustom = props.custom.includes(k);
@@ -79,7 +82,7 @@ function Card({ k, props, saver, children, onSave, onReset, error }: {
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card p-4" data-testid={`setting-${k}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-card-foreground">{k === "reminders" ? "Reminder emails" : SETTING_LABEL[k]}</h2>
+        <h2 className="text-lg font-semibold text-card-foreground">{k === "reminders" ? "Reminder emails" : k === "news" ? "News watch" : SETTING_LABEL[k]}</h2>
         <span className="text-xs text-muted-foreground">
           {isCustom ? `Edited${m?.updated_by_name ? ` by ${m.updated_by_name}` : ""}${m ? ` on ${fmt(m.updated_at)}` : ""}` : "Using the built-in wording"}
         </span>
@@ -305,6 +308,56 @@ function RemindersCard(props: CardProps & { value: ReminderSettings }) {
           <ul className="space-y-1 text-xs text-muted-foreground">
             {(due?.recent ?? []).map((l, i) => <li key={i}>{fmt(l.created_at)}: {l.business_name}, {l.kind.replaceAll("_", " ")}, {l.offset_days} day{l.offset_days === 1 ? "" : "s"}, {l.sent} of {l.recipients} delivered</li>)}
           </ul>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+
+type Outlet = { source: string; feed_url: string; checked_at: string; last_ok_at: string | null; last_error: string | null; last_item_count: number; last_match_count: number };
+type Latest = { title: string; source: string; published_at: string };
+
+function NewsCard(props: CardProps & { on: boolean }) {
+  const saver = useSaver("news", props);
+  const [enabled, setEnabled] = useState(props.on);
+  const [status, setStatus] = useState<{ outlets: Outlet[]; stored: number; latest: Latest[] } | null>(null);
+  useEffect(() => setEnabled(props.on), [props.on]);
+  useEffect(() => {
+    props.callApi({ action: "news_status" }).then(({ status: s, data }) => {
+      if (s === 200) setStatus({ outlets: (data["outlets"] ?? []) as Outlet[], stored: Number(data["stored"] ?? 0), latest: (data["latest"] ?? []) as Latest[] });
+    });
+  }, [props.callApi]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Card k="news" props={props} saver={saver} error={null}
+      onSave={() => saver.run({ action: "save_setting", value: { enabled } }, enabled ? "Saved. News watch is ON." : "Saved. News watch is OFF.")}
+      onReset={() => saver.run({ action: "reset_setting" }, "Reset. News watch is ON.")}>
+      <p className="text-sm text-muted-foreground">
+        Every hour the server reads the news feeds of Punch, Vanguard, BusinessDay, Premium Times, Nairametrics and Daily Trust, and keeps headlines about fuel, transport, rice, pepper, tomatoes and onions
+        that also mention a price. Only the headline, outlet, date and link are stored, and nothing changes any cost. Each business can also turn it off for itself.
+      </p>
+      <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> News watch is {enabled ? "ON" : "OFF"} for the whole platform
+      </label>
+      <div className="space-y-2 border-t border-border pt-3">
+        <div className="text-sm font-medium text-foreground">Outlets {status ? `(${status.stored} headlines stored)` : ""}</div>
+        {status === null ? <p className="text-xs text-muted-foreground">Loading…</p> : status.outlets.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nothing has run yet. The hourly job has to be scheduled first.</p>
+        ) : (
+          <ul className="divide-y divide-border rounded-md border border-border text-sm">
+            {status.outlets.map((o) => (
+              <li key={o.source} className="flex flex-wrap justify-between gap-2 p-2">
+                <span className="text-foreground">{o.source}</span>
+                <span className={o.last_error ? "font-medium text-destructive" : "text-muted-foreground"}>
+                  {o.last_error ? `Last read failed: ${o.last_error}` : `Read ${o.last_item_count} items, ${o.last_match_count} matched`}
+                  {o.last_ok_at ? ` · last worked ${fmt(o.last_ok_at)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {status && status.latest.length > 0 && (
+          <ul className="space-y-1 text-xs text-muted-foreground">{status.latest.map((l, i) => <li key={i}>{l.source}: {l.title}</li>)}</ul>
         )}
       </div>
     </Card>
