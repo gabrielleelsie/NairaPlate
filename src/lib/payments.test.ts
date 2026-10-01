@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basicAuth, hmacSha512Hex, kobo, parseMonnifyPayment, parseTransferAccount, referenceOf, verifyMonnifySignature } from "./payments";
+import { basicAuth, classifyLogin, hmacSha512Hex, kobo, parseMonnifyPayment, parseTransferAccount, referenceOf, verifyMonnifySignature } from "./payments";
 
 const REF = "NP" + "AB".repeat(16);
 const good = { eventType: "SUCCESSFUL_TRANSACTION", eventData: { transactionReference: "MNFY|1", paymentReference: REF, amountPaid: 1500.5, paymentStatus: "PAID" } };
@@ -63,4 +63,20 @@ describe("parseTransferAccount", () => {
 describe("helpers", () => {
   it("kobo rounds safely", () => { expect(kobo(1500.5)).toBe(150050); expect(kobo(0.1 + 0.2)).toBe(30); });
   it("basic auth header", () => { expect(basicAuth("a", "b")).toBe("Basic YTpi"); });
+});
+
+describe("classifyLogin", () => {
+  const okBody = { requestSuccessful: true, responseBody: { accessToken: "tok" } };
+  it("ok when Monnify logs the shop in", () => expect(classifyLogin(200, okBody)).toBe("ok"));
+  it("rejected when Monnify refuses the keys", () => {
+    expect(classifyLogin(401, { requestSuccessful: false })).toBe("rejected");
+    expect(classifyLogin(403, null)).toBe("rejected");
+    expect(classifyLogin(200, { requestSuccessful: false })).toBe("rejected");
+    expect(classifyLogin(200, { requestSuccessful: true, responseBody: {} })).toBe("rejected");
+  });
+  it("unreachable for no answer or a Monnify outage, which is not the shop's fault", () => {
+    expect(classifyLogin(null, null)).toBe("unreachable");
+    expect(classifyLogin(502, null)).toBe("unreachable");
+    expect(classifyLogin(503, okBody)).toBe("unreachable");
+  });
 });

@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { businessHasAccess, PLAN_ENDED } from "@/lib/subscription.server";
 import { basicAuth, MONNIFY_BASE, parseTransferAccount, type ProviderMode } from "@/lib/payments";
+import { monnifyLogin, raiseKeysAlert } from "@/lib/payment-keys.server";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const TILL_ROLES = new Set(["cashier", "owner", "supa_admin"]);
@@ -46,10 +47,12 @@ export const Route = createFileRoute("/api/public/payment-start")({
         const base = MONNIFY_BASE[c.status];
 
         try {
-          const login = await fetch(`${base}/api/v1/auth/login`, { method: "POST", headers: { Authorization: basicAuth(c.api_key, c.secret_key) }, signal: AbortSignal.timeout(10000) });
-          const lj = (await login.json().catch(() => null)) as { responseBody?: { accessToken?: string } } | null;
-          const bearer = lj?.responseBody?.accessToken;
-          if (!login.ok || !bearer) return json({ error: "Monnify did not accept this shop's keys. The owner should reconnect in Settings." }, 502);
+          const { result, token: bearer } = await monnifyLogin(c.status, c.api_key, c.secret_key);
+          if (result === "rejected") {
+            await raiseKeysAlert(admin, business_id);
+            return json({ error: "Monnify did not accept this shop's keys. The owner has been alerted and should reconnect on the Payments screen." }, 502);
+          }
+          if (result !== "ok" || !bearer) return json({ error: "Could not reach Monnify. Try again, or cancel the order." }, 502);
           const auth = { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" };
 
           const { data: biz } = await admin.from("businesses").select("name").eq("id", business_id).maybeSingle();

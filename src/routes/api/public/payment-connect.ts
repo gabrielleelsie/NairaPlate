@@ -5,7 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
 import { businessHasAccess, PLAN_ENDED } from "@/lib/subscription.server";
-import { basicAuth, ConnectBody, MONNIFY_BASE } from "@/lib/payments";
+import { ConnectBody } from "@/lib/payments";
+import { clearKeysAlert, monnifyLogin } from "@/lib/payment-keys.server";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const OWNER_ROLES = new Set(["owner", "supa_admin"]);
@@ -35,18 +36,9 @@ export const Route = createFileRoute("/api/public/payment-connect")({
         const b = parsed.data;
 
         // Prove the keys work by logging in to the provider. (Monnify: POST /api/v1/auth/login with Basic apiKey:secretKey.)
-        let ok = false;
-        try {
-          const res = await fetch(`${MONNIFY_BASE[b.status]}/api/v1/auth/login`, {
-            method: "POST", headers: { Authorization: basicAuth(b.api_key, b.secret_key), "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(10000),
-          });
-          const j = (await res.json().catch(() => null)) as { requestSuccessful?: boolean; responseBody?: { accessToken?: string } } | null;
-          ok = res.ok && j?.requestSuccessful === true && typeof j.responseBody?.accessToken === "string";
-        } catch {
-          return json({ error: "Could not reach Monnify. Try again in a minute." }, 502);
-        }
-        if (!ok) return json({ error: `Monnify did not accept these keys for ${b.status} mode. Check them on your Monnify dashboard (test keys for test mode, live keys for live mode).` }, 400);
+        const { result } = await monnifyLogin(b.status, b.api_key, b.secret_key);
+        if (result === "unreachable") return json({ error: "Could not reach Monnify. Try again in a minute." }, 502);
+        if (result !== "ok") return json({ error: `Monnify did not accept these keys for ${b.status} mode. Check them on your Monnify dashboard (test keys for test mode, live keys for live mode).` }, 400);
 
         const { data: staff } = await admin.from("staff_users").select("display_name").eq("id", u.user.id).maybeSingle();
         const { error: se } = await admin.rpc("save_payment_connection", {
@@ -54,6 +46,7 @@ export const Route = createFileRoute("/api/public/payment-connect")({
           p_api_key: b.api_key, p_secret_key: b.secret_key, p_by_name: staff?.display_name ?? null,
         });
         if (se) return json({ error: "The keys were accepted but could not be saved. Try again." }, 500);
+        await clearKeysAlert(admin, business_id);
         await writeAudit(admin, { business_id, actor_id: u.user.id, actor_role: role, action: "payment_provider_connected", entity_type: "business_payment_settings", details: `${staff?.display_name ?? "Owner"} connected ${b.provider} in ${b.status} mode` });
         return json({ ok: true, provider: b.provider, status: b.status });
       },
