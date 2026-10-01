@@ -69,7 +69,7 @@ function WastageScreen() {
     });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
-    setMsg({ ok: true, text: `Logged ${qty} ${marketUnitLabel(unit)} of ${ing?.name} — cost ${formatNaira(cost_kobo)}.` });
+    setMsg({ ok: true, text: `Logged ${qty} ${marketUnitLabel(unit)} of ${ing?.name} — cost ${formatNaira(cost_kobo)}. Stock has been reduced.` });
     setQty("");
   }
 

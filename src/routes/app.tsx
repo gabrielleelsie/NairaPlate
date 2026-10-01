@@ -281,11 +281,13 @@ const STOCK: AppLink[] = [
   { to: "/suppliers", label: "Suppliers", icon: Truck },
   { to: "/shopping-list", label: "Shopping list", icon: ClipboardList },
   { to: "/ingredients", label: "Ingredients", icon: PackageSearch },
+  { to: "/stock-take", label: "Stock take", icon: ClipboardList },
 ];
 const KITCHEN: AppLink[] = [
   { to: "/recipes", label: "Recipes", icon: BookOpen },
   { to: "/batches", label: "Log a batch", icon: ChefHat },
   { to: "/wastage", label: "Wastage", icon: UtensilsCrossed },
+  { to: "/stock-take", label: "Stock take", icon: ClipboardList },
 ];
 const OVERSIGHT: AppLink[] = [
   { to: "/dashboard", label: "P&L", icon: BarChart3 },
@@ -306,7 +308,7 @@ function HomeScreen({ name, role, onSignOut }: { name: string; role: string | nu
     : [
         ...(role === "cashier" || isOwner ? [{ title: "Sell", links: SELL }] : []),
         ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: STOCK }] : []),
-        ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: KITCHEN }] : []),
+        ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: isOwner ? KITCHEN.filter((l) => l.to !== "/stock-take") : KITCHEN }] : []),
         ...(isOwner ? [{ title: "Oversight", links: OVERSIGHT }] : []),
       ];
 
