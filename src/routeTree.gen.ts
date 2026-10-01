@@ -45,6 +45,7 @@ import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/publi
 import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
 import { Route as ApiPublicDailySummaryRouteImport } from './routes/api/public/daily-summary'
 import { Route as ApiPublicExpiryRemindersRouteImport } from './routes/api/public/expiry-reminders'
+import { Route as ApiPublicNewsWatchRouteImport } from './routes/api/public/news-watch'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -232,6 +233,11 @@ const ApiPublicExpiryRemindersRoute =
     path: '/api/public/expiry-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicNewsWatchRoute = ApiPublicNewsWatchRouteImport.update({
+  id: '/api/public/news-watch',
+  path: '/api/public/news-watch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
+  '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
+  '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -376,6 +384,7 @@ export interface FileRoutesById {
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
+  '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/api/public/contact'
     | '/api/public/daily-summary'
     | '/api/public/expiry-reminders'
+    | '/api/public/news-watch'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
     | '/api/public/contact'
     | '/api/public/daily-summary'
     | '/api/public/expiry-reminders'
+    | '/api/public/news-watch'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/api/public/contact'
     | '/api/public/daily-summary'
     | '/api/public/expiry-reminders'
+    | '/api/public/news-watch'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -547,6 +559,7 @@ export interface RootRouteChildren {
   ApiPublicContactRoute: typeof ApiPublicContactRoute
   ApiPublicDailySummaryRoute: typeof ApiPublicDailySummaryRoute
   ApiPublicExpiryRemindersRoute: typeof ApiPublicExpiryRemindersRoute
+  ApiPublicNewsWatchRoute: typeof ApiPublicNewsWatchRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -807,6 +820,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicExpiryRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/news-watch': {
+      id: '/api/public/news-watch'
+      path: '/api/public/news-watch'
+      fullPath: '/api/public/news-watch'
+      preLoaderRoute: typeof ApiPublicNewsWatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -875,6 +895,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicContactRoute: ApiPublicContactRoute,
   ApiPublicDailySummaryRoute: ApiPublicDailySummaryRoute,
   ApiPublicExpiryRemindersRoute: ApiPublicExpiryRemindersRoute,
+  ApiPublicNewsWatchRoute: ApiPublicNewsWatchRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,

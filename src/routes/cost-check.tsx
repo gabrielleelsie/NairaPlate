@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira } from "@/lib/costing";
+import { NewsPanel, useNews } from "@/components/NewsPanel";
 import { loadCostCheck, loadStalePrices, STALE_DAYS, MARGIN_GAP_POINTS, type CostCheck, type DayStats, type StaleIngredient } from "@/lib/cost-check";
 
 export const Route = createFileRoute("/cost-check")({
@@ -35,6 +36,7 @@ function CostCheckScreen() {
   const [err, setErr] = useState("");
   const isOwner = !!session && OWNER_ROLES.has(session.role);
   const isPurchaser = session?.role === "purchaser";
+  const news = useNews(isOwner || isPurchaser);
 
   useEffect(() => {
     if (!session) return;
@@ -54,6 +56,7 @@ function CostCheckScreen() {
       {!err && !data && !stale && <p className="mt-4 text-muted-foreground">Checking your costs…</p>}
 
       {isPurchaser && stale && <OldPrices items={stale.stale} total={stale.total} />}
+      {isPurchaser && <NewsPanel canSwitch={false} {...news} />}
 
       {isOwner && data && (
         <>
@@ -123,6 +126,8 @@ function CostCheckScreen() {
           </section>
 
           <OldPrices items={data.stale} total={data.stale_total} />
+
+          <NewsPanel canSwitch {...news} />
 
           {data.scarce.length > 0 && (
             <section className="mt-8">

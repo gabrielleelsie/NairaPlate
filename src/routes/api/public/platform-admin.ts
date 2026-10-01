@@ -20,6 +20,7 @@ import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
 import { SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
+import { NEWS_SCHEMA } from "@/lib/news";
 import { REMINDER_KINDS, REMINDER_LABEL, REMINDER_SCHEMA, dueReminder, mergeReminders, renderReminder, type ReminderKind } from "@/lib/reminders";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
@@ -49,9 +50,10 @@ const ActionSchema = z.discriminatedUnion("action", [
     preview: z.boolean().optional(),
   }),
   z.object({ action: z.literal("get_settings") }),
-  z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders"]), value: z.unknown(), admin_pin: PinSchema }),
-  z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders"]), admin_pin: PinSchema }),
+  z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), value: z.unknown(), admin_pin: PinSchema }),
+  z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), admin_pin: PinSchema }),
   z.object({ action: z.literal("reminders_due") }),
+  z.object({ action: z.literal("news_status") }),
   z.object({ action: z.literal("send_test_reminder"), kind: z.enum(["paid_before", "paid_after", "trial_before", "trial_after"]) }),
   z.object({ action: z.literal("list_messages"), handled: z.boolean() }),
   z.object({ action: z.literal("mark_message_handled"), message_id: z.string().uuid() }),
@@ -156,13 +158,13 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             stored[r.key] = r.value;
             meta[r.key] = { updated_at: r.updated_at, updated_by_name: r.updated_by_name ?? null };
           }
-          return json({ settings: mergeSettings(stored), reminders: mergeReminders(stored["reminders"]), custom: Object.keys(meta), meta });
+          return json({ settings: mergeSettings(stored), reminders: mergeReminders(stored["reminders"]), news: { enabled: (stored["news"] as { enabled?: boolean } | undefined)?.enabled !== false }, custom: Object.keys(meta), meta });
         }
 
         if (body.action === "save_setting" || body.action === "reset_setting") {
-          const key = body.key as SettingKey | "reminders";
-          if (key !== "reminders" && !SETTING_KEYS.includes(key)) return json({ error: "Unknown setting." }, 400);
-          const label = key === "reminders" ? REMINDER_LABEL : SETTING_LABEL[key];
+          const key = body.key as SettingKey | "reminders" | "news";
+          if (key !== "reminders" && key !== "news" && !SETTING_KEYS.includes(key)) return json({ error: "Unknown setting." }, 400);
+          const label = key === "reminders" ? REMINDER_LABEL : key === "news" ? "News watch" : SETTING_LABEL[key];
           if (!(await verifyAdminPin(admin, adminId, body.admin_pin))) return json({ error: "That PIN is not correct." }, 403);
 
           const { data: before } = await admin.from("platform_settings").select("value").eq("key", key).maybeSingle();
@@ -179,7 +181,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             return json({ ok: true });
           }
 
-          const parsedValue = (key === "reminders" ? REMINDER_SCHEMA : SETTING_SCHEMAS[key]).safeParse(body.value);
+          const parsedValue = (key === "reminders" ? REMINDER_SCHEMA : key === "news" ? NEWS_SCHEMA : SETTING_SCHEMAS[key]).safeParse(body.value);
           if (!parsedValue.success) return json({ error: parsedValue.error.issues[0]?.message ?? "That setting is not valid." }, 400);
           const { error } = await admin.from("platform_settings").upsert({
             key, value: parsedValue.data, updated_at: new Date().toISOString(), updated_by: adminId, updated_by_name: adminName,
@@ -211,6 +213,13 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             .select("business_id, kind, offset_days, recipients, sent, created_at").order("created_at", { ascending: false }).limit(15);
           const nameOf = new Map((bs ?? []).map((b) => [b.id as string, b.name as string]));
           return json({ enabled: rs.enabled, due_today: due, recent: (log ?? []).map((l) => ({ ...l, business_name: nameOf.get(l.business_id as string) ?? l.business_id })) });
+        }
+
+        if (body.action === "news_status") {
+          const { data: st } = await admin.from("news_feed_status").select("source, feed_url, checked_at, last_ok_at, last_error, last_item_count, last_match_count").order("source");
+          const { count } = await admin.from("news_items").select("id", { count: "exact", head: true });
+          const { data: latest } = await admin.from("news_items").select("title, source, published_at").order("published_at", { ascending: false }).limit(5);
+          return json({ outlets: st ?? [], stored: count ?? 0, latest: latest ?? [] });
         }
 
         if (body.action === "send_test_reminder") {
