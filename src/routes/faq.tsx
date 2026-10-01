@@ -113,7 +113,11 @@ const GROUPS: Group[] = [
     items: [
       {
         q: "How does the free trial work?",
-        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day with full access to every feature. We also help you set up your top 5 dishes and your market-unit conversions so you do not start from a blank screen.",
+        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day with every feature switched on. We also help you set up your 2 recipes and your market-unit conversions so you do not start from a blank screen.",
+      },
+      {
+        q: "Is there a limit during the trial?",
+        a: "Yes. Every feature is on, but a trial includes up to 2 recipes, with up to 12 ingredients in each recipe, and up to 20 ingredients in your list. A paid plan removes these limits.",
       },
       {
         q: "Why do you approve accounts first?",
