@@ -6,6 +6,9 @@ import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PAY_CHOICE_LABEL, payChoicesFor, type PayChoice } from "@/lib/payment-ui";
+import type { PaymentMode } from "@/lib/payments";
+import { TransferWaiting, type WaitingRequest } from "@/components/TransferWaiting";
 
 export const Route = createFileRoute("/pos")({
   ssr: false,
@@ -24,8 +27,8 @@ export const Route = createFileRoute("/pos")({
 
 type Recipe = { id: string; name: string; selling_price_kobo: number };
 type Line = { recipe_id: string; quantity: number };
-type Pay = "cash" | "transfer" | "split" | "credit";
-const PAY_LABEL: Record<Pay, string> = { cash: "Cash", transfer: "Transfer", split: "Split", credit: "Customer credit (owe)" };
+type Pay = PayChoice;
+const PAY_LABEL = PAY_CHOICE_LABEL;
 const POS_ROLES = new Set(["cashier", "owner", "supa_admin"]);
 const TIERS = ["Standard", "Wholesale", "Event"];
 
@@ -44,6 +47,8 @@ function PosScreen() {
   const [custName, setCustName] = useState("");
   const [custPhone, setCustPhone] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<PaymentMode | null>(null);
+  const [waiting, setWaiting] = useState<WaitingRequest[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
@@ -52,6 +57,17 @@ function PosScreen() {
       setRecipes((data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) })));
     });
   }, []);
+
+  const loadWaiting = async () => {
+    const { data } = await supabase.from("payment_requests").select("id,order_id,reference,status,amount_kobo,paid_amount_kobo,created_at,account_number,bank_name,account_name")
+      .in("status", ["waiting", "short"]).order("created_at", { ascending: false });
+    setWaiting((data ?? []).map((d) => ({ ...(d as WaitingRequest), amount_kobo: Number(d.amount_kobo), paid_amount_kobo: d.paid_amount_kobo === null ? null : Number(d.paid_amount_kobo) })));
+  };
+  useEffect(() => {
+    supabase.from("business_payment_settings").select("mode").maybeSingle().then(({ data }) => setMode((data?.mode as PaymentMode | undefined) ?? "manual"));
+    void loadWaiting();
+  }, []);
+  useEffect(() => { if (mode && !payChoicesFor(mode).includes(pay)) setPay("cash"); }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const subtotal = lines.reduce((s, l) => s + (byId.get(l.recipe_id)?.selling_price_kobo ?? 0) * l.quantity, 0);
@@ -75,6 +91,28 @@ function PosScreen() {
 
   async function submit() {
     if (!session) return;
+    // Automatic transfer: the order waits for the bank. Only the bank's message can mark it paid.
+    if (pay === "auto_transfer") {
+      setBusy(true); setMsg(null);
+      const { data, error } = await supabase.rpc("create_transfer_order" as never, {
+        p_channel: finalChannel, p_price_tier: tier, p_items: lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity })),
+      } as never);
+      if (error) { setBusy(false); return setMsg({ ok: false, text: "Order not saved: " + error.message }); }
+      const created = data as { request_id: string; amount_kobo: number };
+      const { data: sess } = await supabase.auth.getSession();
+      const res = await fetch("/api/public/payment-start", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
+        body: JSON.stringify({ request_id: created.request_id }),
+      }).catch(() => null);
+      setBusy(false);
+      if (!res || !res.ok) {
+        const j = res ? ((await res.json().catch(() => ({}))) as { error?: string }) : {};
+        setMsg({ ok: false, text: `Order saved and waiting, but no account number yet: ${j.error ?? "could not reach the bank service"}. Cancel it below or try again.` });
+      } else setMsg(null);
+      setLines([]);
+      await loadWaiting();
+      return;
+    }
     // Credit sale: order + items + customer_credits row saved together in one database step.
     if (pay === "credit") {
       setBusy(true); setMsg(null);
@@ -124,6 +162,10 @@ function PosScreen() {
     <main className="mx-auto max-w-xl p-4 space-y-5">
       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><Link className="underline" to="/app">Home</Link></div>
 
+      {waiting.map((w) => (
+        <TransferWaiting key={w.id} initial={w} onFinished={(text, ok) => { setMsg({ ok, text }); void loadWaiting(); }} />
+      ))}
+
       <section className="space-y-2">
         <Label>Add item</Label>
         <div className="flex gap-2">
@@ -159,7 +201,7 @@ function PosScreen() {
       <section className="space-y-2">
         <Label>Payment</Label>
         <div className="flex flex-wrap gap-4">
-          {(["cash", "transfer", "split", "credit"] as Pay[]).map((p) => (
+          {payChoicesFor(mode).map((p) => (
             <label key={p} className="flex items-center gap-1">
               <input type="radio" name="pay" checked={pay === p} onChange={() => setPay(p)} /> {PAY_LABEL[p]}
             </label>))}
@@ -182,7 +224,7 @@ function PosScreen() {
           </div>)}
       </section>
 
-      <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : pay === "credit" ? `Put ${formatNaira(subtotal)} on credit` : `Charge ${formatNaira(subtotal)}`}</Button>
+      <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : pay === "credit" ? `Put ${formatNaira(subtotal)} on credit` : pay === "auto_transfer" ? `Ask for ${formatNaira(subtotal)} by transfer` : `Charge ${formatNaira(subtotal)}`}</Button>
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
     </main>
   );

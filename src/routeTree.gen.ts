@@ -26,6 +26,7 @@ import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OurStoryRouteImport } from './routes/our-story'
+import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as PresentationRouteImport } from './routes/presentation'
@@ -47,6 +48,9 @@ import { Route as ApiPublicContactRouteImport } from './routes/api/public/contac
 import { Route as ApiPublicDailySummaryRouteImport } from './routes/api/public/daily-summary'
 import { Route as ApiPublicExpiryRemindersRouteImport } from './routes/api/public/expiry-reminders'
 import { Route as ApiPublicNewsWatchRouteImport } from './routes/api/public/news-watch'
+import { Route as ApiPublicPaymentConnectRouteImport } from './routes/api/public/payment-connect'
+import { Route as ApiPublicPaymentStartRouteImport } from './routes/api/public/payment-start'
+import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -135,6 +139,11 @@ const OrdersRoute = OrdersRouteImport.update({
 const OurStoryRoute = OurStoryRouteImport.update({
   id: '/our-story',
   path: '/our-story',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsRoute = PaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PayoutsRoute = PayoutsRouteImport.update({
@@ -244,6 +253,21 @@ const ApiPublicNewsWatchRoute = ApiPublicNewsWatchRouteImport.update({
   path: '/api/public/news-watch',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentConnectRoute = ApiPublicPaymentConnectRouteImport.update({
+  id: '/api/public/payment-connect',
+  path: '/api/public/payment-connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPaymentStartRoute = ApiPublicPaymentStartRouteImport.update({
+  id: '/api/public/payment-start',
+  path: '/api/public/payment-start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPaymentWebhookRoute = ApiPublicPaymentWebhookRouteImport.update({
+  id: '/api/public/payment-webhook',
+  path: '/api/public/payment-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -284,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/ingredients': typeof IngredientsRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
+  '/payments': typeof PaymentsRoute
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
@@ -305,6 +330,9 @@ export interface FileRoutesByFullPath {
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
   '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
+  '/api/public/payment-connect': typeof ApiPublicPaymentConnectRoute
+  '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
+  '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -328,6 +356,7 @@ export interface FileRoutesByTo {
   '/ingredients': typeof IngredientsRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
+  '/payments': typeof PaymentsRoute
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
@@ -349,6 +378,9 @@ export interface FileRoutesByTo {
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
   '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
+  '/api/public/payment-connect': typeof ApiPublicPaymentConnectRoute
+  '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
+  '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -373,6 +405,7 @@ export interface FileRoutesById {
   '/ingredients': typeof IngredientsRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
+  '/payments': typeof PaymentsRoute
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
@@ -394,6 +427,9 @@ export interface FileRoutesById {
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
   '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
   '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
+  '/api/public/payment-connect': typeof ApiPublicPaymentConnectRoute
+  '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
+  '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -419,6 +455,7 @@ export interface FileRouteTypes {
     | '/ingredients'
     | '/orders'
     | '/our-story'
+    | '/payments'
     | '/payouts'
     | '/pos'
     | '/presentation'
@@ -440,6 +477,9 @@ export interface FileRouteTypes {
     | '/api/public/daily-summary'
     | '/api/public/expiry-reminders'
     | '/api/public/news-watch'
+    | '/api/public/payment-connect'
+    | '/api/public/payment-start'
+    | '/api/public/payment-webhook'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -463,6 +503,7 @@ export interface FileRouteTypes {
     | '/ingredients'
     | '/orders'
     | '/our-story'
+    | '/payments'
     | '/payouts'
     | '/pos'
     | '/presentation'
@@ -484,6 +525,9 @@ export interface FileRouteTypes {
     | '/api/public/daily-summary'
     | '/api/public/expiry-reminders'
     | '/api/public/news-watch'
+    | '/api/public/payment-connect'
+    | '/api/public/payment-start'
+    | '/api/public/payment-webhook'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -507,6 +551,7 @@ export interface FileRouteTypes {
     | '/ingredients'
     | '/orders'
     | '/our-story'
+    | '/payments'
     | '/payouts'
     | '/pos'
     | '/presentation'
@@ -528,6 +573,9 @@ export interface FileRouteTypes {
     | '/api/public/daily-summary'
     | '/api/public/expiry-reminders'
     | '/api/public/news-watch'
+    | '/api/public/payment-connect'
+    | '/api/public/payment-start'
+    | '/api/public/payment-webhook'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -552,6 +600,7 @@ export interface RootRouteChildren {
   IngredientsRoute: typeof IngredientsRoute
   OrdersRoute: typeof OrdersRoute
   OurStoryRoute: typeof OurStoryRoute
+  PaymentsRoute: typeof PaymentsRoute
   PayoutsRoute: typeof PayoutsRoute
   PosRoute: typeof PosRoute
   PresentationRoute: typeof PresentationRoute
@@ -573,6 +622,9 @@ export interface RootRouteChildren {
   ApiPublicDailySummaryRoute: typeof ApiPublicDailySummaryRoute
   ApiPublicExpiryRemindersRoute: typeof ApiPublicExpiryRemindersRoute
   ApiPublicNewsWatchRoute: typeof ApiPublicNewsWatchRoute
+  ApiPublicPaymentConnectRoute: typeof ApiPublicPaymentConnectRoute
+  ApiPublicPaymentStartRoute: typeof ApiPublicPaymentStartRoute
+  ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -698,6 +750,13 @@ declare module '@tanstack/react-router' {
       path: '/our-story'
       fullPath: '/our-story'
       preLoaderRoute: typeof OurStoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments': {
+      id: '/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof PaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payouts': {
@@ -847,6 +906,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicNewsWatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payment-connect': {
+      id: '/api/public/payment-connect'
+      path: '/api/public/payment-connect'
+      fullPath: '/api/public/payment-connect'
+      preLoaderRoute: typeof ApiPublicPaymentConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/payment-start': {
+      id: '/api/public/payment-start'
+      path: '/api/public/payment-start'
+      fullPath: '/api/public/payment-start'
+      preLoaderRoute: typeof ApiPublicPaymentStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/payment-webhook': {
+      id: '/api/public/payment-webhook'
+      path: '/api/public/payment-webhook'
+      fullPath: '/api/public/payment-webhook'
+      preLoaderRoute: typeof ApiPublicPaymentWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -896,6 +976,7 @@ const rootRouteChildren: RootRouteChildren = {
   IngredientsRoute: IngredientsRoute,
   OrdersRoute: OrdersRoute,
   OurStoryRoute: OurStoryRoute,
+  PaymentsRoute: PaymentsRoute,
   PayoutsRoute: PayoutsRoute,
   PosRoute: PosRoute,
   PresentationRoute: PresentationRoute,
@@ -917,6 +998,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDailySummaryRoute: ApiPublicDailySummaryRoute,
   ApiPublicExpiryRemindersRoute: ApiPublicExpiryRemindersRoute,
   ApiPublicNewsWatchRoute: ApiPublicNewsWatchRoute,
+  ApiPublicPaymentConnectRoute: ApiPublicPaymentConnectRoute,
+  ApiPublicPaymentStartRoute: ApiPublicPaymentStartRoute,
+  ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
