@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { GRADES } from "@/lib/grade";
 import { HoldPricePanel } from "@/components/HoldPricePanel";
+import { VariantsPanel } from "@/components/VariantsPanel";
+import type { RecipeVariant } from "@/lib/variants";
 import { useStaffSession, BASE_UNITS, MARKET_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import {
   computeRecipeCost, hasGradeChoice, unitsForIngredient, formatNaira, nairaToKobo,
@@ -32,7 +34,7 @@ export const Route = createFileRoute("/recipes")({
   component: RecipesScreen,
 });
 
-type Recipe = { id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number; cost_grade: string | null };
+type Recipe = { id: string; dish_id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number; cost_grade: string | null };
 type RecipeItemRow = CostRecipeItem & { id: string; recipe_id: string; min_quantity?: number | null | undefined; never_cut?: boolean | undefined };
 type DraftItem = { key: number; existingId?: string; ingredient_id: string; quantity: string; unit: string; min?: string | undefined; neverCut?: boolean | undefined };
 
@@ -45,19 +47,21 @@ function RecipesScreen() {
   const [conversions, setConversions] = useState<CostConversion[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipeItems, setRecipeItems] = useState<RecipeItemRow[]>([]);
+  const [variants, setVariants] = useState<RecipeVariant[]>([]);
   const [marginBps, setMarginBps] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
-    const [ing, conv, rec, ri, biz, gp] = await Promise.all([
+    const [ing, conv, rec, ri, biz, gp, vr] = await Promise.all([
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
       // Only the current version of each dish; old versions are kept for past sales and reports.
-      supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo,cost_grade").eq("is_current", true).order("name"),
+      supabase.from("recipes").select("id,dish_id,name,category,yield_portions,selling_price_kobo,cost_grade").eq("is_current", true).order("name"),
       supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit,min_quantity,never_cut"),
       supabase.from("businesses").select("target_margin_bps").maybeSingle(),
       supabase.from("ingredient_grade_prices").select("ingredient_id,grade,cost_kobo"),
+      supabase.from("recipe_variants").select("id,dish_id,label,yield_portions,items"), // owners only: other roles get no rows
     ]);
     if (ing.error || conv.error || rec.error || ri.error || biz.error) return setMsg({ ok: false, text: "Could not load recipes." });
     // Last price per grade for each ingredient. If this lookup fails the screen still works at the latest price.
@@ -70,6 +74,7 @@ function RecipesScreen() {
     setRecipes((rec.data ?? []).map((r) => ({ ...r, yield_portions: Number(r.yield_portions), selling_price_kobo: Number(r.selling_price_kobo) })));
     setRecipeItems((ri.data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity), min_quantity: r.min_quantity === null || r.min_quantity === undefined ? null : Number(r.min_quantity) })));
     setMarginBps(biz.data ? Number(biz.data.target_margin_bps) : null);
+    setVariants(vr.error ? [] : (vr.data ?? []).map((v) => ({ ...v, yield_portions: Number(v.yield_portions) })) as RecipeVariant[]);
   }, []);
 
   useEffect(() => { if (session) load(); }, [session, load]);
@@ -147,6 +152,9 @@ function RecipesScreen() {
             conversions={conversions}
             marginBps={marginBps}
             existing={r}
+            variants={variants}
+            onVariantsChanged={load}
+            onSwitchedVariant={(t) => { setMsg({ ok: true, text: t }); setEditingId(null); load(); }}
             existingItems={recipeItems.filter((i) => i.recipe_id === r.id)}
             canDeleteItems={canDelete}
             onSaved={(t) => { setMsg({ ok: true, text: t }); setEditingId(null); load(); }}
@@ -223,11 +231,12 @@ function RecipesScreen() {
 // existing === null → create. existing set → update the recipe row and
 // add / change / remove its ingredients in place.
 function RecipeForm({
-  businessId, ingredients, conversions, marginBps, existing, existingItems, canDeleteItems, onTrial,
+  businessId, ingredients, conversions, marginBps, existing, existingItems, canDeleteItems, onTrial, variants, onVariantsChanged, onSwitchedVariant,
   onSaved, onError, onCancel,
 }: {
   onTrial?: boolean; businessId: string; ingredients: CostIngredient[]; conversions: CostConversion[]; marginBps: number;
   existing?: Recipe; existingItems?: RecipeItemRow[]; canDeleteItems?: boolean;
+  variants?: RecipeVariant[]; onVariantsChanged?: () => void; onSwitchedVariant?: (t: string) => void;
   onSaved: (t: string) => void; onError: (t: string) => void; onCancel?: () => void;
 }) {
   const isEdit = !!existing;
@@ -507,6 +516,17 @@ function RecipeForm({
             <p className="text-xs text-muted-foreground">Saving will create a new version of this recipe. Past sales keep their old cost.</p>
           )}
         </div>
+      )}
+
+      {isEdit && !!canDeleteItems && existing && (
+        <VariantsPanel
+          dish={{ id: existing.id, dish_id: existing.dish_id, name: existing.name, category: existing.category, yield_portions: existing.yield_portions, selling_price_kobo: existing.selling_price_kobo, cost_grade: existing.cost_grade }}
+          savedItems={(existingItems ?? []).map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit, min_quantity: i.min_quantity ?? null, never_cut: !!i.never_cut }))}
+          draftItems={items.filter((i) => i.ingredient_id && Number(i.quantity) > 0).map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit, min_quantity: i.min && i.min.trim() !== "" ? Number(i.min) : null, never_cut: !!i.neverCut }))}
+          variants={variants ?? []} ingredients={ingredients} conversions={conversions}
+          onChanged={() => onVariantsChanged?.()} onSwitched={(t) => onSwitchedVariant?.(t)} onError={onError}
+          resetDraft={() => setItems(existingItems ? existingItems.map((i, n) => ({ key: n + 1, existingId: i.id, ingredient_id: i.ingredient_id, quantity: String(i.quantity), unit: i.unit, min: i.min_quantity === null || i.min_quantity === undefined ? "" : String(i.min_quantity), neverCut: !!i.never_cut })) : [])}
+        />
       )}
 
       {showHoldPrice && (

@@ -3,6 +3,7 @@
 // with the browser client (owner screen) or the service client (daily email), the same way calculateBusinessPnl does.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeRecipeCost, type CostConversion, type CostIngredient, type CostRecipeItem } from "@/lib/costing";
+import { compareVariants, type RecipeVariant } from "@/lib/variants";
 import { DAY_MS, LAGOS_OFFSET_MS, lagosDateKey, lagosDayStart } from "@/lib/lagos-time";
 
 export const MARGIN_GAP_POINTS = 3; // a dish is flagged when its margin is this many points under the target
@@ -10,7 +11,7 @@ export const STALE_DAYS = 14; // an ingredient price older than this is flagged
 export const MAX_ITEMS = 5;
 
 export type RecipeRow = {
-  id: string; name: string; yield_portions: number; selling_price_kobo: number;
+  id: string; dish_id?: string | null; name: string; yield_portions: number; selling_price_kobo: number;
   cost_grade: string | null; is_current: boolean;
 };
 export type IngredientRow = CostIngredient & { price_updated_at: string | null; current_season: string | null };
@@ -27,12 +28,13 @@ export const PRICE_STEP_KOBO = 5000; // when a price does change, suggest the ne
 /** The next round price step at or above `kobo`. */
 export const roundUpToStep = (kobo: number, step = PRICE_STEP_KOBO) => Math.ceil(kobo / step) * step;
 
+export type VariantOption = { label: string; cost_per_plate_kobo: number; margin_pct: number };
 export type AttentionDish = {
   recipe_id: string; name: string; grade: string | null; price_kobo: number; cost_per_plate_kobo: number;
   margin_pct: number; target_pct: number; suggested_price_kobo: number | null;
   cost_to_cut_kobo: number; // how much the cost per plate must come down to reach the target at today's price
   round_price_kobo: number | null; round_price_margin_pct: number | null; // the next round price step, and the margin it gives
-  week_plates: number; week_loss_kobo: number | null; options: DishOption[]; fallbacks: string[];
+  week_plates: number; week_loss_kobo: number | null; options: DishOption[]; variant_options: VariantOption[]; fallbacks: string[];
 };
 export type StaleIngredient = { id: string; name: string; days_old: number | null };
 export type ScarceIngredient = { name: string; dishes: number };
@@ -113,7 +115,7 @@ export function computeCostCheck(input: {
   now: Date; target_margin_bps: number;
   recipes: RecipeRow[]; items: (CostRecipeItem & { recipe_id: string })[];
   ingredients: IngredientRow[]; conversions: CostConversion[];
-  week_orders: OrderRow[]; last_month_orders: OrderRow[];
+  week_orders: OrderRow[]; last_month_orders: OrderRow[]; variants?: RecipeVariant[];
 }): CostCheck {
   const { now, recipes, items, ingredients, conversions } = input;
   const targetPct = input.target_margin_bps / 100;
@@ -164,6 +166,11 @@ export function computeCostCheck(input: {
       round_price_kobo: roundPrice, round_price_margin_pct: roundPrice ? (1 - perPlate / roundPrice) * 100 : null,
       week_plates: plates, week_loss_kobo: gap !== null && gap > 0 && plates > 0 ? Math.round(gap * plates) : null,
       options, fallbacks: c.fallbacks,
+      variant_options: !r.dish_id ? [] : compareVariants({
+        current: { items: rItems.map((i) => ({ ...i })), yield_portions: Number(r.yield_portions) }, price_kobo: r.selling_price_kobo, grade: r.cost_grade,
+        variants: (input.variants ?? []).filter((v) => v.dish_id === r.dish_id), ingredients, conversions,
+      }).rows.flatMap((v) => (!v.active && v.cost_per_plate_kobo !== null && v.margin_pct !== null && v.cost_diff_kobo !== null && v.cost_diff_kobo < 0
+        ? [{ label: v.label, cost_per_plate_kobo: v.cost_per_plate_kobo, margin_pct: v.margin_pct }] : [])),
     });
   }
   attentionAll.sort((a, b) => (b.week_loss_kobo ?? 0) - (a.week_loss_kobo ?? 0) || a.margin_pct - b.margin_pct);
@@ -210,8 +217,8 @@ export async function loadCostCheck(supabase: SupabaseClient, business_id: strin
     .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
     .gte("created_at", from.toISOString()).lt("created_at", to.toISOString());
 
-  const [recipes, items, ings, convs, gp, biz, week, lastMonth] = await Promise.all([
-    supabase.from("recipes").select("id,name,yield_portions,selling_price_kobo,cost_grade,is_current").eq("business_id", business_id),
+  const [recipes, items, ings, convs, gp, biz, week, lastMonth, vr] = await Promise.all([
+    supabase.from("recipes").select("id,dish_id,name,yield_portions,selling_price_kobo,cost_grade,is_current").eq("business_id", business_id),
     supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit").eq("business_id", business_id),
     supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo,price_updated_at,current_season").eq("business_id", business_id),
     supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty").eq("business_id", business_id),
@@ -219,6 +226,7 @@ export async function loadCostCheck(supabase: SupabaseClient, business_id: strin
     supabase.from("businesses").select("target_margin_bps").eq("id", business_id).maybeSingle(),
     ordersQ(weekFrom, todayStart),
     ordersQ(lm.from, lm.to),
+    supabase.from("recipe_variants").select("id,dish_id,label,yield_portions,items").eq("business_id", business_id),
   ]);
   const failed = [recipes, items, ings, convs, biz, week, lastMonth].find((r) => r.error);
   if (failed?.error) throw new Error(failed.error.message);
@@ -234,6 +242,7 @@ export async function loadCostCheck(supabase: SupabaseClient, business_id: strin
     conversions: (convs.data ?? []).map((c) => ({ ...c, base_qty: Number(c.base_qty) })),
     week_orders: (week.data ?? []) as unknown as OrderRow[],
     last_month_orders: (lastMonth.data ?? []) as unknown as OrderRow[],
+    variants: vr.error ? [] : ((vr.data ?? []).map((v) => ({ ...v, yield_portions: Number(v.yield_portions) })) as RecipeVariant[]),
   });
 }
 

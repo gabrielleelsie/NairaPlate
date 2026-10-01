@@ -77,6 +77,9 @@ function CostCheckScreen() {
                     {d.options.map((o) => (
                       <p key={o.grade} className="mt-1 text-sm text-foreground">Switch to grade {o.grade}: {formatNaira(o.cost_per_plate_kobo)} a plate, {o.margin_pct.toFixed(0)}% margin.</p>
                     ))}
+                    {d.variant_options.map((v) => (
+                      <p key={v.label} className="mt-1 text-sm text-foreground">Or use your "{v.label}" variant: {formatNaira(v.cost_per_plate_kobo)} a plate, {v.margin_pct.toFixed(0)}% margin.</p>
+                    ))}
                     {d.round_price_kobo !== null && d.round_price_margin_pct !== null && (
                       <p className="mt-1 text-sm text-muted-foreground">Or, if you do change the price, {formatNaira(d.round_price_kobo)} gives a {d.round_price_margin_pct.toFixed(0)}% margin.</p>
                     )}
