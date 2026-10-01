@@ -251,6 +251,9 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             .select("business_id, display_name, phone, email, role, is_active, locked_until")
             .neq("business_id", PLATFORM_BUSINESS);
 
+          const { data: pay } = await admin.from("business_payment_settings").select("business_id, mode, provider, provider_status");
+          const payBy = new Map((pay ?? []).map((p) => [p.business_id as string, p]));
+
           const now = Date.now();
           const rows = (businesses ?? []).map((b) => {
             const mine = (staff ?? []).filter((s) => s.business_id === b.id);
@@ -266,6 +269,9 @@ export const Route = createFileRoute("/api/public/platform-admin")({
               has_access: b.status === "approved" && !!b.access_ends_at && new Date(b.access_ends_at).getTime() > now,
               owner_name: owner?.display_name ?? null,
               owner_contact: owner?.phone ?? owner?.email ?? null,
+              payment_mode: (payBy.get(b.id)?.mode as string | undefined) ?? "manual",
+              payment_provider: (payBy.get(b.id)?.provider as string | null | undefined) ?? null,
+              payment_status: (payBy.get(b.id)?.provider_status as string | undefined) ?? "not_connected",
               active_staff: mine.filter((s) => s.is_active).length,
               locked_staff: mine.filter((s) => Number(s.locked_until ?? 0) > now).length,
             };

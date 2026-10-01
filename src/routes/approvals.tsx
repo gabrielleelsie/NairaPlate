@@ -36,6 +36,7 @@ type Biz = {
   owner_name: string | null; owner_contact: string | null;
   active_staff: number; locked_staff: number;
   plan: string | null; trial_started_at: string | null; access_ends_at: string | null; has_access: boolean;
+  payment_mode?: string; payment_provider?: string | null; payment_status?: string;
 };
 type Payment = {
   id: string; plan: string; amount_kobo: number; payment_reference: string; paid_on: string;
@@ -317,6 +318,9 @@ function Directory({ rows, search, setSearch, busy, act, onInspect }: {
               <span className="text-sm text-muted-foreground">({r.business_id})</span>
               <Badge status={r.status} />
               <PlanBadge status={r.status} plan={r.plan} access_ends_at={r.access_ends_at} />
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground" title="How this shop takes transfers">
+                {r.payment_mode === "automatic" ? `Transfers: automatic (${r.payment_provider ?? "?"}, ${r.payment_status})` : r.payment_mode === "cash_only" ? "Transfers: off (cash only)" : r.payment_status && r.payment_status !== "not_connected" ? `Provider connected (${r.payment_status}), transfers not automatic` : "Transfers: typed in (not connected)"}
+              </span>
               {r.locked_staff > 0 && (
                 <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
                   <AlertTriangle className="size-3" />{r.locked_staff} locked out

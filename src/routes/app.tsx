@@ -297,6 +297,7 @@ const OVERSIGHT: AppLink[] = [
   { to: "/flags", label: "Alerts", icon: AlertTriangle },
   { to: "/audit", label: "Audit log", icon: History },
   { to: "/payouts", label: "Channel payouts", icon: HandCoins },
+  { to: "/payments", label: "Payments & transfers", icon: Landmark },
   { to: "/recipes", label: "Pricing review", icon: Scale },
   { to: "/staff", label: "Staff", icon: Users },
   { to: "/report", label: "Print report", icon: ClipboardList },
