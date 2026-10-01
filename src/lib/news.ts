@@ -2,6 +2,8 @@
 // ("petrol price hike", "tomato prices rise"). Keywords only, no guessing: a headline is stored as published, with its
 // outlet, date and link, and never changes any cost or price. Pure functions, shared by the hourly job and the screens.
 
+import { z } from "zod";
+
 export type TopicKey = "fuel" | "transport" | "rice" | "pepper" | "tomatoes" | "onions";
 export const TOPIC_LABEL: Record<TopicKey, string> = { fuel: "Fuel", transport: "Transport", rice: "Rice", pepper: "Pepper", tomatoes: "Tomatoes", onions: "Onions" };
 
