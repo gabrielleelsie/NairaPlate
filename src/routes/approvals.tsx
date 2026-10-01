@@ -2,6 +2,7 @@
 // Tier 1 actions (approve, reject, reactivate, unlock a staff PIN) need only a valid session.
 // Tier 2 actions (suspend a business, emergency owner PIN reset) also ask for the admin's
 // own PIN, because a stolen session must never be enough to shut down or take over a kitchen.
+import { PlatformSettingsPanel } from "@/components/PlatformSettingsPanel";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -95,7 +96,7 @@ function PlanBadge({ status, plan, access_ends_at }: { status: string; plan: str
 const isExpired = (b: Biz) => b.status === "approved" && !b.has_access;
 const endsSoon = (b: Biz) => { const st = accessState(b); return st.kind === "active" && st.daysLeft <= 3; };
 
-type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "security";
+type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "settings" | "security";
 
 type Watch = { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] };
 type Health = {
@@ -119,6 +120,7 @@ const ACTION_LABEL: Record<string, string> = {
   email_undelivered: "Email not delivered",
   subscription_payment_recorded: "Subscription payment recorded",
   security_alert_undelivered: "Security alert not delivered",
+  platform_setting_changed: "Platform setting changed",
 };
 const words = (s: string) =>
   ACTION_LABEL[s] ?? s.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
@@ -190,6 +192,7 @@ function PlatformConsole() {
     { key: "diagnostics", label: "Troubleshoot", count: lockedTotal },
     { key: "audit", label: "Audit trail" },
     { key: "messages", label: "Messages", count: unhandled },
+    { key: "settings", label: "Settings" },
     { key: "security", label: "My account" },
   ];
 
@@ -232,6 +235,7 @@ function PlatformConsole() {
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "messages" && <Messages onCount={setUnhandled} />}
+        {tab === "settings" && <PlatformSettingsPanel callApi={callApi} />}
         {tab === "security" && <MyAccount />}
       </div>
     </main>

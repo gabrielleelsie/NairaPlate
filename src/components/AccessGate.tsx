@@ -6,6 +6,8 @@ import { useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/lib/external-supabase";
 import { accessState } from "@/lib/subscription";
 import { LockedScreen } from "@/components/LockedScreen";
+import { bannerWhen, renderTemplate } from "@/lib/platform-settings";
+import { usePublicSettings } from "@/lib/use-public-settings";
 import { Button } from "@/components/ui/button";
 
 const PUBLIC_PATHS = new Set(["/", "/our-story", "/contact", "/signup", "/presentation", "/faq", "/resources", "/approvals"]);
@@ -71,11 +73,19 @@ export function AccessGate({ children }: { children: ReactNode }) {
   return (
     <>
       {gate.kind === "warn" && (
-        <div className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">
-          Your NairaPlate plan ends {gate.daysLeft === 1 ? "today at 11:59 pm" : gate.daysLeft === 2 ? "tomorrow at 11:59 pm" : `in ${gate.daysLeft - 1} days`}. Message us on WhatsApp to renew and keep working without a break.
-        </div>
+        <ExpiryBanner daysLeft={gate.daysLeft} />
       )}
       {children}
     </>
+  );
+}
+
+/** Fetches the admin's wording only when the banner is actually shown, so other pages make no extra request. */
+function ExpiryBanner({ daysLeft }: { daysLeft: number }) {
+  const { expiry_banner } = usePublicSettings();
+  return (
+    <div className="bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">
+      {renderTemplate(expiry_banner.text, { when: bannerWhen(daysLeft), days: String(daysLeft) })}
+    </div>
   );
 }

@@ -19,6 +19,7 @@ import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPayme
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
+import { SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const PLATFORM_BUSINESS = "platform";
@@ -46,6 +47,9 @@ const ActionSchema = z.discriminatedUnion("action", [
     paid_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the date it was paid."),
     preview: z.boolean().optional(),
   }),
+  z.object({ action: z.literal("get_settings") }),
+  z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner"]), value: z.unknown(), admin_pin: PinSchema }),
+  z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner"]), admin_pin: PinSchema }),
   z.object({ action: z.literal("list_messages"), handled: z.boolean() }),
   z.object({ action: z.literal("mark_message_handled"), message_id: z.string().uuid() }),
   z.object({
@@ -138,6 +142,52 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         const parsed = ActionSchema.safeParse(raw);
         if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, 400);
         const body = parsed.data;
+
+        // ---------- platform settings: prices and customer-facing wording ----------
+        if (body.action === "get_settings") {
+          const { data: rows, error } = await admin.from("platform_settings").select("key, value, updated_at, updated_by_name");
+          if (error) return json({ error: "Could not load settings: " + error.message }, 500);
+          const stored: Record<string, unknown> = {};
+          const meta: Record<string, { updated_at: string; updated_by_name: string | null }> = {};
+          for (const r of rows ?? []) {
+            stored[r.key] = r.value;
+            meta[r.key] = { updated_at: r.updated_at, updated_by_name: r.updated_by_name ?? null };
+          }
+          return json({ settings: mergeSettings(stored), custom: Object.keys(meta), meta });
+        }
+
+        if (body.action === "save_setting" || body.action === "reset_setting") {
+          const key = body.key as SettingKey;
+          if (!SETTING_KEYS.includes(key)) return json({ error: "Unknown setting." }, 400);
+          if (!(await verifyAdminPin(admin, adminId, body.admin_pin))) return json({ error: "That PIN is not correct." }, 403);
+
+          const { data: before } = await admin.from("platform_settings").select("value").eq("key", key).maybeSingle();
+          const brief = (v: unknown) => (v === undefined || v === null ? "built-in default" : JSON.stringify(v).slice(0, 700));
+
+          if (body.action === "reset_setting") {
+            const { error } = await admin.from("platform_settings").delete().eq("key", key);
+            if (error) return json({ error: "Could not reset: " + error.message }, 500);
+            await writeAudit(admin, {
+              business_id: PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin", action: "platform_setting_changed",
+              entity_type: "platform_settings", entity_id: null,
+              details: `${adminName}: reset ${SETTING_LABEL[key]} to the built-in default (was ${brief(before?.value)})`,
+            });
+            return json({ ok: true });
+          }
+
+          const parsedValue = SETTING_SCHEMAS[key].safeParse(body.value);
+          if (!parsedValue.success) return json({ error: parsedValue.error.issues[0]?.message ?? "That setting is not valid." }, 400);
+          const { error } = await admin.from("platform_settings").upsert({
+            key, value: parsedValue.data, updated_at: new Date().toISOString(), updated_by: adminId, updated_by_name: adminName,
+          });
+          if (error) return json({ error: "Could not save: " + error.message }, 500);
+          await writeAudit(admin, {
+            business_id: PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin", action: "platform_setting_changed",
+            entity_type: "platform_settings", entity_id: null,
+            details: `${adminName}: changed ${SETTING_LABEL[key]}. Was: ${brief(before?.value)}. Now: ${brief(parsedValue.data)}`,
+          });
+          return json({ ok: true });
+        }
 
         // ---------- list_businesses ----------
         if (body.action === "list_businesses") {
@@ -581,11 +631,11 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const CATEGORY: Record<string, string[]> = {
             logins: ["login_success", "login_failed"],
             security: ["account_locked", "pin_reset", "staff_created", "role_changed", "staff_deactivated", "security_alert_undelivered"],
-            money: ["drawer_discrepancy", "order_adjusted", "order_voided", "order_refunded", "payout_logged", "price_decided", "purchase_logged"],
+            money: ["platform_setting_changed", "drawer_discrepancy", "order_adjusted", "order_voided", "order_refunded", "payout_logged", "price_decided", "purchase_logged"],
             recipes: ["cost_changed", "recipe_version_saved", "price_published", "batch_logged", "wastage_logged"],
             platform_ops: ["platform_unlock_staff", "emergency_owner_pin_reset", "emergency_reset_blocked",
               "business_approved", "business_rejected", "business_suspended", "business_reactivated",
-              "email_undelivered", "security_alert_undelivered", "contact_message_handled", "subscription_payment_recorded"],
+              "email_undelivered", "security_alert_undelivered", "contact_message_handled", "subscription_payment_recorded", "platform_setting_changed"],
           };
 
           const limit = body.limit ?? 50;
