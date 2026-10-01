@@ -15,7 +15,7 @@ describe("daily summary cost check block", () => {
   it("lists dishes and old prices, and escapes dish names", () => {
     const html = summaryHtml({
       ...base, costCheckUrl: "https://x/cost-check",
-      costCheck: cc({ attention_total: 6, stale_total: 2, attention: [{ recipe_id: "1", name: "<b>Jollof</b>", grade: null, price_kobo: 1, cost_per_plate_kobo: 1, margin_pct: 27.4, target_pct: 35, suggested_price_kobo: null, cost_to_cut_kobo: 12000, round_price_kobo: null, round_price_margin_pct: null, week_plates: 5, week_loss_kobo: 1440000, options: [], fallbacks: [] }] }),
+      costCheck: cc({ attention_total: 6, stale_total: 2, attention: [{ recipe_id: "1", name: "<b>Jollof</b>", grade: null, price_kobo: 1, cost_per_plate_kobo: 1, margin_pct: 27.4, target_pct: 35, suggested_price_kobo: null, cost_to_cut_kobo: 12000, round_price_kobo: null, round_price_margin_pct: null, week_plates: 5, week_loss_kobo: 1440000, options: [], variant_options: [], fallbacks: [] }] }),
     });
     expect(html).toContain("TODAY'S COST CHECK");
     expect(html).toContain("&lt;b&gt;Jollof&lt;/b&gt;: 27% margin, target 35%. Cost needs to come down about ₦120.00 a plate to hold your price");

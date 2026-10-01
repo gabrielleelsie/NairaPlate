@@ -3,6 +3,20 @@ import { computeCostCheck, dayRange, roundUpToStep, sameDayLastMonth, staleIngre
 
 const now = new Date("2026-10-01T08:00:00Z"); // 09:00 in Lagos on 1 Oct, so "yesterday" is 30 Sep
 
+describe("variants on the cost check", () => {
+  it("offers a cheaper variant of a flagged dish, not one that costs more or is already in use", () => {
+    const rs = [{ ...recipes[0]!, dish_id: "d1" }, recipes[1]!];
+    const lean = { id: "v1", dish_id: "d1", label: "Lean season", yield_portions: 1, items: [{ ingredient_id: "t", quantity: 0.5, unit: "kg" }, { ingredient_id: "r", quantity: 1, unit: "kg" }] };
+    const dear = { id: "v2", dish_id: "d1", label: "Rich", yield_portions: 1, items: [{ ingredient_id: "t", quantity: 2, unit: "kg" }, { ingredient_id: "r", quantity: 1, unit: "kg" }] };
+    const now = { id: "v3", dish_id: "d1", label: "Standard", yield_portions: 1, items: [{ ingredient_id: "t", quantity: 1, unit: "kg" }, { ingredient_id: "r", quantity: 1, unit: "kg" }] };
+    const other = { ...lean, id: "v4", dish_id: "someone-else", label: "Not mine" };
+    const c = computeCostCheck({ ...base, recipes: rs, target_margin_bps: 4100, week_orders: [], last_month_orders: [], variants: [lean, dear, now, other] });
+    const d = c.attention.find((a) => a.name === "Jollof")!;
+    expect(d.variant_options.map((v) => v.label)).toEqual(["Lean season"]);
+    expect(d.variant_options[0]!.cost_per_plate_kobo).toBe(175000); // grade A tomato 150000 * 0.5 + rice 100000
+  });
+});
+
 describe("price step", () => {
   it("rounds up to the next ₦50", () => {
     expect(roundUpToStep(423729)).toBe(425000);
