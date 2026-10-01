@@ -22,9 +22,16 @@ export type DayStats = {
   date_key: string; label: string; orders: number; plates: number; sales_kobo: number; profit_kobo: number; dishes: DishSales[];
 };
 export type DishOption = { grade: string; cost_per_plate_kobo: number; margin_pct: number };
+export const PRICE_STEP_KOBO = 5000; // when a price does change, suggest the next ₦50 step, not an odd figure
+
+/** The next round price step at or above `kobo`. */
+export const roundUpToStep = (kobo: number, step = PRICE_STEP_KOBO) => Math.ceil(kobo / step) * step;
+
 export type AttentionDish = {
   recipe_id: string; name: string; grade: string | null; price_kobo: number; cost_per_plate_kobo: number;
   margin_pct: number; target_pct: number; suggested_price_kobo: number | null;
+  cost_to_cut_kobo: number; // how much the cost per plate must come down to reach the target at today's price
+  round_price_kobo: number | null; round_price_margin_pct: number | null; // the next round price step, and the margin it gives
   week_plates: number; week_loss_kobo: number | null; options: DishOption[]; fallbacks: string[];
 };
 export type StaleIngredient = { id: string; name: string; days_old: number | null };
@@ -140,6 +147,8 @@ export function computeCostCheck(input: {
     if (margin > targetPct - MARGIN_GAP_POINTS) continue;
     const plates = weekPlates.get(r.name) ?? 0;
     const gap = c.suggested_price_kobo !== null ? c.suggested_price_kobo - r.selling_price_kobo : null;
+    const perPlate = c.total_ingredient_cost_kobo / Number(r.yield_portions);
+    const roundPrice = c.suggested_price_kobo !== null ? roundUpToStep(c.suggested_price_kobo) : null;
     const options: DishOption[] = [];
     for (const g of ["A", "B", "C"]) {
       if (g === r.cost_grade) continue;
@@ -151,6 +160,8 @@ export function computeCostCheck(input: {
     attentionAll.push({
       recipe_id: r.id, name: r.name, grade: r.cost_grade, price_kobo: r.selling_price_kobo, cost_per_plate_kobo: c.cost_per_plate_kobo,
       margin_pct: margin, target_pct: targetPct, suggested_price_kobo: c.suggested_price_kobo,
+      cost_to_cut_kobo: Math.max(0, Math.round(perPlate - r.selling_price_kobo * (1 - targetPct / 100))),
+      round_price_kobo: roundPrice, round_price_margin_pct: roundPrice ? (1 - perPlate / roundPrice) * 100 : null,
       week_plates: plates, week_loss_kobo: gap !== null && gap > 0 && plates > 0 ? Math.round(gap * plates) : null,
       options, fallbacks: c.fallbacks,
     });

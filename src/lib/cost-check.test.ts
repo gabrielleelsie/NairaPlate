@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { computeCostCheck, dayRange, sameDayLastMonth, staleIngredients, type IngredientRow, type OrderRow, type RecipeRow } from "./cost-check";
+import { computeCostCheck, dayRange, roundUpToStep, sameDayLastMonth, staleIngredients, type IngredientRow, type OrderRow, type RecipeRow } from "./cost-check";
 
 const now = new Date("2026-10-01T08:00:00Z"); // 09:00 in Lagos on 1 Oct, so "yesterday" is 30 Sep
+
+describe("price step", () => {
+  it("rounds up to the next ₦50", () => {
+    expect(roundUpToStep(423729)).toBe(425000);
+    expect(roundUpToStep(425000)).toBe(425000);
+    expect(roundUpToStep(425001)).toBe(430000);
+  });
+});
 
 describe("dates", () => {
   it("finds the same date last month, inside that month", () => {
@@ -45,6 +53,10 @@ describe("computeCostCheck", () => {
     expect(d.suggested_price_kobo).toBe(423729); // 250000 / (1 - 0.41), rounded up
     expect(d.week_plates).toBe(10);
     expect(d.week_loss_kobo).toBe((423729 - 400000) * 10);
+    // Hold the price: cost must fall to 400000 * (1 - 0.41) = 236000, so 14000 off the 250000.
+    expect(d.cost_to_cut_kobo).toBe(14000);
+    expect(d.round_price_kobo).toBe(425000); // 423729 rounded up to the next ₦50
+    expect(Math.round((d.round_price_margin_pct ?? 0) * 10) / 10).toBe(41.2);
     expect(d.options.map((o) => o.grade)).toEqual(["B"]); // B: 90000 + 100000 = 190000, cheaper
     expect(d.options[0]!.cost_per_plate_kobo).toBe(190000);
   });
