@@ -1,4 +1,6 @@
 import { SEASONS, seasonLabel } from "@/lib/season";
+import { GRADES, gradeLabel } from "@/lib/grade";
+import { gradeSeasonProblem, needsGradeAndSeason } from "@/lib/ingredient-price";
 import { reasonLabel as stockReasonLabel } from "@/lib/stock";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
@@ -164,24 +166,48 @@ function IngredientForm({
   const [cost, setCost] = useState(initial ? koboToNaira(initial.current_cost_kobo) : "");
   const [minQty, setMinQty] = useState(initial ? String(initial.min_threshold_qty) : "0");
   const [supplier, setSupplier] = useState(initial?.supplier ?? "");
+  const [grade, setGrade] = useState("");
+  const [season, setSeason] = useState(initial?.current_season ?? "");
+  const [gradePrices, setGradePrices] = useState<{ grade: string; cost_kobo: number; season: string | null }[]>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!initial) return;
+    let cancelled = false;
+    supabase.from("ingredient_grade_prices").select("grade,cost_kobo,season").eq("ingredient_id", initial.id).order("grade")
+      .then(({ data }) => { if (!cancelled) setGradePrices((data ?? []).map((r) => ({ grade: String(r.grade), cost_kobo: Number(r.cost_kobo), season: r.season ? String(r.season) : null }))); });
+    return () => { cancelled = true; };
+  }, [initial]);
+
+  const newCostKobo = nairaToKobo(cost);
+  const askGradeSeason = needsGradeAndSeason({ isNew: !initial, savedKobo: initial ? Number(initial.current_cost_kobo) : null, newKobo: Number.isFinite(newCostKobo) ? newCostKobo : 0 });
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return onError("Name is required.");
     const newCost = nairaToKobo(cost);
     if (!(newCost >= 0)) return onError("Enter a valid price.");
+    if (needsGradeAndSeason({ isNew: !initial, savedKobo: initial ? Number(initial.current_cost_kobo) : null, newKobo: newCost })) {
+      const problem = gradeSeasonProblem(grade, season);
+      if (problem) return onError(problem);
+    }
     setBusy(true);
     const fields = {
       name: name.trim(), category: category.trim() || null, base_unit: baseUnit,
       min_threshold_qty: Number(minQty) || 0, supplier: supplier.trim() || null,
     };
     if (!initial) {
-      const { error } = await supabase.from("ingredients").insert({
-        ...fields, business_id: businessId, current_cost_kobo: newCost, previous_cost_kobo: 0, stock_base_qty: 0, price_updated_at: new Date().toISOString(),
-      });
+      const { data: created, error } = await supabase.from("ingredients").insert({
+        ...fields, business_id: businessId, current_cost_kobo: 0, previous_cost_kobo: 0, stock_base_qty: 0,
+      }).select("id").single();
+      if (error || !created) { setBusy(false); return onError(trialLimitMessage(error?.message ?? "") ?? "Could not add ingredient."); }
+      if (newCost > 0) {
+        const { error: priceErr } = await supabase.rpc("set_ingredient_price", { p_ingredient_id: created.id, p_price_kobo: newCost, p_grade: grade, p_season: season });
+        setBusy(false);
+        return priceErr ? onError(`${fields.name} was added, but its price was not saved: ${priceErr.message}`) : onSaved(`${fields.name} added at ${formatNaira(newCost)} (grade ${grade}, ${seasonLabel(season).toLowerCase()}).`);
+      }
       setBusy(false);
-      return error ? onError(trialLimitMessage(error.message) ?? "Could not add ingredient.") : onSaved(`${fields.name} added.`);
+      return onSaved(`${fields.name} added.`);
     }
     // Price change: read the price currently saved (not what the form loaded with),
     // and move it into previous_cost_kobo before writing the new one.
@@ -189,15 +215,16 @@ function IngredientForm({
       .from("ingredients").select("current_cost_kobo").eq("id", initial.id).single();
     if (readErr || !live) { setBusy(false); return onError("Could not read the current price."); }
     const priceChanged = Number(live.current_cost_kobo) !== newCost;
-    const { error } = await supabase
-      .from("ingredients")
-      .update(priceChanged ? { ...fields, previous_cost_kobo: live.current_cost_kobo, current_cost_kobo: newCost, price_updated_at: new Date().toISOString() } : fields)
-      .eq("id", initial.id);
+    const { error } = await supabase.from("ingredients").update(fields).eq("id", initial.id);
+    if (error) { setBusy(false); return onError("Could not save ingredient."); }
+    if (priceChanged && newCost > 0) {
+      const { error: priceErr } = await supabase.rpc("set_ingredient_price", { p_ingredient_id: initial.id, p_price_kobo: newCost, p_grade: grade, p_season: season });
+      setBusy(false);
+      if (priceErr) return onError(`${fields.name} was saved, but the new price was not: ${priceErr.message}`);
+      return onSaved(`${fields.name} saved. Price ${formatNaira(Number(live.current_cost_kobo))} → ${formatNaira(newCost)} (grade ${grade}, ${seasonLabel(season).toLowerCase()}).`);
+    }
     setBusy(false);
-    if (error) return onError("Could not save ingredient.");
-    onSaved(priceChanged
-      ? `${fields.name} saved. Price ${formatNaira(Number(live.current_cost_kobo))} → ${formatNaira(newCost)}.`
-      : `${fields.name} saved.`);
+    onSaved(`${fields.name} saved.`);
   }
 
   return (
@@ -221,6 +248,28 @@ function IngredientForm({
           <Input id="ing-min" inputMode="decimal" value={minQty} onChange={(e) => setMinQty(e.target.value.replace(/[^\d.]/g, ""))} />
         </Field>
       </div>
+      {initial && (initial.current_grade || gradePrices.length > 0) && (
+        <p className="text-xs text-muted-foreground" data-testid="grade-prices">
+          Current price is for grade {initial.current_grade ?? "?"}{initial.current_season ? `, ${seasonLabel(initial.current_season).toLowerCase()} season` : ""}.
+          {gradePrices.length > 0 && <> Saved prices: {gradePrices.map((g) => `${gradeLabel(g.grade)} ${formatNaira(g.cost_kobo)}${g.season ? ` (${seasonLabel(g.season).toLowerCase()})` : ""}`).join(" · ")} per {baseUnit}.</>}
+        </p>
+      )}
+      {askGradeSeason && (
+        <div className="grid grid-cols-2 gap-3" data-testid="grade-season-fields">
+          <Field label="Grade this price is for" id="ing-grade">
+            <Select value={grade} onValueChange={setGrade}>
+              <SelectTrigger id="ing-grade" aria-label="Grade"><SelectValue placeholder="Choose grade" /></SelectTrigger>
+              <SelectContent>{GRADES.map((g) => <SelectItem key={g} value={g}>{gradeLabel(g)}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          <Field label="Season it was bought in" id="ing-season">
+            <Select value={season} onValueChange={setSeason}>
+              <SelectTrigger id="ing-season" aria-label="Season"><SelectValue placeholder="Choose season" /></SelectTrigger>
+              <SelectContent>{SEASONS.map((x) => <SelectItem key={x} value={x}>{seasonLabel(x)}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+        </div>
+      )}
       <Field label="Supplier" id="ing-sup"><Input id="ing-sup" value={supplier} onChange={(e) => setSupplier(e.target.value)} /></Field>
       <div className="flex gap-2">
         <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
