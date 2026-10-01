@@ -27,7 +27,7 @@ export const Route = createFileRoute("/ingredients")({
 type Ingredient = {
   id: string; name: string; category: string | null; base_unit: string;
   current_cost_kobo: number; previous_cost_kobo: number; min_threshold_qty: number; supplier: string | null;
-  stock_base_qty: number; price_updated_at: string | null;
+  stock_base_qty: number; price_updated_at: string | null; current_grade: string | null;
 };
 
 function formatPriceDate(iso: string | null): string | null {
@@ -37,7 +37,7 @@ function formatPriceDate(iso: string | null): string | null {
   return d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 type Conversion = { id: string; ingredient_id: string; market_unit: string; base_qty: number };
-type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string };
+type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string; grade: string | null };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "purchaser"]);
 
@@ -52,7 +52,7 @@ function IngredientsScreen() {
 
   const load = useCallback(async () => {
     const [a, b] = await Promise.all([
-      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,stock_base_qty,price_updated_at").order("name"),
+      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,stock_base_qty,price_updated_at,current_grade").order("name"),
       supabase.from("unit_conversions").select("id,ingredient_id,market_unit,base_qty").order("market_unit"),
     ]);
     if (a.error || b.error) return setMsg({ ok: false, text: "Could not load ingredients." });
@@ -102,7 +102,7 @@ function IngredientsScreen() {
               <div>
                 <div className="font-medium text-foreground">{i.name}</div>
                 <div className="text-sm text-muted-foreground">
-                  {formatNaira(i.current_cost_kobo)} per {i.base_unit}
+                  {formatNaira(i.current_cost_kobo)} per {i.base_unit}{i.current_grade && <> (grade {i.current_grade})</>}
                   {i.previous_cost_kobo > 0 && i.previous_cost_kobo !== i.current_cost_kobo && (
                     <> · was {formatNaira(i.previous_cost_kobo)}</>
                   )}
@@ -295,12 +295,13 @@ function ConversionsPanel({
 function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
   const [rows, setRows] = useState<Purchase[] | null>(null);
   const [err, setErr] = useState(false);
+  const [gf, setGf] = useState<string>("all");
 
   useEffect(() => {
     let cancelled = false;
     supabase
       .from("purchases")
-      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at")
+      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at,grade")
       .eq("ingredient_id", ingredient.id)
       .order("recorded_at", { ascending: false })
       .limit(50)
@@ -322,8 +323,18 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
         <p className="mt-2 text-sm text-muted-foreground">No purchases logged yet. Log one on the Log purchase screen.</p>
       )}
       {rows !== null && rows.length > 0 && (
+        <div className="mt-2 flex gap-1" role="group" aria-label="Filter by grade">
+          {["all", "A", "B", "C"].map((g) => (
+            <button key={g} type="button" aria-pressed={gf === g} onClick={() => setGf(g)}
+              className={"rounded-md border px-2 py-0.5 text-xs " + (gf === g ? "bg-primary text-primary-foreground" : "bg-background text-foreground")}>
+              {g === "all" ? "All" : `Grade ${g}`}
+            </button>
+          ))}
+        </div>
+      )}
+      {rows !== null && rows.length > 0 && (
         <ul className="mt-2 space-y-1 text-sm">
-          {rows.map((p) => {
+          {rows.filter((p) => gf === "all" || p.grade === gf).map((p) => {
             const qty = Number(p.qty);
             const unitPrice = qty > 0 ? Math.round(Number(p.total_kobo) / qty) : null;
             return (
@@ -334,6 +345,7 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatPriceDate(p.recorded_at)}
+                  {p.grade ? ` · grade ${p.grade}` : ""}
                   {p.payment_method ? ` · ${p.payment_method}` : ""}
                 </span>
               </li>
