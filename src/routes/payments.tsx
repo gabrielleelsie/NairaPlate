@@ -82,6 +82,7 @@ function PaymentsScreen() {
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-bold">Payments and transfers</h1><Link className="underline" to="/app">Home</Link></div>
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
+      <p className="rounded-md bg-muted p-3 text-sm">New to this? Follow the <Link className="font-medium underline" to="/payments-guide">step-by-step Monnify setup guide</Link>. It takes about 20 minutes and you test with no real money first.</p>
 
       <section className="space-y-2 rounded-lg border border-border p-4">
         <h2 className="text-lg font-semibold">How transfers are taken at your till</h2>
@@ -95,7 +96,7 @@ function PaymentsScreen() {
       </section>
 
       <section className="space-y-3 rounded-lg border border-border p-4">
-        <h2 className="text-lg font-semibold">Payment provider: Monnify</h2>
+        <h2 className="text-lg font-semibold">Payment provider: Monnify <Link className="ml-2 text-sm font-normal underline" to="/payments-guide">Setup guide</Link></h2>
         <p className="text-sm text-muted-foreground">
           {connected ? `Connected in ${s?.provider_status} mode. Enter new keys below to replace them.` : "Not connected. You need a Monnify account (it is Moniepoint's payment service for businesses). Start in test mode: no real money moves."}
         </p>
