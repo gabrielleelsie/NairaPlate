@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { PricingReview } from "@/components/PricingReview";
+import { TRIAL_LIMITS, isTrialPlan, trialLimitMessage, trialUsage, useBusinessPlan } from "@/lib/trial-limits";
 
 export const Route = createFileRoute("/recipes")({
   ssr: false,
@@ -64,6 +65,9 @@ function RecipesScreen() {
   }, []);
 
   useEffect(() => { if (session) load(); }, [session, load]);
+  const plan = useBusinessPlan(!!session);
+  const onTrial = isTrialPlan(plan);
+  const atRecipeLimit = onTrial && recipes.length >= TRIAL_LIMITS.recipes;
 
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
   if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/app" className="underline text-sm">Go to sign-in</Link></Shell>;
@@ -88,10 +92,23 @@ function RecipesScreen() {
       <p className="mt-1 text-sm text-muted-foreground">
         Target margin: {marginBps === null ? "not set" : `${marginBps / 100}%`}
       </p>
+      {onTrial && (
+        <p className="mt-2 text-sm text-muted-foreground" data-testid="trial-recipe-usage">
+          Free trial: {trialUsage(recipes.length, TRIAL_LIMITS.recipes, "recipes")}. Each recipe can use up to {TRIAL_LIMITS.ingredientsPerRecipe} ingredients.
+          Choose a plan to remove these limits.
+        </p>
+      )}
       {msg && <p className={`mt-3 text-sm ${msg.ok ? "text-foreground" : "text-destructive"}`}>{msg.text}</p>}
 
-      {canEdit && marginBps !== null && editingId === null && (
+      {canEdit && atRecipeLimit && editingId === null && (
+        <p className="mt-6 rounded-lg border border-border bg-card p-4 text-sm text-foreground" data-testid="trial-recipe-limit">
+          Your free trial includes {TRIAL_LIMITS.recipes} recipes. Edit one of yours below, or choose a plan to add more.
+        </p>
+      )}
+
+      {canEdit && marginBps !== null && editingId === null && !atRecipeLimit && (
         <RecipeForm
+          onTrial={onTrial}
           businessId={session.businessId}
           ingredients={ingredients}
           conversions={conversions}
@@ -107,6 +124,7 @@ function RecipesScreen() {
         return (
           <RecipeForm
             key={r.id}
+            onTrial={onTrial}
             businessId={session.businessId}
             ingredients={ingredients}
             conversions={conversions}
@@ -185,10 +203,10 @@ function RecipesScreen() {
 // existing === null → create. existing set → update the recipe row and
 // add / change / remove its ingredients in place.
 function RecipeForm({
-  businessId, ingredients, conversions, marginBps, existing, existingItems, canDeleteItems,
+  businessId, ingredients, conversions, marginBps, existing, existingItems, canDeleteItems, onTrial,
   onSaved, onError, onCancel,
 }: {
-  businessId: string; ingredients: CostIngredient[]; conversions: CostConversion[]; marginBps: number;
+  onTrial?: boolean; businessId: string; ingredients: CostIngredient[]; conversions: CostConversion[]; marginBps: number;
   existing?: Recipe; existingItems?: RecipeItemRow[]; canDeleteItems?: boolean;
   onSaved: (t: string) => void; onError: (t: string) => void; onCancel?: () => void;
 }) {
@@ -283,6 +301,9 @@ function RecipeForm({
     if (!(Number(yieldPortions) > 0)) return onError("Yield must be at least 1 plate.");
     if (valid.length === 0) return onError("Add at least one ingredient.");
     if (cost.errors.length) return onError(cost.errors[0]!);
+    if (onTrial && valid.length > TRIAL_LIMITS.ingredientsPerRecipe) {
+      return onError(`Free trial limit: a recipe can use up to ${TRIAL_LIMITS.ingredientsPerRecipe} ingredients on a trial. Choose a plan to add more.`);
+    }
     let priceKobo: number;
     if (override) {
       const n = Number(customPrice);
@@ -339,10 +360,16 @@ function RecipeForm({
       })
       .select("id")
       .single();
-    if (error || !rec) { setBusy(false); return onError("Could not save recipe."); }
+    if (error || !rec) { setBusy(false); return onError(trialLimitMessage(error?.message) ?? "Could not save recipe."); }
     const { error: itemsErr } = await supabase.from("recipe_items").insert(
       valid.map((i) => ({ business_id: businessId, recipe_id: rec.id, ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
     );
+    if (itemsErr && trialLimitMessage(itemsErr.message)) {
+      // Do not leave an empty recipe using up a trial slot.
+      await supabase.from("recipes").delete().eq("id", rec.id);
+      setBusy(false);
+      return onError(trialLimitMessage(itemsErr.message)!);
+    }
     setBusy(false);
     if (itemsErr) return onError("Recipe saved, but its ingredients could not be saved.");
     setName(""); setCategory(""); setYieldPortions("1"); setItems([]);
@@ -401,7 +428,7 @@ function RecipeForm({
             </div>
           );
         })}
-        <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => { setItems((xs) => [...xs, { key: nextKey, ingredient_id: "", quantity: "", unit: "" }]); setNextKey((k) => k + 1); }}>
+        <Button type="button" variant="outline" size="sm" className="justify-self-start" disabled={!!onTrial && items.length >= TRIAL_LIMITS.ingredientsPerRecipe} title={onTrial && items.length >= TRIAL_LIMITS.ingredientsPerRecipe ? `Free trial: up to ${TRIAL_LIMITS.ingredientsPerRecipe} ingredients per recipe` : undefined} onClick={() => { setItems((xs) => [...xs, { key: nextKey, ingredient_id: "", quantity: "", unit: "" }]); setNextKey((k) => k + 1); }}>
           + Add ingredient
         </Button>
         {!canDeleteItems && <p className="text-xs text-muted-foreground">Only an owner can remove ingredients that are already saved.</p>}

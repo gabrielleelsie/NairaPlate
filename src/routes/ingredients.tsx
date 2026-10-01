@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession, MARKET_UNIT_OPTIONS, BASE_UNITS, marketUnitLabel } from "@/lib/staff-session";
+import { TRIAL_LIMITS, isTrialPlan, trialLimitMessage, trialUsage, useBusinessPlan } from "@/lib/trial-limits";
 import { formatNaira, nairaToKobo, koboToNaira } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,9 @@ function IngredientsScreen() {
   }, []);
 
   useEffect(() => { if (session) load(); }, [session, load]);
+  const plan = useBusinessPlan(!!session);
+  const onTrial = isTrialPlan(plan);
+  const atIngredientLimit = onTrial && items.length >= TRIAL_LIMITS.ingredientsTotal;
 
   if (loading) return <Shell><p className="text-muted-foreground">Loading…</p></Shell>;
   if (!session) return <Shell><p className="text-muted-foreground">Please sign in first.</p><Link to="/app" className="underline text-sm">Go to sign-in</Link></Shell>;
@@ -70,8 +74,14 @@ function IngredientsScreen() {
       <Link to="/app" className="text-sm text-muted-foreground underline">← Home</Link>
       <div className="mt-4 flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-foreground">Ingredients</h1>
-        {canEdit && <Button onClick={() => setEditing("new")}>Add ingredient</Button>}
+        {canEdit && <Button onClick={() => setEditing("new")} disabled={atIngredientLimit}>Add ingredient</Button>}
       </div>
+      {onTrial && (
+        <p className="mt-2 text-sm text-muted-foreground" data-testid="trial-ingredient-usage">
+          Free trial: {trialUsage(items.length, TRIAL_LIMITS.ingredientsTotal, "ingredients")}.
+          {atIngredientLimit ? " Choose a plan to add more." : ""}
+        </p>
+      )}
       {msg && <p className={`mt-3 text-sm ${msg.ok ? "text-foreground" : "text-destructive"}`}>{msg.text}</p>}
 
       {editing && (
@@ -166,7 +176,7 @@ function IngredientForm({
         ...fields, business_id: businessId, current_cost_kobo: newCost, previous_cost_kobo: 0, stock_base_qty: 0, price_updated_at: new Date().toISOString(),
       });
       setBusy(false);
-      return error ? onError("Could not add ingredient.") : onSaved(`${fields.name} added.`);
+      return error ? onError(trialLimitMessage(error.message) ?? "Could not add ingredient.") : onSaved(`${fields.name} added.`);
     }
     // Price change: read the price currently saved (not what the form loaded with),
     // and move it into previous_cost_kobo before writing the new one.

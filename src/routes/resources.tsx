@@ -14,7 +14,7 @@ import {
 } from "@/components/site/site-chrome";
 
 // The brochure lives in public/resources so it is served as a plain file at this path.
-const BROCHURE_PDF = "/resources/NairaPlate-Brochure.pdf";
+const BROCHURE_PDF = "/resources/NairaPlate-Brochure.pdf?v=2";
 const BROCHURE_COVER = "/resources/NairaPlate-Brochure-cover.jpg";
 
 export const Route = createFileRoute("/resources")({
