@@ -1,3 +1,4 @@
+import { SEASONS, seasonLabel } from "@/lib/season";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/ingredients")({
 type Ingredient = {
   id: string; name: string; category: string | null; base_unit: string;
   current_cost_kobo: number; previous_cost_kobo: number; min_threshold_qty: number; supplier: string | null;
-  stock_base_qty: number; price_updated_at: string | null; current_grade: string | null;
+  stock_base_qty: number; price_updated_at: string | null; current_grade: string | null; current_season: string | null;
 };
 
 function formatPriceDate(iso: string | null): string | null {
@@ -37,7 +38,7 @@ function formatPriceDate(iso: string | null): string | null {
   return d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 type Conversion = { id: string; ingredient_id: string; market_unit: string; base_qty: number };
-type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string; grade: string | null };
+type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string; grade: string | null; season: string | null };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "purchaser"]);
 
@@ -52,7 +53,7 @@ function IngredientsScreen() {
 
   const load = useCallback(async () => {
     const [a, b] = await Promise.all([
-      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,stock_base_qty,price_updated_at,current_grade").order("name"),
+      supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,stock_base_qty,price_updated_at,current_grade,current_season").order("name"),
       supabase.from("unit_conversions").select("id,ingredient_id,market_unit,base_qty").order("market_unit"),
     ]);
     if (a.error || b.error) return setMsg({ ok: false, text: "Could not load ingredients." });
@@ -102,7 +103,7 @@ function IngredientsScreen() {
               <div>
                 <div className="font-medium text-foreground">{i.name}</div>
                 <div className="text-sm text-muted-foreground">
-                  {formatNaira(i.current_cost_kobo)} per {i.base_unit}{i.current_grade && <> (grade {i.current_grade})</>}
+                  {formatNaira(i.current_cost_kobo)} per {i.base_unit}{i.current_grade && <> (grade {i.current_grade}{i.current_season ? `, ${seasonLabel(i.current_season).toLowerCase()}` : ""})</>}
                   {i.previous_cost_kobo > 0 && i.previous_cost_kobo !== i.current_cost_kobo && (
                     <> · was {formatNaira(i.previous_cost_kobo)}</>
                   )}
@@ -296,12 +297,13 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
   const [rows, setRows] = useState<Purchase[] | null>(null);
   const [err, setErr] = useState(false);
   const [gf, setGf] = useState<string>("all");
+  const [sf, setSf] = useState<string>("all");
 
   useEffect(() => {
     let cancelled = false;
     supabase
       .from("purchases")
-      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at,grade")
+      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at,grade,season")
       .eq("ingredient_id", ingredient.id)
       .order("recorded_at", { ascending: false })
       .limit(50)
@@ -333,8 +335,18 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
         </div>
       )}
       {rows !== null && rows.length > 0 && (
+        <div className="mt-1 flex gap-1" role="group" aria-label="Filter by season">
+          {["all", ...SEASONS].map((x) => (
+            <button key={x} type="button" aria-pressed={sf === x} onClick={() => setSf(x)}
+              className={"rounded-md border px-2 py-0.5 text-xs " + (sf === x ? "bg-primary text-primary-foreground" : "bg-background text-foreground")}>
+              {x === "all" ? "Any season" : seasonLabel(x)}
+            </button>
+          ))}
+        </div>
+      )}
+      {rows !== null && rows.length > 0 && (
         <ul className="mt-2 space-y-1 text-sm">
-          {rows.filter((p) => gf === "all" || p.grade === gf).map((p) => {
+          {rows.filter((p) => (gf === "all" || p.grade === gf) && (sf === "all" || p.season === sf)).map((p) => {
             const qty = Number(p.qty);
             const unitPrice = qty > 0 ? Math.round(Number(p.total_kobo) / qty) : null;
             return (
@@ -346,6 +358,7 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
                 <span className="text-xs text-muted-foreground">
                   {formatPriceDate(p.recorded_at)}
                   {p.grade ? ` · grade ${p.grade}` : ""}
+                  {p.season ? ` · ${seasonLabel(p.season).toLowerCase()}` : ""}
                   {p.payment_method ? ` · ${p.payment_method}` : ""}
                 </span>
               </li>
