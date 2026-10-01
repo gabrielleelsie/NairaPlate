@@ -4,6 +4,7 @@ import { supabase } from "@/lib/external-supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
+import { CostCheckCard } from "@/components/CostCheckCard";
 import {
   AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
   CreditCard, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
@@ -289,6 +290,7 @@ const KITCHEN: AppLink[] = [
 const OVERSIGHT: AppLink[] = [
   { to: "/dashboard", label: "P&L", icon: BarChart3 },
   { to: "/cashflow", label: "7-day cashflow", icon: Landmark },
+  { to: "/cost-check", label: "Today's cost check", icon: Scale },
   { to: "/flags", label: "Alerts", icon: AlertTriangle },
   { to: "/audit", label: "Audit log", icon: History },
   { to: "/payouts", label: "Channel payouts", icon: HandCoins },
@@ -324,6 +326,7 @@ function HomeScreen({ name, role, onSignOut }: { name: string; role: string | nu
         </div>
       </header>
       <div className="mx-auto max-w-6xl space-y-9 px-4 py-7 sm:px-6 sm:py-10">
+        {(isOwner || role === "purchaser") && <CostCheckCard />}
         {groups.map((group) => <ActionGroup key={group.title} title={group.title} links={group.links} />)}
       </div>
     </main>

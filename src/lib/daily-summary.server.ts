@@ -2,6 +2,7 @@
 // The link is signed with DAILY_SUMMARY_SECRET, so nobody can switch off another business's
 // summaries by guessing a URL. Uses Web Crypto so it runs on Cloudflare Workers.
 import type { PnlResult } from "@/lib/pnl";
+import type { CostCheck } from "@/lib/cost-check";
 
 const enc = new TextEncoder();
 
@@ -45,6 +46,8 @@ export function summaryHtml(opts: {
   dateLabel: string;
   sentAtLabel: string;
   pnl: PnlResult;
+  costCheck?: CostCheck | null;
+  costCheckUrl?: string;
   dashboardUrl: string;
   unsubscribeUrl: string;
 }): string {
@@ -56,6 +59,16 @@ export function summaryHtml(opts: {
     </tr>`;
   const foodPct =
     pnl.food_cost_percentage === null ? "—" : `${pnl.food_cost_percentage.toFixed(1)}%`;
+  const cc = opts.costCheck;
+  const costCheckBlock = cc && (cc.attention_total > 0 || cc.stale_total > 0)
+    ? `<div style="margin:20px 0 0;padding:14px 16px;background:#EAF4FF;border-radius:10px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#1677D2">TODAY'S COST CHECK</div>
+        ${cc.attention.slice(0, 3).map((d) => `<p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:#0B1F33">${esc(d.name)}: ${d.margin_pct.toFixed(0)}% margin, target ${d.target_pct.toFixed(0)}%${d.week_loss_kobo !== null ? ` (about ${naira(d.week_loss_kobo)} a week below target)` : ""}.</p>`).join("")}
+        ${cc.attention_total > 3 ? `<p style="margin:8px 0 0;font-size:13px;color:#4A5563">${cc.attention_total - 3} more dish${cc.attention_total - 3 === 1 ? "" : "es"} under target.</p>` : ""}
+        ${cc.stale_total > 0 ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:#0B1F33">${cc.stale_total} ingredient price${cc.stale_total === 1 ? " is" : "s are"} out of date, so some dish costs may be wrong.</p>` : ""}
+        ${opts.costCheckUrl ? `<p style="margin:10px 0 0;font-size:13px"><a href="${esc(opts.costCheckUrl)}" style="color:#1677D2">See the full cost check</a></p>` : ""}
+      </div>`
+    : "";
   const warnings = pnl.warnings.length
     ? `<p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:#B42318">${pnl.warnings.map(esc).join("<br>")}</p>`
     : "";
@@ -73,6 +86,7 @@ export function summaryHtml(opts: {
         ${row("Food cost as % of sales", foodPct)}
       </table>
       ${warnings}
+      ${costCheckBlock}
       <p style="margin:24px 0 0"><a href="${esc(opts.dashboardUrl)}" style="display:inline-block;background:#1677D2;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:15px;padding:12px 20px;border-radius:10px">Open your dashboard</a></p>
       <p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#6B7280">
         These are the same figures as the Profit &amp; loss screen in NairaPlate, worked out from the sales, recipes and purchases recorded today.
