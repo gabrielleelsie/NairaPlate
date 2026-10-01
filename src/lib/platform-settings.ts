@@ -44,7 +44,7 @@ export function renderTemplate(template: string, vars: Record<string, string>): 
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? vars[name]! : whole));
 }
 
-const plain = (max: number, allowed: readonly string[], label: string) =>
+export const plain = (max: number, allowed: readonly string[], label: string) =>
   z.string().trim().min(1, `${label} cannot be empty.`).max(max, `${label} is too long (most ${max} characters).`)
     .refine((s) => !/[<>]/.test(s), `${label}: plain text only, no < or >.`)
     .refine((s) => unknownPlaceholders(s, allowed).length === 0, (s) => ({
