@@ -4,6 +4,7 @@ import { supabase } from "@/lib/external-supabase";
 import { GRADES } from "@/lib/grade";
 import { HoldPricePanel } from "@/components/HoldPricePanel";
 import { VariantsPanel } from "@/components/VariantsPanel";
+import { STOCK_MODE_HELP, STOCK_MODE_LABEL, type StockMode } from "@/lib/stock";
 import type { RecipeVariant } from "@/lib/variants";
 import { useStaffSession, BASE_UNITS, MARKET_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import {
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/recipes")({
   component: RecipesScreen,
 });
 
-type Recipe = { id: string; dish_id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number; cost_grade: string | null };
+type Recipe = { id: string; dish_id: string; stock_mode: StockMode | null; name: string; category: string | null; yield_portions: number; selling_price_kobo: number; cost_grade: string | null };
 type RecipeItemRow = CostRecipeItem & { id: string; recipe_id: string; min_quantity?: number | null | undefined; never_cut?: boolean | undefined };
 type DraftItem = { key: number; existingId?: string; ingredient_id: string; quantity: string; unit: string; min?: string | undefined; neverCut?: boolean | undefined };
 
@@ -57,7 +58,7 @@ function RecipesScreen() {
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
       // Only the current version of each dish; old versions are kept for past sales and reports.
-      supabase.from("recipes").select("id,dish_id,name,category,yield_portions,selling_price_kobo,cost_grade").eq("is_current", true).order("name"),
+      supabase.from("recipes").select("id,dish_id,stock_mode,name,category,yield_portions,selling_price_kobo,cost_grade").eq("is_current", true).order("name"),
       supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit,min_quantity,never_cut"),
       supabase.from("businesses").select("target_margin_bps").maybeSingle(),
       supabase.from("ingredient_grade_prices").select("ingredient_id,grade,cost_kobo"),
@@ -96,6 +97,14 @@ function RecipesScreen() {
 
   const canEdit = EDIT_ROLES.has(session.role);
   const canDelete = DELETE_ROLES.has(session.role);
+
+  // Owners choose how each dish uses stock. It is saved straight away on the current version, and new versions keep it.
+  async function setStockMode(r: Recipe, mode: StockMode | "") {
+    const { error } = await supabase.from("recipes").update({ stock_mode: mode === "" ? null : mode }).eq("id", r.id);
+    if (error) return setMsg({ ok: false, text: "Could not save the stock setting." });
+    setMsg({ ok: true, text: mode === "" ? `${r.name}: stock setting cleared. Selling it does not change stock.` : `${r.name}: ${STOCK_MODE_LABEL[mode]}. ${STOCK_MODE_HELP[mode]}` });
+    load();
+  }
 
   async function deleteRecipe(id: string, name: string) {
     if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
@@ -204,6 +213,17 @@ function RecipesScreen() {
                 </div>
               </div>
               {cost.errors.length > 0 && <p className="mt-2 text-xs text-destructive">{cost.errors[0]}</p>}
+              {canDelete && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm" data-testid="stock-mode-row">
+                  <label htmlFor={`sm-${r.id}`} className="text-muted-foreground">How this dish uses stock:</label>
+                  <select id={`sm-${r.id}`} className="h-8 rounded-md border border-input bg-background px-2 text-sm" value={r.stock_mode ?? ""} onChange={(e) => setStockMode(r, e.target.value as StockMode | "")}>
+                    <option value="">Not set yet</option>
+                    <option value="made_to_order">{STOCK_MODE_LABEL.made_to_order}</option>
+                    <option value="batch">{STOCK_MODE_LABEL.batch}</option>
+                  </select>
+                  <span className="text-xs text-muted-foreground">{r.stock_mode ? STOCK_MODE_HELP[r.stock_mode] : "Until you choose, selling this dish does not change stock."}</span>
+                </div>
+              )}
               {r.cost_grade && cost.fallbacks.length > 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">No grade {r.cost_grade} price yet for {cost.fallbacks.join(", ")}, so the latest price is used.</p>
               )}

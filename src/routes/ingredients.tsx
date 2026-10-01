@@ -1,4 +1,5 @@
 import { SEASONS, seasonLabel } from "@/lib/season";
+import { reasonLabel as stockReasonLabel } from "@/lib/stock";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -49,6 +50,7 @@ function IngredientsScreen() {
   const [editing, setEditing] = useState<Ingredient | "new" | null>(null);
   const [unitsFor, setUnitsFor] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [trailFor, setTrailFor] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -126,6 +128,7 @@ function IngredientsScreen() {
                 <Button size="sm" variant="outline" onClick={() => setHistoryFor(historyFor === i.id ? null : i.id)}>
                   History
                 </Button>
+                {canEdit && <Button size="sm" variant="outline" onClick={() => setTrailFor(trailFor === i.id ? null : i.id)}>Stock trail</Button>}
                 {canEdit && <Button size="sm" variant="outline" onClick={() => setEditing(i)}>Edit</Button>}
               </div>
             </div>
@@ -141,6 +144,7 @@ function IngredientsScreen() {
               />
             )}
             {historyFor === i.id && <PriceHistoryPanel ingredient={i} />}
+            {trailFor === i.id && <StockTrailPanel ingredient={i} />}
           </li>
         ))}
       </ul>
@@ -288,6 +292,36 @@ function ConversionsPanel({
           </div>
           <Button type="submit" size="sm" disabled={busy}>Save unit</Button>
         </form>
+      )}
+    </div>
+  );
+}
+
+function StockTrailPanel({ ingredient }: { ingredient: Ingredient }) {
+  const [rows, setRows] = useState<{ id: string; qty_base: number; balance_after: number; reason: string; created_at: string }[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from("stock_movements").select("id,qty_base,balance_after,reason,created_at").eq("ingredient_id", ingredient.id).order("created_at", { ascending: false }).limit(40)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setRows((data ?? []).map((r) => ({ id: String(r.id), reason: String(r.reason), created_at: String(r.created_at), qty_base: Number(r.qty_base), balance_after: Number(r.balance_after) })));
+      });
+    return () => { cancelled = true; };
+  }, [ingredient.id]);
+  const n = (x: number) => Number(x.toFixed(3));
+  return (
+    <div className="mt-3 rounded-md bg-muted p-3" data-testid="stock-trail">
+      <div className="text-sm font-medium text-foreground">Stock trail for {ingredient.name}</div>
+      <p className="text-xs text-muted-foreground">Every change to the stock figure, newest first, with the reason and what was left after.</p>
+      {rows === null ? <p className="mt-2 text-sm text-muted-foreground">Loading…</p> : rows.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Nothing recorded yet.</p> : (
+        <ul className="mt-2 space-y-1 text-sm">
+          {rows.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-foreground">{stockReasonLabel(r.reason)}</span>
+              <span className={r.qty_base < 0 ? "text-foreground" : "text-foreground"}>{r.qty_base > 0 ? "+" : ""}{n(r.qty_base)} {ingredient.base_unit} · left {n(r.balance_after)} <span className="text-xs text-muted-foreground">{formatPriceDate(r.created_at)}</span></span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

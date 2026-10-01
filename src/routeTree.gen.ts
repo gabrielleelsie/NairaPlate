@@ -36,6 +36,7 @@ import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as ShoppingListRouteImport } from './routes/shopping-list'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as StockTakeRouteImport } from './routes/stock-take'
 import { Route as SupplierPaymentRouteImport } from './routes/supplier-payment'
 import { Route as WastageRouteImport } from './routes/wastage'
 import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
@@ -186,6 +187,11 @@ const StaffRoute = StaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StockTakeRoute = StockTakeRouteImport.update({
+  id: '/stock-take',
+  path: '/stock-take',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupplierPaymentRoute = SupplierPaymentRouteImport.update({
   id: '/supplier-payment',
   path: '/supplier-payment',
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/shopping-list': typeof ShoppingListRoute
   '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
+  '/stock-take': typeof StockTakeRoute
   '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByTo {
   '/shopping-list': typeof ShoppingListRoute
   '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
+  '/stock-take': typeof StockTakeRoute
   '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/shopping-list': typeof ShoppingListRoute
   '/signup': typeof SignupRoute
   '/staff': typeof StaffRoute
+  '/stock-take': typeof StockTakeRoute
   '/supplier-payment': typeof SupplierPaymentRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/shopping-list'
     | '/signup'
     | '/staff'
+    | '/stock-take'
     | '/supplier-payment'
     | '/wastage'
     | '/suppliers/$supplierId'
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/shopping-list'
     | '/signup'
     | '/staff'
+    | '/stock-take'
     | '/supplier-payment'
     | '/wastage'
     | '/suppliers/$supplierId'
@@ -506,6 +517,7 @@ export interface FileRouteTypes {
     | '/shopping-list'
     | '/signup'
     | '/staff'
+    | '/stock-take'
     | '/supplier-payment'
     | '/wastage'
     | '/suppliers/$supplierId'
@@ -550,6 +562,7 @@ export interface RootRouteChildren {
   ShoppingListRoute: typeof ShoppingListRoute
   SignupRoute: typeof SignupRoute
   StaffRoute: typeof StaffRoute
+  StockTakeRoute: typeof StockTakeRoute
   SupplierPaymentRoute: typeof SupplierPaymentRoute
   WastageRoute: typeof WastageRoute
   SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
@@ -757,6 +770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stock-take': {
+      id: '/stock-take'
+      path: '/stock-take'
+      fullPath: '/stock-take'
+      preLoaderRoute: typeof StockTakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/supplier-payment': {
       id: '/supplier-payment'
       path: '/supplier-payment'
@@ -886,6 +906,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShoppingListRoute: ShoppingListRoute,
   SignupRoute: SignupRoute,
   StaffRoute: StaffRoute,
+  StockTakeRoute: StockTakeRoute,
   SupplierPaymentRoute: SupplierPaymentRoute,
   WastageRoute: WastageRoute,
   SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
