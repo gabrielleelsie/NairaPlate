@@ -15,11 +15,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
-import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation } from "@/lib/email.server";
+import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation, sendExpiryReminderEmail } from "@/lib/email.server";
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
 import { SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
+import { REMINDER_KINDS, REMINDER_LABEL, REMINDER_SCHEMA, dueReminder, mergeReminders, renderReminder, type ReminderKind } from "@/lib/reminders";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const PLATFORM_BUSINESS = "platform";
@@ -48,8 +49,10 @@ const ActionSchema = z.discriminatedUnion("action", [
     preview: z.boolean().optional(),
   }),
   z.object({ action: z.literal("get_settings") }),
-  z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner"]), value: z.unknown(), admin_pin: PinSchema }),
-  z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner"]), admin_pin: PinSchema }),
+  z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders"]), value: z.unknown(), admin_pin: PinSchema }),
+  z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders"]), admin_pin: PinSchema }),
+  z.object({ action: z.literal("reminders_due") }),
+  z.object({ action: z.literal("send_test_reminder"), kind: z.enum(["paid_before", "paid_after", "trial_before", "trial_after"]) }),
   z.object({ action: z.literal("list_messages"), handled: z.boolean() }),
   z.object({ action: z.literal("mark_message_handled"), message_id: z.string().uuid() }),
   z.object({
@@ -153,12 +156,13 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             stored[r.key] = r.value;
             meta[r.key] = { updated_at: r.updated_at, updated_by_name: r.updated_by_name ?? null };
           }
-          return json({ settings: mergeSettings(stored), custom: Object.keys(meta), meta });
+          return json({ settings: mergeSettings(stored), reminders: mergeReminders(stored["reminders"]), custom: Object.keys(meta), meta });
         }
 
         if (body.action === "save_setting" || body.action === "reset_setting") {
-          const key = body.key as SettingKey;
-          if (!SETTING_KEYS.includes(key)) return json({ error: "Unknown setting." }, 400);
+          const key = body.key as SettingKey | "reminders";
+          if (key !== "reminders" && !SETTING_KEYS.includes(key)) return json({ error: "Unknown setting." }, 400);
+          const label = key === "reminders" ? REMINDER_LABEL : SETTING_LABEL[key];
           if (!(await verifyAdminPin(admin, adminId, body.admin_pin))) return json({ error: "That PIN is not correct." }, 403);
 
           const { data: before } = await admin.from("platform_settings").select("value").eq("key", key).maybeSingle();
@@ -170,12 +174,12 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             await writeAudit(admin, {
               business_id: PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin", action: "platform_setting_changed",
               entity_type: "platform_settings", entity_id: null,
-              details: `${adminName}: reset ${SETTING_LABEL[key]} to the built-in default (was ${brief(before?.value)})`,
+              details: `${adminName}: reset ${label} to the built-in default (was ${brief(before?.value)})`,
             });
             return json({ ok: true });
           }
 
-          const parsedValue = SETTING_SCHEMAS[key].safeParse(body.value);
+          const parsedValue = (key === "reminders" ? REMINDER_SCHEMA : SETTING_SCHEMAS[key]).safeParse(body.value);
           if (!parsedValue.success) return json({ error: parsedValue.error.issues[0]?.message ?? "That setting is not valid." }, 400);
           const { error } = await admin.from("platform_settings").upsert({
             key, value: parsedValue.data, updated_at: new Date().toISOString(), updated_by: adminId, updated_by_name: adminName,
@@ -184,9 +188,42 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           await writeAudit(admin, {
             business_id: PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin", action: "platform_setting_changed",
             entity_type: "platform_settings", entity_id: null,
-            details: `${adminName}: changed ${SETTING_LABEL[key]}. Was: ${brief(before?.value)}. Now: ${brief(parsedValue.data)}`,
+            details: `${adminName}: changed ${label}. Was: ${brief(before?.value)}. Now: ${brief(parsedValue.data)}`,
           });
           return json({ ok: true });
+        }
+
+        // ---------- reminders: who is due today, and a test email to the admin's own address ----------
+        if (body.action === "reminders_due") {
+          const { data: row } = await admin.from("platform_settings").select("value").eq("key", "reminders").maybeSingle();
+          const rs = mergeReminders(row?.value);
+          const now = new Date();
+          const { data: bs } = await admin.from("businesses").select("id, name, status, plan, access_ends_at").eq("status", "approved").neq("id", PLATFORM_BUSINESS);
+          const { data: owners } = await admin.from("staff_users").select("business_id, email, display_name")
+            .in("role", ["owner", "supa_admin"]).eq("is_active", true).not("email", "is", null);
+          const withEmail = new Map<string, number>();
+          for (const o of owners ?? []) if (String(o.email ?? "").includes("@")) withEmail.set(o.business_id as string, (withEmail.get(o.business_id as string) ?? 0) + 1);
+          const due = (bs ?? []).flatMap((b) => {
+            const d = dueReminder(b as { status: string; plan: string | null; access_ends_at: string | null }, now, rs);
+            return d ? [{ business_id: b.id, name: b.name, plan: b.plan, kind: d.kind, offset: d.offset, ends_at: d.ends_at, owner_emails: withEmail.get(b.id as string) ?? 0 }] : [];
+          });
+          const { data: log } = await admin.from("subscription_reminder_log")
+            .select("business_id, kind, offset_days, recipients, sent, created_at").order("created_at", { ascending: false }).limit(15);
+          const nameOf = new Map((bs ?? []).map((b) => [b.id as string, b.name as string]));
+          return json({ enabled: rs.enabled, due_today: due, recent: (log ?? []).map((l) => ({ ...l, business_name: nameOf.get(l.business_id as string) ?? l.business_id })) });
+        }
+
+        if (body.action === "send_test_reminder") {
+          if (!adminEmail || !adminEmail.includes("@")) return json({ error: "Your own account has no email address, so there is nowhere to send the test. Add one under My account first." }, 400);
+          const { data: row } = await admin.from("platform_settings").select("value").eq("key", "reminders").maybeSingle();
+          const rs = mergeReminders(row?.value);
+          const kind = body.kind as ReminderKind;
+          if (!REMINDER_KINDS.includes(kind)) return json({ error: "Unknown reminder." }, 400);
+          const sample = { offset: kind.endsWith("_before") ? 3 : 1, ends_at: "2026-09-30T22:59:59.000Z" };
+          const mail = renderReminder(rs, kind, { name: "Mama Put Kitchen", plan: kind.startsWith("trial") ? "trial" : "monthly" }, sample, { test: true });
+          const r = await sendExpiryReminderEmail(adminEmail, mail.subject, mail.html);
+          if (!r.sent) return json({ error: `The test email was not sent: ${r.reason ?? "unknown reason"}` }, 502);
+          return json({ ok: true, sent_to: adminEmail });
         }
 
         // ---------- list_businesses ----------

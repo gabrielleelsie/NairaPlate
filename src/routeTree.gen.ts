@@ -44,6 +44,7 @@ import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
 import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
 import { Route as ApiPublicDailySummaryRouteImport } from './routes/api/public/daily-summary'
+import { Route as ApiPublicExpiryRemindersRouteImport } from './routes/api/public/expiry-reminders'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -225,6 +226,12 @@ const ApiPublicDailySummaryRoute = ApiPublicDailySummaryRouteImport.update({
   path: '/api/public/daily-summary',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicExpiryRemindersRoute =
+  ApiPublicExpiryRemindersRouteImport.update({
+    id: '/api/public/expiry-reminders',
+    path: '/api/public/expiry-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -283,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
+  '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -324,6 +332,7 @@ export interface FileRoutesByTo {
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
+  '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -366,6 +375,7 @@ export interface FileRoutesById {
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
+  '/api/public/expiry-reminders': typeof ApiPublicExpiryRemindersRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/api/public/cash-drawer-close'
     | '/api/public/contact'
     | '/api/public/daily-summary'
+    | '/api/public/expiry-reminders'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/api/public/cash-drawer-close'
     | '/api/public/contact'
     | '/api/public/daily-summary'
+    | '/api/public/expiry-reminders'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -491,6 +503,7 @@ export interface FileRouteTypes {
     | '/api/public/cash-drawer-close'
     | '/api/public/contact'
     | '/api/public/daily-summary'
+    | '/api/public/expiry-reminders'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -533,6 +546,7 @@ export interface RootRouteChildren {
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
   ApiPublicContactRoute: typeof ApiPublicContactRoute
   ApiPublicDailySummaryRoute: typeof ApiPublicDailySummaryRoute
+  ApiPublicExpiryRemindersRoute: typeof ApiPublicExpiryRemindersRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -786,6 +800,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDailySummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/expiry-reminders': {
+      id: '/api/public/expiry-reminders'
+      path: '/api/public/expiry-reminders'
+      fullPath: '/api/public/expiry-reminders'
+      preLoaderRoute: typeof ApiPublicExpiryRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -853,6 +874,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
   ApiPublicContactRoute: ApiPublicContactRoute,
   ApiPublicDailySummaryRoute: ApiPublicDailySummaryRoute,
+  ApiPublicExpiryRemindersRoute: ApiPublicExpiryRemindersRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,

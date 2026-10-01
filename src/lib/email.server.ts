@@ -193,6 +193,11 @@ export async function sendDailySummaryEmail(to: string, subject: string, html: s
   return send(to, subject, html);
 }
 
+/** Sends one expiry reminder. The wording and HTML are built by reminders.ts. */
+export async function sendExpiryReminderEmail(to: string, subject: string, html: string): Promise<SendResult> {
+  return send(to, subject, html);
+}
+
 const escHtml = (s: string) => s.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c] ?? c);
 
 /** Tells the owner a payment was recorded and when their access now ends. */
