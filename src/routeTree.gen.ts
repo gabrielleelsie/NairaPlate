@@ -51,6 +51,7 @@ import { Route as ApiPublicExpiryRemindersRouteImport } from './routes/api/publi
 import { Route as ApiPublicNewsWatchRouteImport } from './routes/api/public/news-watch'
 import { Route as ApiPublicPaymentConnectRouteImport } from './routes/api/public/payment-connect'
 import { Route as ApiPublicPaymentStartRouteImport } from './routes/api/public/payment-start'
+import { Route as ApiPublicPaymentTestRouteImport } from './routes/api/public/payment-test'
 import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
@@ -269,6 +270,11 @@ const ApiPublicPaymentStartRoute = ApiPublicPaymentStartRouteImport.update({
   path: '/api/public/payment-start',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentTestRoute = ApiPublicPaymentTestRouteImport.update({
+  id: '/api/public/payment-test',
+  path: '/api/public/payment-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentWebhookRoute = ApiPublicPaymentWebhookRouteImport.update({
   id: '/api/public/payment-webhook',
   path: '/api/public/payment-webhook',
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
   '/api/public/payment-connect': typeof ApiPublicPaymentConnectRoute
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
+  '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
   '/api/public/payment-connect': typeof ApiPublicPaymentConnectRoute
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
+  '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/api/public/news-watch': typeof ApiPublicNewsWatchRoute
   '/api/public/payment-connect': typeof ApiPublicPaymentConnectRoute
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
+  '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/api/public/news-watch'
     | '/api/public/payment-connect'
     | '/api/public/payment-start'
+    | '/api/public/payment-test'
     | '/api/public/payment-webhook'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/api/public/news-watch'
     | '/api/public/payment-connect'
     | '/api/public/payment-start'
+    | '/api/public/payment-test'
     | '/api/public/payment-webhook'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/api/public/news-watch'
     | '/api/public/payment-connect'
     | '/api/public/payment-start'
+    | '/api/public/payment-test'
     | '/api/public/payment-webhook'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
@@ -637,6 +649,7 @@ export interface RootRouteChildren {
   ApiPublicNewsWatchRoute: typeof ApiPublicNewsWatchRoute
   ApiPublicPaymentConnectRoute: typeof ApiPublicPaymentConnectRoute
   ApiPublicPaymentStartRoute: typeof ApiPublicPaymentStartRoute
+  ApiPublicPaymentTestRoute: typeof ApiPublicPaymentTestRoute
   ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
@@ -940,6 +953,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentStartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payment-test': {
+      id: '/api/public/payment-test'
+      path: '/api/public/payment-test'
+      fullPath: '/api/public/payment-test'
+      preLoaderRoute: typeof ApiPublicPaymentTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payment-webhook': {
       id: '/api/public/payment-webhook'
       path: '/api/public/payment-webhook'
@@ -1021,6 +1041,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicNewsWatchRoute: ApiPublicNewsWatchRoute,
   ApiPublicPaymentConnectRoute: ApiPublicPaymentConnectRoute,
   ApiPublicPaymentStartRoute: ApiPublicPaymentStartRoute,
+  ApiPublicPaymentTestRoute: ApiPublicPaymentTestRoute,
   ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,

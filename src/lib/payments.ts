@@ -80,3 +80,16 @@ export function parseTransferAccount(resp: unknown, now = new Date()): TransferA
   const expires = typeof body["expiresOn"] === "string" ? String(body["expiresOn"]) : Number.isFinite(secs) && secs > 0 ? new Date(now.getTime() + secs * 1000).toISOString() : null;
   return { account_number: num, bank_name: String(body["bankName"] ?? "").trim(), account_name: String(body["accountName"] ?? "").trim(), expires_at: expires };
 }
+
+/** Did Monnify accept the keys? "rejected" is an answer from Monnify (wrong or expired keys). "unreachable" is a network problem or a Monnify outage, which is not the shop's fault. */
+export type LoginResult = "ok" | "rejected" | "unreachable";
+export function classifyLogin(httpStatus: number | null, body: unknown): LoginResult {
+  if (httpStatus === null) return "unreachable";
+  if (httpStatus >= 500) return "unreachable";
+  const b = body as { requestSuccessful?: unknown; responseBody?: { accessToken?: unknown } } | null;
+  if (httpStatus >= 200 && httpStatus < 300 && b?.requestSuccessful === true && typeof b.responseBody?.accessToken === "string") return "ok";
+  return "rejected";
+}
+
+export const KEYS_ALERT_TYPE = "payment_keys";
+export const KEYS_ALERT_MESSAGE = "Monnify did not accept this shop's keys, so transfer orders cannot get an account number. Open Payments & transfers and connect again with current keys.";

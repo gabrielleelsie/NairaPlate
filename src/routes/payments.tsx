@@ -38,11 +38,16 @@ function PaymentsScreen() {
   const [secretKey, setSecretKey] = useState("");
   const [contract, setContract] = useState("");
   const [busy, setBusy] = useState(false);
+  const [keysAlert, setKeysAlert] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("business_payment_settings").select("mode,provider,provider_status,connected_at").maybeSingle();
     setS((data as Settings | null) ?? { mode: "manual", provider: null, provider_status: "not_connected", connected_at: null });
+    const { data: flags } = await supabase.from("margin_flags").select("id").eq("flag_type", "payment_keys").eq("acknowledged", false).limit(1);
+    setKeysAlert((flags ?? []).length > 0);
   }, []);
   useEffect(() => { if (session) void load(); }, [session, load]);
 
@@ -65,6 +70,18 @@ function PaymentsScreen() {
     void load();
   }
 
+  async function testConnection() {
+    setTesting(true); setTestMsg(null);
+    const { data: sess } = await supabase.auth.getSession();
+    const res = await fetch("/api/public/payment-test", { method: "POST", headers: { Authorization: `Bearer ${sess.session?.access_token ?? ""}` } }).catch(() => null);
+    setTesting(false);
+    const j = res ? ((await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; status?: string }) : {};
+    if (!res || (!res.ok && !j.error)) return setTestMsg({ ok: false, text: "Could not reach the server." });
+    if (j.ok) setTestMsg({ ok: true, text: `Monnify accepted the saved keys (${j.status} mode). Transfers can get an account number.` });
+    else setTestMsg({ ok: false, text: j.error ?? "The check failed." });
+    void load();
+  }
+
   async function changeMode(m: PaymentMode) {
     if (m === "automatic" && !confirm("Switch to automatic transfers? Staff will no longer be able to type in a transfer amount. Transfers are then taken only through the bank link.")) return;
     if (m === "cash_only" && !confirm("Switch to cash and credit only? Transfers will be switched off at the till.")) return;
@@ -82,6 +99,11 @@ function PaymentsScreen() {
     <main className="mx-auto max-w-2xl space-y-6 p-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-bold">Payments and transfers</h1><Link className="underline" to="/app">Home</Link></div>
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
+      {keysAlert && (
+        <p className="rounded-md border border-destructive p-3 text-sm text-destructive" data-testid="keys-alert">
+          Monnify has stopped accepting this shop's keys, so customers cannot be given an account number for a transfer. Press <b>Test connection</b> below, or connect again with current keys.
+        </p>
+      )}
       <p className="rounded-md bg-muted p-3 text-sm">New to this? Follow the <Link className="font-medium underline" to="/payments-guide">step-by-step Monnify setup guide</Link>. It takes about 20 minutes and you test with no real money first.</p>
 
       <section className="space-y-2 rounded-lg border border-border p-4">
@@ -98,8 +120,14 @@ function PaymentsScreen() {
       <section className="space-y-3 rounded-lg border border-border p-4">
         <h2 className="text-lg font-semibold">Payment provider: Monnify <Link className="ml-2 text-sm font-normal underline" to="/payments-guide">Setup guide</Link></h2>
         <p className="text-sm text-muted-foreground">
-          {connected ? `Connected in ${s?.provider_status} mode. Enter new keys below to replace them.` : "Not connected. You need a Monnify account (it is Moniepoint's payment service for businesses). Start in test mode: no real money moves."}
+          {connected ? `Connected in ${s?.provider_status} mode. Enter new keys below to replace them, or press Test connection to check the saved ones.` : "Not connected. You need a Monnify account (it is Moniepoint's payment service for businesses). Start in test mode: no real money moves."}
         </p>
+        {connected && (
+          <div className="space-y-1">
+            <Button type="button" variant="outline" disabled={testing} onClick={() => void testConnection()}>{testing ? "Testing…" : "Test connection"}</Button>
+            {testMsg && <p className={`text-sm ${testMsg.ok ? "text-primary" : "text-destructive"}`} data-testid="test-result">{testMsg.text}</p>}
+          </div>
+        )}
         <form onSubmit={connect} className="grid gap-3">
           <div className="grid gap-1"><Label htmlFor="pv-status">Mode</Label>
             <select id="pv-status" className="h-10 rounded-md border border-input bg-background px-3" value={status} onChange={(e) => setStatus(e.target.value as "test" | "live")}>
