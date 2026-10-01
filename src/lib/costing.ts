@@ -9,6 +9,7 @@ export type CostIngredient = {
   name: string;
   base_unit: string; // "kg" | "g" | "L" | "ml" | "piece" ...
   current_cost_kobo: number; // cost of ONE base unit, in kobo
+  grade_prices?: Partial<Record<string, number>> | undefined; // last price per base unit for each grade bought: { A: 120000, B: 80000 }
 };
 
 export type CostConversion = {
@@ -40,7 +41,22 @@ export type RecipeCostResult = {
   cost_per_plate_kobo: number; // rounded to the nearest kobo
   suggested_price_kobo: number | null; // rounded UP to the next kobo; null if it can't be priced
   errors: string[]; // any error means the totals are incomplete — never trust a partial cost
+  fallbacks: string[]; // when costed at a grade: ingredients with no price for that grade yet (latest price was used)
 };
+
+/** Grades (A/B/C) that have a price on at least one of these ingredients, so a grade switch means something. */
+export function gradesWithPrices(ingredients: CostIngredient[], ingredientIds: string[]): string[] {
+  const ids = new Set(ingredientIds);
+  const found = new Set<string>();
+  for (const i of ingredients) if (ids.has(i.id)) for (const g of Object.keys(i.grade_prices ?? {})) found.add(g);
+  return ["A", "B", "C"].filter((g) => found.has(g));
+}
+
+/** Only show a grade switch when some ingredient in the dish has prices for two or more grades. */
+export function hasGradeChoice(ingredients: CostIngredient[], ingredientIds: string[]): boolean {
+  const ids = new Set(ingredientIds);
+  return ingredients.some((i) => ids.has(i.id) && Object.keys(i.grade_prices ?? {}).length > 1);
+}
 
 // Standard metric steps between base units, used only when the item unit and the base unit
 // are both metric (e.g. recipe says 500 g, ingredient is costed per kg).
@@ -124,9 +140,22 @@ export function computeRecipeCost(input: {
   conversions: CostConversion[];
   yield_portions: number;
   target_margin_bps: number; // from businesses.target_margin_bps, e.g. 3500 = 35%
+  grade?: string | null; // cost every ingredient at this grade's last price; null/undefined = latest price
 }): RecipeCostResult {
-  const { items, ingredients, conversions, yield_portions, target_margin_bps } = input;
+  const { items, conversions, yield_portions, target_margin_bps, grade } = input;
   const errors: string[] = [];
+  const fallbacks: string[] = [];
+
+  // A grade swaps in that grade's price for each ingredient. No price for it yet: keep the latest price and say so.
+  const used = new Set(items.map((i) => i.ingredient_id));
+  const ingredients = grade
+    ? input.ingredients.map((ing) => {
+        const gp = ing.grade_prices?.[grade];
+        if (gp !== undefined) return { ...ing, current_cost_kobo: gp };
+        if (used.has(ing.id)) fallbacks.push(ing.name);
+        return ing;
+      })
+    : input.ingredients;
 
   // Steps 1–2 — delegated to the shared single-ingredient function.
   const lines: CostLine[] = items.map((item) => {
@@ -162,7 +191,7 @@ export function computeRecipeCost(input: {
     suggested_price_kobo = Math.ceil(exactPerPlate / (1 - target_margin_bps / 10000));
   }
 
-  return { lines, total_ingredient_cost_kobo, cost_per_plate_kobo, suggested_price_kobo, errors };
+  return { lines, total_ingredient_cost_kobo, cost_per_plate_kobo, suggested_price_kobo, errors, fallbacks };
 }
 
 // Money helpers shared by every screen.

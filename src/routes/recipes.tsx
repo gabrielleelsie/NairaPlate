@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
+import { GRADES } from "@/lib/grade";
 import { useStaffSession, BASE_UNITS, MARKET_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import {
-  computeRecipeCost, unitsForIngredient, formatNaira, nairaToKobo,
+  computeRecipeCost, hasGradeChoice, unitsForIngredient, formatNaira, nairaToKobo,
   type CostIngredient, type CostConversion, type CostRecipeItem,
 } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/recipes")({
   component: RecipesScreen,
 });
 
-type Recipe = { id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number };
+type Recipe = { id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number; cost_grade: string | null };
 type RecipeItemRow = CostRecipeItem & { id: string; recipe_id: string };
 type DraftItem = { key: number; existingId?: string; ingredient_id: string; quantity: string; unit: string };
 
@@ -48,16 +49,22 @@ function RecipesScreen() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
-    const [ing, conv, rec, ri, biz] = await Promise.all([
+    const [ing, conv, rec, ri, biz, gp] = await Promise.all([
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
       // Only the current version of each dish; old versions are kept for past sales and reports.
-      supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo").eq("is_current", true).order("name"),
+      supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo,cost_grade").eq("is_current", true).order("name"),
       supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit"),
       supabase.from("businesses").select("target_margin_bps").maybeSingle(),
+      supabase.from("ingredient_grade_prices").select("ingredient_id,grade,cost_kobo"),
     ]);
     if (ing.error || conv.error || rec.error || ri.error || biz.error) return setMsg({ ok: false, text: "Could not load recipes." });
-    setIngredients((ing.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo) })));
+    // Last price per grade for each ingredient. If this lookup fails the screen still works at the latest price.
+    const gradePrices = new Map<string, Record<string, number>>();
+    for (const g of gp.error ? [] : gp.data ?? []) {
+      gradePrices.set(g.ingredient_id, { ...(gradePrices.get(g.ingredient_id) ?? {}), [g.grade]: Number(g.cost_kobo) });
+    }
+    setIngredients((ing.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo), grade_prices: gradePrices.get(i.id) })));
     setConversions((conv.data ?? []).map((c) => ({ ...c, base_qty: Number(c.base_qty) })));
     setRecipes((rec.data ?? []).map((r) => ({ ...r, yield_portions: Number(r.yield_portions), selling_price_kobo: Number(r.selling_price_kobo) })));
     setRecipeItems((ri.data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) })));
@@ -160,7 +167,7 @@ function RecipesScreen() {
           // Same single costing function as the builder.
           const cost = computeRecipeCost({
             items: recipeItems.filter((i) => i.recipe_id === r.id),
-            ingredients, conversions, yield_portions: r.yield_portions, target_margin_bps: marginBps ?? 0,
+            ingredients, conversions, yield_portions: r.yield_portions, target_margin_bps: marginBps ?? 0, grade: r.cost_grade,
           });
           const below = cost.errors.length === 0 && r.selling_price_kobo < (cost.suggested_price_kobo ?? 0);
           return (
@@ -168,7 +175,7 @@ function RecipesScreen() {
               <div className="flex flex-wrap justify-between gap-2">
                 <div>
                   <div className="font-medium text-foreground">{r.name}</div>
-                  <div className="text-xs text-muted-foreground">{[r.category, `${r.yield_portions} plates`].filter(Boolean).join(" · ")}</div>
+                  <div className="text-xs text-muted-foreground">{[r.category, `${r.yield_portions} plates`, r.cost_grade ? `costed at grade ${r.cost_grade}` : null].filter(Boolean).join(" · ")}</div>
                 </div>
                 <div className="text-right text-sm">
                   <div className="text-foreground">Selling {formatNaira(r.selling_price_kobo)}</div>
@@ -179,6 +186,9 @@ function RecipesScreen() {
                 </div>
               </div>
               {cost.errors.length > 0 && <p className="mt-2 text-xs text-destructive">{cost.errors[0]}</p>}
+              {r.cost_grade && cost.fallbacks.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">No grade {r.cost_grade} price yet for {cost.fallbacks.join(", ")}, so the latest price is used.</p>
+              )}
               {canEdit && editingId !== r.id && (
                 <div className="mt-3 flex gap-3">
                   <button type="button" className="text-sm underline text-foreground" onClick={() => { setEditingId(r.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
@@ -215,6 +225,8 @@ function RecipeForm({
   const [category, setCategory] = useState(existing?.category ?? "");
   const [yieldPortions, setYieldPortions] = useState(existing ? String(existing.yield_portions) : "1");
   const defaultPct = Math.min(90, Math.max(0, Math.round(marginBps / 100)));
+  // Which grade's prices the dish is costed at. "" = latest price.
+  const [grade, setGrade] = useState<string>(existing?.cost_grade ?? "");
 
   // In edit mode, start the slider at the margin implied by the saved price,
   // and keep the saved price as an override so nothing changes by surprise.
@@ -222,7 +234,7 @@ function RecipeForm({
     if (!existing || !existingItems || existingItems.length === 0) return defaultPct;
     const c = computeRecipeCost({
       items: existingItems, ingredients, conversions,
-      yield_portions: existing.yield_portions, target_margin_bps: 0,
+      yield_portions: existing.yield_portions, target_margin_bps: 0, grade: existing.cost_grade,
     });
     if (c.errors.length || c.cost_per_plate_kobo <= 0) return defaultPct;
     return Math.min(90, Math.max(0, Math.round((1 - c.cost_per_plate_kobo / existing.selling_price_kobo) * 100)));
@@ -258,8 +270,9 @@ function RecipeForm({
       items: costItems, ingredients, conversions,
       yield_portions: Number(yieldPortions),
       target_margin_bps: marginPct * 100,
+      grade: grade || null,
     }),
-    [costItems, ingredients, conversions, yieldPortions, marginPct],
+    [costItems, ingredients, conversions, yieldPortions, marginPct, grade],
   );
 
   // Same function at the business default margin — used only for the override warning.
@@ -268,9 +281,15 @@ function RecipeForm({
       items: costItems, ingredients, conversions,
       yield_portions: Number(yieldPortions),
       target_margin_bps: marginBps,
+      grade: grade || null,
     }),
-    [costItems, ingredients, conversions, yieldPortions, marginBps],
+    [costItems, ingredients, conversions, yieldPortions, marginBps, grade],
   );
+
+  // Margin at the price the owner will actually charge, so a grade switch shows its effect straight away.
+  const chargedKobo = override && customPrice.trim() !== "" ? nairaToKobo(customPrice) : cost.suggested_price_kobo;
+  const liveMarginPct = !cost.errors.length && chargedKobo && chargedKobo > 0 ? (1 - cost.cost_per_plate_kobo / chargedKobo) * 100 : null;
+  const showGradeSwitch = hasGradeChoice(ingredients, costItems.map((i) => i.ingredient_id)) || !!grade;
 
   const update = (key: number, patch: Partial<DraftItem>) =>
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...patch } : x)));
@@ -322,7 +341,7 @@ function RecipeForm({
       const key = (i: { ingredient_id: string; quantity: number; unit: string }) => `${i.ingredient_id}|${Number(i.quantity)}|${i.unit}`;
       const before = orig.map(key).sort().join(";");
       const after = valid.map((i) => key({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })).sort().join(";");
-      const createsVersion = before !== after || Number(yieldPortions) !== existing.yield_portions;
+      const createsVersion = before !== after || Number(yieldPortions) !== existing.yield_portions || (grade || null) !== (existing.cost_grade ?? null);
 
       if (!createsVersion) {
         // Price / name / category only: update the current row in place (no new version).
@@ -344,6 +363,7 @@ function RecipeForm({
         p_recipe_id: existing.id, p_name: name.trim(), p_category: category.trim() || null,
         p_yield_portions: Number(yieldPortions), p_selling_price_kobo: priceKobo,
         p_items: valid.map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
+        p_cost_grade: grade || null,
       } as never);
       setBusy(false);
       if (vErr) return onError(`Nothing was saved — the old recipe is unchanged. (${vErr.message})`);
@@ -356,7 +376,7 @@ function RecipeForm({
       .from("recipes")
       .insert({
         business_id: businessId, name: name.trim(), category: category.trim() || null,
-        yield_portions: Number(yieldPortions), selling_price_kobo: priceKobo,
+        yield_portions: Number(yieldPortions), selling_price_kobo: priceKobo, cost_grade: grade || null,
       })
       .select("id")
       .single();
@@ -372,7 +392,7 @@ function RecipeForm({
     }
     setBusy(false);
     if (itemsErr) return onError("Recipe saved, but its ingredients could not be saved.");
-    setName(""); setCategory(""); setYieldPortions("1"); setItems([]);
+    setName(""); setCategory(""); setYieldPortions("1"); setItems([]); setGrade("");
     setMarginPct(defaultPct); setOverride(false); setCustomPrice("");
     onSaved(`${name.trim()} saved at ${formatNaira(priceKobo)} per plate.`);
   }
@@ -434,9 +454,29 @@ function RecipeForm({
         {!canDeleteItems && <p className="text-xs text-muted-foreground">Only an owner can remove ingredients that are already saved.</p>}
       </div>
 
+      {showGradeSwitch && (
+        <div className="grid gap-2">
+          <Label id="r-grade-l">Cost this dish at</Label>
+          <div role="radiogroup" aria-labelledby="r-grade-l" className="flex gap-2">
+            {[["", "Latest price"], ...GRADES.map((g) => [g, `Grade ${g}`])].map(([g, label]) => (
+              <Button key={g} type="button" role="radio" aria-checked={grade === g} size="sm" variant={grade === g ? "default" : "outline"} onClick={() => setGrade(g!)}>
+                {label}
+              </Button>
+            ))}
+          </div>
+          {grade && cost.fallbacks.length > 0 && (
+            <p className="text-xs text-muted-foreground">No grade {grade} price yet for {cost.fallbacks.join(", ")}, so the latest price is used for {cost.fallbacks.length === 1 ? "it" : "them"}.</p>
+          )}
+          {isEdit && (grade || null) !== (existing?.cost_grade ?? null) && (
+            <p className="text-xs text-muted-foreground">Saving will create a new version of this recipe. Past sales keep their old cost.</p>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-1 rounded-md bg-muted p-3 text-sm">
         <Row label="Total ingredient cost" value={formatNaira(Math.round(cost.total_ingredient_cost_kobo))} />
         <Row label="Cost per plate" value={formatNaira(cost.cost_per_plate_kobo)} />
+        {liveMarginPct !== null && <Row label="Margin at your selling price" value={`${liveMarginPct.toFixed(1)}%`} />}
         {cost.errors.map((e) => <p key={e} className="text-xs text-destructive">{e}</p>)}
       </div>
 

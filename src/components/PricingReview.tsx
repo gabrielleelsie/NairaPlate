@@ -3,7 +3,7 @@ import { supabase } from "@/lib/external-supabase";
 import { computeRecipeCost, formatNaira, type CostIngredient, type CostConversion, type CostRecipeItem } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 
-type Recipe = { id: string; name: string; yield_portions: number; selling_price_kobo: number };
+type Recipe = { id: string; name: string; yield_portions: number; selling_price_kobo: number; cost_grade?: string | null };
 type Decision = {
   id: string; recipe_id: string | null; previous_price_kobo: number | null;
   suggested_price_kobo: number | null; decision: string | null; decided_by: string | null; created_at: string;
@@ -57,7 +57,7 @@ export function PricingReview({
   const flagged = recipes.flatMap((r) => {
     const cost = computeRecipeCost({
       items: recipeItems.filter((i) => i.recipe_id === r.id),
-      ingredients, conversions, yield_portions: r.yield_portions, target_margin_bps: marginBps,
+      ingredients, conversions, yield_portions: r.yield_portions, target_margin_bps: marginBps, grade: r.cost_grade ?? null,
     });
     if (cost.errors.length || cost.suggested_price_kobo === null) return [];
     if (!needsPriceReview(r.selling_price_kobo, cost.suggested_price_kobo)) return [];
