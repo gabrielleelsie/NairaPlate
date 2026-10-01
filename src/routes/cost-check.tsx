@@ -71,19 +71,22 @@ function CostCheckScreen() {
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Costs {formatNaira(d.cost_per_plate_kobo)} a plate, sells at {formatNaira(d.price_kobo)}.
+                      {d.cost_to_cut_kobo > 0 && <> To keep your price and reach your target, the cost needs to come down by about {formatNaira(d.cost_to_cut_kobo)} a plate.</>}
                       {d.week_loss_kobo !== null && <> Roughly {formatNaira(d.week_loss_kobo)} a week below target (estimate from the last 7 days: {d.week_plates} plates).</>}
                     </p>
-                    {d.suggested_price_kobo !== null && <p className="mt-1 text-sm text-foreground">Price for your target: {formatNaira(d.suggested_price_kobo)}.</p>}
                     {d.options.map((o) => (
-                      <p key={o.grade} className="mt-1 text-sm text-foreground">At grade {o.grade}: {formatNaira(o.cost_per_plate_kobo)} a plate, {o.margin_pct.toFixed(0)}% margin.</p>
+                      <p key={o.grade} className="mt-1 text-sm text-foreground">Switch to grade {o.grade}: {formatNaira(o.cost_per_plate_kobo)} a plate, {o.margin_pct.toFixed(0)}% margin.</p>
                     ))}
+                    {d.round_price_kobo !== null && d.round_price_margin_pct !== null && (
+                      <p className="mt-1 text-sm text-muted-foreground">Or, if you do change the price, {formatNaira(d.round_price_kobo)} gives a {d.round_price_margin_pct.toFixed(0)}% margin.</p>
+                    )}
                     {d.fallbacks.length > 0 && <p className="mt-1 text-xs text-muted-foreground">No grade {d.grade} price yet for {d.fallbacks.join(", ")}, so the latest price is used.</p>}
                     <Link to="/recipes" search={{ edit: d.recipe_id } as never} className="mt-2 inline-block text-sm underline text-foreground">Open this dish</Link>
                   </li>
                 ))}
               </ul>
             )}
-            {data.attention_total > data.attention.length && <p className="mt-2 text-xs text-muted-foreground">{data.attention_total - data.attention.length} more under target. Fix these first, the biggest losses are at the top.</p>}
+            {data.attention_total > data.attention.length && <p className="mt-2 text-xs text-muted-foreground">{data.attention_total - data.attention.length} more under target. The biggest losses are at the top.</p>}
             <p className="mt-2 text-xs text-muted-foreground">A dish shows here when its margin is {MARGIN_GAP_POINTS} points or more under your target.</p>
           </section>
 
