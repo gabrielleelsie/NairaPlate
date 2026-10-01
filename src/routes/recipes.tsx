@@ -72,6 +72,15 @@ function RecipesScreen() {
   }, []);
 
   useEffect(() => { if (session) load(); }, [session, load]);
+
+  // Arrive from Today's cost check with ?edit=<dish id>: open that dish for editing once.
+  const [openedFromLink, setOpenedFromLink] = useState(false);
+  useEffect(() => {
+    if (openedFromLink || !session || recipes.length === 0 || typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("edit");
+    setOpenedFromLink(true);
+    if (id && recipes.some((r) => r.id === id) && EDIT_ROLES.has(session.role)) { setEditingId(id); window.scrollTo({ top: 0 }); }
+  }, [openedFromLink, session, recipes]);
   const plan = useBusinessPlan(!!session);
   const onTrial = isTrialPlan(plan);
   const atRecipeLimit = onTrial && recipes.length >= TRIAL_LIMITS.recipes;

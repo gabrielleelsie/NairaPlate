@@ -15,6 +15,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { calculateBusinessPnl } from "@/lib/pnl";
+import { loadCostCheck } from "@/lib/cost-check";
 import { lagosDateKey, lagosDayStart } from "@/lib/lagos-time";
 import { sendDailySummaryEmail, logEmailUndelivered } from "@/lib/email.server";
 import {
@@ -151,12 +152,22 @@ export const Route = createFileRoute("/api/public/daily-summary")({
             continue;
           }
 
+          // The cost check is a bonus: if it cannot be worked out, the summary still goes out without it.
+          let costCheck = null;
+          try {
+            costCheck = await loadCostCheck(admin, id);
+          } catch {
+            costCheck = null;
+          }
+
           const sig = await unsubscribeSignature(secret, id);
           const html = summaryHtml({
             businessName: name,
             dateLabel,
             sentAtLabel,
             pnl,
+            costCheck,
+            costCheckUrl: `${origin}/cost-check`,
             dashboardUrl: `${origin}/dashboard`,
             unsubscribeUrl: `${origin}/api/public/summary-unsubscribe?b=${encodeURIComponent(id)}&s=${sig}`,
           });

@@ -17,6 +17,7 @@ import { Route as BatchesRouteImport } from './routes/batches'
 import { Route as CashflowRouteImport } from './routes/cashflow'
 import { Route as CateringRouteImport } from './routes/catering'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CostCheckRouteImport } from './routes/cost-check'
 import { Route as CreditRouteImport } from './routes/credit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
@@ -86,6 +87,11 @@ const CateringRoute = CateringRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CostCheckRoute = CostCheckRouteImport.update({
+  id: '/cost-check',
+  path: '/cost-check',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreditRoute = CreditRouteImport.update({
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
   '/contact': typeof ContactRoute
+  '/cost-check': typeof CostCheckRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
   '/contact': typeof ContactRoute
+  '/cost-check': typeof CostCheckRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
   '/contact': typeof ContactRoute
+  '/cost-check': typeof CostCheckRoute
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/cashflow'
     | '/catering'
     | '/contact'
+    | '/cost-check'
     | '/credit'
     | '/dashboard'
     | '/drawer'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/cashflow'
     | '/catering'
     | '/contact'
+    | '/cost-check'
     | '/credit'
     | '/dashboard'
     | '/drawer'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '/cashflow'
     | '/catering'
     | '/contact'
+    | '/cost-check'
     | '/credit'
     | '/dashboard'
     | '/drawer'
@@ -494,6 +506,7 @@ export interface RootRouteChildren {
   CashflowRoute: typeof CashflowRoute
   CateringRoute: typeof CateringRoute
   ContactRoute: typeof ContactRoute
+  CostCheckRoute: typeof CostCheckRoute
   CreditRoute: typeof CreditRoute
   DashboardRoute: typeof DashboardRoute
   DrawerRoute: typeof DrawerRoute
@@ -582,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cost-check': {
+      id: '/cost-check'
+      path: '/cost-check'
+      fullPath: '/cost-check'
+      preLoaderRoute: typeof CostCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/credit': {
@@ -806,6 +826,7 @@ const rootRouteChildren: RootRouteChildren = {
   CashflowRoute: CashflowRoute,
   CateringRoute: CateringRoute,
   ContactRoute: ContactRoute,
+  CostCheckRoute: CostCheckRoute,
   CreditRoute: CreditRoute,
   DashboardRoute: DashboardRoute,
   DrawerRoute: DrawerRoute,
