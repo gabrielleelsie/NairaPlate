@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { GRADES } from "@/lib/grade";
+import { HoldPricePanel } from "@/components/HoldPricePanel";
 import { useStaffSession, BASE_UNITS, MARKET_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import {
   computeRecipeCost, hasGradeChoice, unitsForIngredient, formatNaira, nairaToKobo,
@@ -32,8 +33,8 @@ export const Route = createFileRoute("/recipes")({
 });
 
 type Recipe = { id: string; name: string; category: string | null; yield_portions: number; selling_price_kobo: number; cost_grade: string | null };
-type RecipeItemRow = CostRecipeItem & { id: string; recipe_id: string };
-type DraftItem = { key: number; existingId?: string; ingredient_id: string; quantity: string; unit: string };
+type RecipeItemRow = CostRecipeItem & { id: string; recipe_id: string; min_quantity?: number | null | undefined; never_cut?: boolean | undefined };
+type DraftItem = { key: number; existingId?: string; ingredient_id: string; quantity: string; unit: string; min?: string | undefined; neverCut?: boolean | undefined };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "cook"]);
 const DELETE_ROLES = new Set(["owner", "supa_admin"]);
@@ -54,7 +55,7 @@ function RecipesScreen() {
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
       // Only the current version of each dish; old versions are kept for past sales and reports.
       supabase.from("recipes").select("id,name,category,yield_portions,selling_price_kobo,cost_grade").eq("is_current", true).order("name"),
-      supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit"),
+      supabase.from("recipe_items").select("id,recipe_id,ingredient_id,quantity,unit,min_quantity,never_cut"),
       supabase.from("businesses").select("target_margin_bps").maybeSingle(),
       supabase.from("ingredient_grade_prices").select("ingredient_id,grade,cost_kobo"),
     ]);
@@ -67,7 +68,7 @@ function RecipesScreen() {
     setIngredients((ing.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo), grade_prices: gradePrices.get(i.id) })));
     setConversions((conv.data ?? []).map((c) => ({ ...c, base_qty: Number(c.base_qty) })));
     setRecipes((rec.data ?? []).map((r) => ({ ...r, yield_portions: Number(r.yield_portions), selling_price_kobo: Number(r.selling_price_kobo) })));
-    setRecipeItems((ri.data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) })));
+    setRecipeItems((ri.data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity), min_quantity: r.min_quantity === null || r.min_quantity === undefined ? null : Number(r.min_quantity) })));
     setMarginBps(biz.data ? Number(biz.data.target_margin_bps) : null);
   }, []);
 
@@ -253,9 +254,22 @@ function RecipeForm({
   const [priceError, setPriceError] = useState<string | null>(null);
   const [items, setItems] = useState<DraftItem[]>(() =>
     existingItems
-      ? existingItems.map((i, n) => ({ key: n + 1, existingId: i.id, ingredient_id: i.ingredient_id, quantity: String(i.quantity), unit: i.unit }))
+      ? existingItems.map((i, n) => ({ key: n + 1, existingId: i.id, ingredient_id: i.ingredient_id, quantity: String(i.quantity), unit: i.unit, min: i.min_quantity === null || i.min_quantity === undefined ? "" : String(i.min_quantity), neverCut: !!i.never_cut }))
       : [],
   );
+  // The first saved version of this dish, so the Hold my price panel can show how far the plate has drifted from it.
+  const [firstVersion, setFirstVersion] = useState<{ items: CostRecipeItem[]; yield_portions: number } | null>(null);
+  useEffect(() => {
+    if (!existing) return;
+    let cancelled = false;
+    (async () => {
+      const { data: v1 } = await supabase.from("recipes").select("id,yield_portions").eq("name", existing.name).eq("version_number", 1).maybeSingle();
+      if (!v1 || cancelled) return;
+      const { data: its } = await supabase.from("recipe_items").select("ingredient_id,quantity,unit").eq("recipe_id", v1.id);
+      if (!cancelled && its && its.length > 0) setFirstVersion({ items: its.map((i) => ({ ...i, quantity: Number(i.quantity) })), yield_portions: Number(v1.yield_portions) });
+    })();
+    return () => { cancelled = true; };
+  }, [existing?.id, existing?.name]); // eslint-disable-line react-hooks/exhaustive-deps
   const [nextKey, setNextKey] = useState((existingItems?.length ?? 0) + 1);
   const [busy, setBusy] = useState(false);
 
@@ -298,6 +312,8 @@ function RecipeForm({
   // Margin at the price the owner will actually charge, so a grade switch shows its effect straight away.
   const chargedKobo = override && customPrice.trim() !== "" ? nairaToKobo(customPrice) : cost.suggested_price_kobo;
   const liveMarginPct = !cost.errors.length && chargedKobo && chargedKobo > 0 ? (1 - cost.cost_per_plate_kobo / chargedKobo) * 100 : null;
+  // Hold my price: owners only, on a saved dish whose margin at its price is under the target.
+  const showHoldPrice = isEdit && !!canDeleteItems && liveMarginPct !== null && chargedKobo !== null && chargedKobo > 0 && liveMarginPct < marginBps / 100;
   const showGradeSwitch = hasGradeChoice(ingredients, costItems.map((i) => i.ingredient_id)) || !!grade;
 
   const update = (key: number, patch: Partial<DraftItem>) =>
@@ -357,8 +373,19 @@ function RecipeForm({
         const { error: recErr } = await supabase.from("recipes").update({
           name: name.trim(), category: category.trim() || null, selling_price_kobo: priceKobo,
         }).eq("id", existing.id);
+        // Minimums are settings, not a recipe change: save them on the current lines in place.
+        let minErr = false;
+        for (const it of valid) {
+          const was = orig.find((o) => o.id === it.existingId);
+          if (!was) continue;
+          const nextMin = it.min && it.min.trim() !== "" ? Number(it.min) : null;
+          if ((was.min_quantity ?? null) === nextMin && !!was.never_cut === !!it.neverCut) continue;
+          const { error: e } = await supabase.from("recipe_items").update({ min_quantity: nextMin, never_cut: !!it.neverCut }).eq("id", it.existingId!);
+          if (e) minErr = true;
+        }
         setBusy(false);
         if (recErr) return onError("Could not save the recipe details.");
+        if (minErr) return onError("The recipe was saved, but your minimums could not be saved.");
         onSaved(`${name.trim()} updated — now ${formatNaira(priceKobo)} per plate.`);
         return;
       }
@@ -371,7 +398,7 @@ function RecipeForm({
       const { data: v, error: vErr } = await supabase.rpc("save_recipe_version" as never, {
         p_recipe_id: existing.id, p_name: name.trim(), p_category: category.trim() || null,
         p_yield_portions: Number(yieldPortions), p_selling_price_kobo: priceKobo,
-        p_items: valid.map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })),
+        p_items: valid.map((i) => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit, min_quantity: i.min && i.min.trim() !== "" ? Number(i.min) : null, never_cut: !!i.neverCut })),
         p_cost_grade: grade || null,
       } as never);
       setBusy(false);
@@ -480,6 +507,13 @@ function RecipeForm({
             <p className="text-xs text-muted-foreground">Saving will create a new version of this recipe. Past sales keep their old cost.</p>
           )}
         </div>
+      )}
+
+      {showHoldPrice && (
+        <HoldPricePanel
+          items={items} setItems={setItems as never} ingredients={ingredients} conversions={conversions} yieldPortions={Number(yieldPortions)}
+          priceKobo={chargedKobo!} marginBps={marginBps} grade={grade || null} original={firstVersion}
+        />
       )}
 
       <div className="grid gap-1 rounded-md bg-muted p-3 text-sm">

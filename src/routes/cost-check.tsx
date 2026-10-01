@@ -81,7 +81,7 @@ function CostCheckScreen() {
                       <p className="mt-1 text-sm text-muted-foreground">Or, if you do change the price, {formatNaira(d.round_price_kobo)} gives a {d.round_price_margin_pct.toFixed(0)}% margin.</p>
                     )}
                     {d.fallbacks.length > 0 && <p className="mt-1 text-xs text-muted-foreground">No grade {d.grade} price yet for {d.fallbacks.join(", ")}, so the latest price is used.</p>}
-                    <Link to="/recipes" search={{ edit: d.recipe_id } as never} className="mt-2 inline-block text-sm underline text-foreground">Open this dish</Link>
+                    <Link to="/recipes" search={{ edit: d.recipe_id } as never} className="mt-2 inline-block text-sm underline text-foreground">Open this dish to trim ingredients or change the grade</Link>
                   </li>
                 ))}
               </ul>
