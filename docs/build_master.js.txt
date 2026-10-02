@@ -1,0 +1,68 @@
+const fs = require("fs");
+const { execFileSync } = require("child_process");
+const { chromium } = require("/opt/node22/lib/node_modules/playwright");
+const MD = "/home/user/nairaplate/docs/NairaPlate_Master_Business_Rules_and_Audit_Specification.md";
+let md = fs.readFileSync(MD, "utf8").replace(/^---[\s\S]*?---\n/, "");
+// drop the markdown title block (the cover page shows it)
+md = md.replace(/^# NairaPlate: Master Business Rules and Audit Specification\n\n\*\*Version 1.0, 2 October 2026\*\*\n\n/, "");
+fs.writeFileSync("/tmp/master_body.md", md);
+let html = execFileSync("python3", ["-c", "import markdown,sys; print(markdown.markdown(open('/tmp/master_body.md').read(), extensions=['tables','sane_lists']))"], { maxBuffer: 1 << 26 }).toString();
+// wrap tables that have 6 or more columns in a landscape block
+html = html.replace(/<table>([\s\S]*?)<\/table>/g, (m, inner) => {
+  const head = inner.match(/<thead>([\s\S]*?)<\/thead>/);
+  const cols = head ? (head[1].match(/<th/g) || []).length : 0;
+  return (cols >= 6 || (head && head[1].includes("<th>Trigger</th>"))) ? `<div class="wide"><table>${inner}</table></div>` : `<table>${inner}</table>`;
+});
+// keep a section's heading and intro with its wide table, so there is no near-empty portrait page
+html = html.replace(/(<h1>[^<]*<\/h1>\s*(?:<p>(?:(?!<\/p>)[\s\S])*<\/p>\s*)*)<div class="wide">/g, '<div class="wide">$1');
+html = html.replace(/<table>(\s*<thead>\s*<tr>\s*<th>#<\/th>)/g, '<table class="num">$1');
+// first-column emphasis
+html = html.replace(/<tr>\s*<td>/g, '<tr><td class="first">');
+const heads = [...html.matchAll(/<h1>([\s\S]*?)<\/h1>/g)].map((m) => m[1]);
+const toc = `<h1 class="tochead">Contents</h1><ol class="toc">${heads.map((h) => `<li>${h}</li>`).join("")}</ol>`;
+const logo = "data:image/png;base64," + fs.readFileSync("logo.png").toString("base64");
+const css = `
+${fs.readFileSync("fonts.css", "utf8")}
+@page { size: A4; margin: 24mm 17mm 22mm 17mm;
+  @top-right { content: "Master business rules and audit specification"; font: 400 8.5pt Figtree; color: #595959; vertical-align: bottom; padding-bottom: 3mm; border-bottom: 0.3mm solid #A6A6A6; }
+  @top-left { content: "NairaPlate"; font: 700 8.5pt Figtree; color: #0B1F33; vertical-align: bottom; padding-bottom: 3mm; border-bottom: 0.3mm solid #A6A6A6; }
+  @bottom-left { content: "Version 1.0   |   2 October 2026"; font: 400 8.5pt Figtree; color: #0B1F33; border-top: 0.3mm solid #A6A6A6; padding-top: 3mm; vertical-align: top; }
+  @bottom-right { content: "Page " counter(page); font: 400 8.5pt Figtree; color: #595959; border-top: 0.3mm solid #A6A6A6; padding-top: 3mm; vertical-align: top; }
+}
+@page wide { size: A4 landscape; margin: 22mm 12mm 18mm 12mm; }
+@page :first { margin-top: 14mm; @top-left { content: none; border: 0; } @top-right { content: none; border: 0; } }
+html { font: 400 9.6pt/1.5 Figtree, Arial, sans-serif; color: #1a1a1a; }
+.cover img { width: 62mm; margin-bottom: 14mm; } .title { font: 700 27pt/1.15 Figtree, Arial, sans-serif; color:#0B1F33; margin: 0 0 3mm; } .sub { color: #1677D2; font-size: 13pt; margin: 0 0 8mm; }
+.meta td { border: 0; padding: 1mm 3mm 1mm 0; font-size: 9.5pt; background: none !important; } .meta { width: auto; margin: 0 0 6mm; } .meta td.first { color:#595959; font-weight: 600; }
+h1 { font: 700 15pt Figtree, Arial, sans-serif; color: #0B1F33; margin: 8mm 0 3mm; break-after: avoid; border-left: 1.4mm solid #1677D2; padding-left: 3mm; page-break-before: always; }
+h1.tochead { page-break-before: always; } hr { display: none; }
+h2 { font: 700 11.5pt Figtree, Arial, sans-serif; color: #1677D2; margin: 5mm 0 1.5mm; break-after: avoid; }
+p { margin: 0 0 2.6mm; } ul, ol { margin: 0 0 3mm 5mm; padding-left: 4mm; } li { margin-bottom: 1mm; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.4pt; }
+th { background: #0B1F33; color: #fff; text-align: left; padding: 1.6mm 2mm; font-weight: 600; }
+td { padding: 1.6mm 2mm; border: 0.25mm solid #BFBFBF; vertical-align: top; overflow-wrap: anywhere; } td.first { font-weight: 700; color:#0B1F33; }
+tbody tr:nth-child(even) td { background: #F2F7FC; } tr { break-inside: avoid; } table.num td:first-child, table.num th:first-child { width: 8mm; white-space: nowrap; }
+.wide { page: wide; } .wide table { font-size: 7.6pt; }
+blockquote { margin: 2mm 0 4mm; padding: 2.5mm 4mm; background: #EAF3FC; border-left: 1.2mm solid #1677D2; } blockquote p { margin: 0; }
+code { font: 400 8.6pt Consolas, monospace; background: #F0F0F0; padding: 0 1mm; border-radius: 1mm; }
+ol.toc { columns: 1; margin-top: 4mm; font-size: 10.5pt; line-height: 1.8; }
+`;
+const cover = `<div class="cover"><img src="${logo}"><p class="title">Master Business Rules<br>and Audit Specification</p><p class="sub">How money, stock and records work in NairaPlate</p>
+<table class="meta"><tbody>
+<tr><td class="first">Version</td><td>1.0, 2 October 2026</td></tr>
+<tr><td class="first">Describes</td><td>The live system after the ledger programme (steps 1 to 5 and 4b) and the security sweep findings</td></tr>
+<tr><td class="first">Readers</td><td>Parts 1 to 11: owners, accountants, managers. Appendices A to H: engineers and auditors</td></tr>
+<tr><td class="first">Database</td><td>45 tables, 78 access rules, 79 functions, 36 triggers, read from the live database on 2 October 2026</td></tr>
+<tr><td class="first">Status</td><td>Reference manual. Sign-off is not yet possible: see Part 11</td></tr>
+</tbody></table></div>`;
+(async () => {
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${cover}${toc}${html}</body></html>`;
+  fs.writeFileSync("master_preview.html", doc);
+  const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+  const pg = await b.newPage();
+  await pg.goto("file://" + process.cwd() + "/master_preview.html", { waitUntil: "load" });
+  await pg.evaluate(() => document.fonts.ready);
+  await pg.pdf({ path: "/home/user/nairaplate/docs/NairaPlate_Master_Business_Rules_and_Audit_Specification.pdf", preferCSSPageSize: true, printBackground: true });
+  await b.close();
+  console.log("pdf written");
+})().catch((e) => { console.error(e); process.exit(1); });
