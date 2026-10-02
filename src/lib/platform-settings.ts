@@ -96,3 +96,9 @@ export function nairaTextToKobo(text: string): number | null | undefined {
 export function bannerWhen(daysLeft: number): string {
   return daysLeft <= 1 ? "today at 11:59 pm" : daysLeft === 2 ? "tomorrow at 11:59 pm" : `in ${daysLeft - 1} days`;
 }
+
+/** The plan price as the admin types it (whole naira), or "" when no price is set. Used to pre-fill the amount on Record payment. */
+export function planPriceInput(prices: { monthly_kobo: number | null; quarterly_kobo: number | null; yearly_kobo: number | null } | null | undefined, plan: "monthly" | "quarterly" | "yearly"): string {
+  const k = prices?.[`${plan}_kobo` as const];
+  return typeof k === "number" && k > 0 ? String(k / 100) : "";
+}

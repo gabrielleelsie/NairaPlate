@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, SETTING_SCHEMAS, bannerWhen, formatPrice, mergeSettings, nairaTextToKobo, renderTemplate, unknownPlaceholders } from "./platform-settings";
+import { DEFAULT_SETTINGS, SETTING_SCHEMAS, bannerWhen, formatPrice, mergeSettings, nairaTextToKobo, planPriceInput, renderTemplate, unknownPlaceholders } from "./platform-settings";
 
 describe("renderTemplate", () => {
   it("fills known placeholders and leaves unknown ones visible", () => {
@@ -66,5 +66,18 @@ describe("helpers", () => {
     expect(bannerWhen(1)).toBe("today at 11:59 pm");
     expect(bannerWhen(2)).toBe("tomorrow at 11:59 pm");
     expect(bannerWhen(3)).toBe("in 2 days");
+  });
+});
+
+describe("planPriceInput", () => {
+  const prices = { monthly_kobo: 1_000_000, quarterly_kobo: 2_700_000, yearly_kobo: null };
+  it("gives the plan price in whole naira", () => {
+    expect(planPriceInput(prices, "monthly")).toBe("10000");
+    expect(planPriceInput(prices, "quarterly")).toBe("27000");
+  });
+  it("is empty when no price is set or nothing has loaded", () => {
+    expect(planPriceInput(prices, "yearly")).toBe("");
+    expect(planPriceInput(null, "monthly")).toBe("");
+    expect(planPriceInput({ monthly_kobo: 0, quarterly_kobo: null, yearly_kobo: null }, "monthly")).toBe("");
   });
 });
