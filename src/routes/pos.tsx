@@ -132,23 +132,15 @@ function PosScreen() {
       return setMsg({ ok: false, text: "Cash and transfer must add up exactly to the total." });
     }
     setBusy(true); setMsg(null);
-    const { data: order, error } = await supabase.from("orders").insert({
-      business_id: session.businessId, channel: finalChannel, price_tier: tier,
-      subtotal_kobo: subtotal, total_kobo: subtotal, status: "paid",
-      payment_method: pay, cash_amount_kobo: cashK, transfer_amount_kobo: trK, created_by: session.userId,
-    }).select("id").single();
-    if (error || !order) { setBusy(false); return setMsg({ ok: false, text: "Order not saved: " + (error?.message ?? "") }); }
-    const { error: e2 } = await supabase.from("order_items").insert(lines.map((l) => ({
-      business_id: session.businessId, order_id: order.id, recipe_id: l.recipe_id,
-      quantity: l.quantity, unit_price_kobo: byId.get(l.recipe_id)!.selling_price_kobo, // snapshot at sale time
-    })));
-    if (e2) {
-      await supabase.from("orders").update({ status: "cancelled" }).eq("id", order.id);
-      setBusy(false);
-      return setMsg({ ok: false, text: "Items failed to save, order cancelled: " + e2.message });
-    }
+    // The database reads every price from the menu and works out the total itself. Only the dishes, quantities and the payment split are sent.
+    const { data, error } = await supabase.rpc("create_cash_order" as never, {
+      p_channel: finalChannel, p_price_tier: tier, p_payment_method: pay, p_cash_kobo: cashK, p_transfer_kobo: trK,
+      p_items: lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity })),
+    } as never);
     setBusy(false);
-    setMsg({ ok: true, text: `Order saved — ${formatNaira(subtotal)} (${pay}).` });
+    if (error) return setMsg({ ok: false, text: "Order not saved: " + error.message });
+    const saved = data as { total_kobo: number };
+    setMsg({ ok: true, text: `Order saved — ${formatNaira(Number(saved.total_kobo))} (${pay}).` });
     setLines([]); setCashN(""); setTrN("");
   }
 
