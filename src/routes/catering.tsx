@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { BUCKET_LABEL, daysFromToday, distanceLabel, groupBookings, longDate, readBack, reminderMessage, timeLabel, whatsappUrl } from "@/lib/catering";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { useCateringEnabled } from "@/lib/features";
+import { canReverse, describeEntries, entryWhen, methodLabel, reasonOk, type PaymentEntry } from "@/lib/catering-payments";
 import { STATUS_LABEL, draftProblem, isOwnerRole, normaliseStatus, orderTotals, statusActions, totalsText, type DraftLine, type OrderStatus } from "@/lib/catering-order";
 
 export const Route = createFileRoute("/catering")({
@@ -55,6 +56,10 @@ function CateringScreen() {
   const [saving, setSaving] = useState(false);
   const [payFor, setPayFor] = useState<string | null>(null);
   const [payAmt, setPayAmt] = useState("");
+  const [payMethod, setPayMethod] = useState<"cash" | "transfer">("cash");
+  const [payments, setPayments] = useState<Map<string, PaymentEntry[]>>(new Map());
+  const [reverseFor, setReverseFor] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
   const [asEnquiry, setAsEnquiry] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -80,6 +85,13 @@ function CateringScreen() {
       m.set(it.order_id, [...(m.get(it.order_id) ?? []), it]);
     }
     setItems(m);
+    const { data: pe } = await supabase.from("catering_payments" as never).select("id,order_id,kind,amount_kobo,method,reverses_id,reason,carried_over,recorded_by_name,created_at").order("created_at", { ascending: true });
+    const pm = new Map<string, PaymentEntry[]>();
+    for (const r of (pe ?? []) as unknown as PaymentEntry[]) {
+      const x = { ...r, amount_kobo: Number(r.amount_kobo) };
+      pm.set(x.order_id, [...(pm.get(x.order_id) ?? []), x]);
+    }
+    setPayments(pm);
   }
   useEffect(() => { if (session && feature.enabled) load(); }, [session, feature.enabled]);
   useEffect(() => {
@@ -144,13 +156,22 @@ function CateringScreen() {
     const amt = nairaToKobo(payAmt);
     if (!(amt > 0)) return;
     // Adds to additional_payments_kobo and flips settled when fully paid — one database step.
-    const { data, error } = await supabase.rpc("record_catering_payment" as never, { p_booking_id: b.id, p_amount_kobo: amt } as never);
+    const { data, error } = await supabase.rpc("record_catering_payment_v2" as never, { p_booking_id: b.id, p_amount_kobo: amt, p_method: payMethod } as never);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
     const r = data as { remaining_kobo: number; settled: boolean };
     setMsg({ ok: true, text: r.settled
       ? `${b.customer_name} is fully paid.${Number(r.remaining_kobo) < 0 ? ` Overpaid by ${formatNaira(-Number(r.remaining_kobo))}.` : ""}`
       : `${formatNaira(amt)} recorded. ${formatNaira(Number(r.remaining_kobo))} still to pay.` });
     setPayFor(null); setPayAmt(""); load();
+  }
+
+  async function reversePayment(entryId: string, b: Booking) {
+    if (!reasonOk(reverseReason)) return;
+    const { data, error } = await supabase.rpc("reverse_catering_payment" as never, { p_payment_id: entryId, p_reason: reverseReason.trim() } as never);
+    if (error) return setMsg({ ok: false, text: "Not reversed: " + error.message });
+    const r = data as { remaining_kobo: number };
+    setMsg({ ok: true, text: `The payment was reversed. ${b.customer_name} now owes ${formatNaira(Math.max(0, Number(r.remaining_kobo)))}.` });
+    setReverseFor(null); setReverseReason(""); load();
   }
 
   if (loading || feature.loading) return <main className="p-6">Loading…</main>;
@@ -292,12 +313,44 @@ function CateringScreen() {
                     {b.status !== "cancelled" && !b.settled && (payFor === b.id ? (
                       <div className="flex gap-2 w-full">
                         <Input aria-label="Payment amount" type="number" min={0} placeholder="Amount ₦" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} />
+                        <select aria-label="Payment method" className="h-9 rounded-md border border-input bg-background px-2" value={payMethod} onChange={(e) => setPayMethod(e.target.value as "cash" | "transfer")}><option value="cash">Cash</option><option value="transfer">Transfer</option></select>
                         <Button onClick={() => recordPayment(b)} disabled={!(Number(payAmt) > 0)}>Save</Button>
                         <Button variant="outline" onClick={() => setPayFor(null)}>Cancel</Button>
                       </div>
                     ) : <Button size="sm" variant="outline" onClick={() => { setPayFor(b.id); setPayAmt(""); }}>Record balance payment</Button>)}
                     {wa && b.status === "confirmed" && g.bucket !== "past" && <a className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm" href={wa} target="_blank" rel="noopener noreferrer">Remind customer on WhatsApp</a>}
                   </div>
+                  {(() => {
+                    const hist = describeEntries(payments.get(b.id) ?? []);
+                    if (hist.length === 0) return null;
+                    return (
+                      <details className="pt-1" data-testid="payment-history">
+                        <summary className="cursor-pointer text-sm font-medium">Payment history ({hist.length})</summary>
+                        <ul className="mt-1 space-y-1 text-sm">
+                          {hist.map((h) => (
+                            <li key={h.id} className="rounded border p-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className={h.reversed ? "text-muted-foreground line-through" : ""}>
+                                  {h.label}{methodLabel(h.method) ? ` (${methodLabel(h.method)})` : ""}: <strong>{h.amount_kobo < 0 ? "-" : ""}{formatNaira(Math.abs(h.amount_kobo))}</strong>
+                                </span>
+                                <span className="text-muted-foreground">{entryWhen(h.created_at)}{h.recorded_by_name ? ` · ${h.recorded_by_name}` : ""}</span>
+                              </div>
+                              {h.carried_over && <div className="text-xs text-muted-foreground">Carried over from before payment history began.</div>}
+                              {h.reversed && <div className="text-xs font-semibold text-destructive">Reversed{h.reversedByReason ? `: ${h.reversedByReason}` : ""}</div>}
+                              {h.kind === "reversal" && h.reason && <div className="text-xs text-muted-foreground">Reason: {h.reason}</div>}
+                              {canReverse(h, role) && (reverseFor === h.id ? (
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                  <Input aria-label="Reason for reversing" className="flex-1" placeholder="Why is this being reversed? (5 or more characters)" value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} />
+                                  <Button size="sm" variant="destructive" disabled={!reasonOk(reverseReason)} onClick={() => reversePayment(h.id, b)}>Reverse it</Button>
+                                  <Button size="sm" variant="outline" onClick={() => { setReverseFor(null); setReverseReason(""); }}>Cancel</Button>
+                                </div>
+                              ) : <Button size="sm" variant="outline" className="mt-1" onClick={() => { setReverseFor(h.id); setReverseReason(""); }}>Reverse</Button>)}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    );
+                  })()}
                 </li>
               );
             })}
