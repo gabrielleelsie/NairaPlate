@@ -93,3 +93,21 @@ export function classifyLogin(httpStatus: number | null, body: unknown): LoginRe
 
 export const KEYS_ALERT_TYPE = "payment_keys";
 export const KEYS_ALERT_MESSAGE = "Monnify did not accept this shop's keys, so transfer orders cannot get an account number. Open Payments & transfers and connect again with current keys.";
+
+// What automatic transfers cost the shop. The owner pays Monnify's fee; NairaPlate adds no charge of its own.
+// The rate is Monnify's published rate as reported in a 2026 search. Monnify can change it, so the notice tells owners to check.
+export const MONNIFY_FEE_PERCENT = 1.5;
+export const MONNIFY_FEE_CAP_KOBO = 200_000;
+export const MONNIFY_VAT_PERCENT = 7.5;
+
+/** Monnify's fee on one transfer, in kobo, including VAT. Rounded to the nearest kobo. */
+export function monnifyFeeKobo(transferKobo: number): number {
+  if (!(transferKobo > 0)) return 0;
+  const fee = Math.min(Math.round((transferKobo * MONNIFY_FEE_PERCENT) / 100), MONNIFY_FEE_CAP_KOBO);
+  return Math.round((fee * (100 + MONNIFY_VAT_PERCENT) * 10) / 1000); // whole-number arithmetic, so a half kobo rounds up reliably
+}
+
+export const FEE_NOTICE_TITLE = "What automatic transfers cost";
+export const FEE_NOTICE =
+  "Monnify takes a fee from each transfer, and you pay it. Its published rate is 1.5% of each transfer (up to ₦2,000) plus 7.5% VAT on that fee, so a ₦3,000 plate costs you about ₦48. The customer pays the exact amount on the till, and Monnify pays you the amount minus its fee. NairaPlate adds no charge of its own. Check Monnify's pricing page for today's rate before you switch this on.";
+export const FEE_CONFIRM = "Switch to automatic transfers?\n\nStaff will no longer be able to type in a transfer amount. Transfers are taken only through the bank link.\n\nYou pay Monnify's fee on each transfer: 1.5% (up to ₦2,000) plus 7.5% VAT on the fee, about ₦48 on a ₦3,000 plate. NairaPlate adds no charge. Check Monnify's pricing page for today's rate.";

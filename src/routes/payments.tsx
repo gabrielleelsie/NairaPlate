@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
-import { PAYMENT_MODE_LABEL, type PaymentMode } from "@/lib/payments";
+import { FEE_CONFIRM, FEE_NOTICE, FEE_NOTICE_TITLE, PAYMENT_MODE_LABEL, type PaymentMode } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,7 +83,7 @@ function PaymentsScreen() {
   }
 
   async function changeMode(m: PaymentMode) {
-    if (m === "automatic" && !confirm("Switch to automatic transfers? Staff will no longer be able to type in a transfer amount. Transfers are then taken only through the bank link.")) return;
+    if (m === "automatic" && !confirm(FEE_CONFIRM)) return;
     if (m === "cash_only" && !confirm("Switch to cash and credit only? Transfers will be switched off at the till.")) return;
     setBusy(true); setMsg(null);
     const { error } = await supabase.rpc("set_payment_mode" as never, { p_mode: m } as never);
@@ -105,6 +105,11 @@ function PaymentsScreen() {
         </p>
       )}
       <p className="rounded-md bg-muted p-3 text-sm">New to this? Follow the <Link className="font-medium underline" to="/payments-guide">step-by-step Monnify setup guide</Link>. It takes about 20 minutes and you test with no real money first.</p>
+
+      <section className="space-y-1 rounded-lg border border-border bg-muted p-4" data-testid="fee-notice">
+        <h2 className="text-lg font-semibold">{FEE_NOTICE_TITLE}</h2>
+        <p className="text-sm">{FEE_NOTICE}</p>
+      </section>
 
       <section className="space-y-2 rounded-lg border border-border p-4">
         <h2 className="text-lg font-semibold">How transfers are taken at your till</h2>

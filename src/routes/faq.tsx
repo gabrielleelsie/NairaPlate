@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { usePublicSettings } from "@/lib/use-public-settings";
 
 import {
   C,
@@ -12,7 +13,7 @@ import {
 
 const TITLE = "Frequently asked questions | NairaPlate";
 const DESCRIPTION =
-  "Answers to common questions about NairaPlate: the 7-day free trial, market units, pricing your plates, staff PINs, security and how to get started.";
+  "Answers to common questions about NairaPlate: the 7-day free trial, market units, pricing your plates, stock, bank transfers, staff PINs, security and how to get started.";
 
 type Faq = { q: string; a: string };
 type Group = { id: string; title: string; items: Faq[] };
@@ -47,19 +48,19 @@ const GROUPS: Group[] = [
     items: [
       {
         q: "Which market units does it understand?",
-        a: "Eighteen: derica, paint rubber, mudu, tuber, bag, carton, bottle, bunch, market cup, congo, tia, milk cup, cigarette cup, basin, heap, sachet, bowl and jerry can. Recipes can also use kilograms, grams, litres, millilitres, spoons and cups.",
+        a: "Twenty-two: derica, paint rubber, mudu, tuber, bag, carton, bottle, bunch, market cup, congo, tia, milk cup, cigarette cup, basin, heap, sachet, bowl, jerry can, teaspoon, tablespoon, cooking spoon and measuring cup. For each ingredient you tell NairaPlate how much of its base unit (such as kilograms or litres) one of your market units holds. Recipes can also use kilograms, grams, litres and millilitres.",
       },
       {
         q: "How does it work out the cost of a plate?",
-        a: "It converts each ingredient in your recipe into the unit you paid for, multiplies by your latest price, adds it all up, and divides by the number of plates the recipe makes. For example, 2 derica of garri and 500 g of egusi for 10 plates costs ₦418.91 a plate at the demo kitchen's prices.",
+        a: "It converts each ingredient in your recipe into the unit you paid for, multiplies by the price, adds it all up, and divides by the number of plates the recipe makes. You can cost a dish at your latest price or at a chosen grade (A, B or C). For example, 2 derica of garri at 1.2 kg each is 2.4 kg, and at ₦850 a kilogram that is ₦2,040. Add 500 g of egusi at ₦3,000 a kilogram, which is ₦1,500. The total is ₦3,540, and for 10 plates that is ₦354 a plate.",
       },
       {
         q: "How does it decide what price to charge?",
-        a: "You choose the margin you want. The suggested price is the cost per plate divided by one minus your margin. At a 35% margin, ₦418.91 becomes ₦644.48. Change your margin or your prices and the answer updates straight away.",
+        a: "You choose the margin you want. The suggested price is the cost per plate divided by one minus your margin. At a 35% margin, ₦354 becomes ₦544.62 (₦354 ÷ 0.65). Change your margin or your prices and the answer updates straight away.",
       },
       {
         q: "What happens when an ingredient price goes up?",
-        a: "Every purchase you log updates that ingredient's price. When an ingredient rises by more than 5%, NairaPlate flags every dish that uses it so you can decide whether to change the price.",
+        a: "Every purchase you log updates that ingredient's price. NairaPlate compares it with the last price you paid for the same grade, so buying a cheaper grade is not reported as a price rise. When the price rises by more than 5%, the owner gets an alert that names the grade and season. Today's cost check on the home screen then shows which dishes have fallen below their target margin.",
       },
       {
         q: "Do past sales change when prices change?",
@@ -69,6 +70,22 @@ const GROUPS: Group[] = [
         q: "Can I speak a purchase instead of typing it?",
         a: "Yes, on the purchases screen, in browsers that support voice input. Your browser turns your voice into text and NairaPlate fills in the form for you to check before saving.",
       },
+      {
+        q: "Does it keep track of my stock?",
+        a: "Yes. Each purchase adds stock and wastage takes it off. For a dish you cook to order, each plate sold takes its ingredients off, using the recipe as it was at the sale. A voided order puts them back. Every change is written down with its reason and who made it. You can count what is on the shelf at any time, and the app shows the difference in quantity and in naira. A count by anyone other than the owner waits for the owner to approve it.",
+      },
+      {
+        q: "How do I find waste or leakage?",
+        a: "Do a stock take. NairaPlate compares what you counted with what it expected, shows the difference in kilograms and naira, and asks for a reason. The leakage report adds up what is missing, how much of it is recorded wastage, and how much nobody has explained. It shows where the gaps are. It does not say who caused them.",
+      },
+      {
+        q: "Will it tell me before something runs out?",
+        a: "Yes. Set a reorder level on each ingredient. When stock falls to that level, or below zero, the owner and the purchaser are alerted. There is one alert for each ingredient until it is marked as seen, and it clears itself when stock is back above the level.",
+      },
+      {
+        q: "What are grade and season on a purchase?",
+        a: "Every purchase is marked grade A, B or C, and with a season: Plenty, Normal or Scarce. Prices are kept for each grade, and you can see how prices move through the year. After enough purchases of the same ingredient, the app can suggest a season from your own history. You always choose.",
+      },
     ],
   },
   {
@@ -77,7 +94,7 @@ const GROUPS: Group[] = [
     items: [
       {
         q: "What else does it track besides food cost?",
-        a: "Purchases, recipes, batches cooked, wastage, sales at the till, cash drawer counts, delivery-app payouts, customers who owe you, catering deposits, and what you owe your suppliers. The owner sees profit and loss and a 7-day cashflow view.",
+        a: "Purchases, recipes, batches cooked, wastage, ingredient stock and stock counts, sales at the till, cash drawer counts, delivery-app payouts, customers who owe you, catering deposits, and what you owe your suppliers. The owner sees profit and loss, a 7-day cashflow view and alerts for low stock and unusual payments.",
       },
       {
         q: "How do my staff sign in?",
@@ -113,7 +130,7 @@ const GROUPS: Group[] = [
     items: [
       {
         q: "How does the free trial work?",
-        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day with every feature switched on. We also help you set up your 2 recipes and your market-unit conversions so you do not start from a blank screen.",
+        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day with every feature switched on. You can set up your 2 recipes and your market-unit conversions yourself, with our step-by-step setup guide, and we can help if you ask.",
       },
       {
         q: "Is there a limit during the trial?",
@@ -121,15 +138,31 @@ const GROUPS: Group[] = [
       },
       {
         q: "Why do you approve accounts first?",
-        a: "So a real person can look at every new business, set it up properly and make sure it gets a good start. Your account stays waiting until we approve it.",
+        a: "So a real person can look at every new business and make sure it gets a good start. Your account stays waiting until we approve it.",
       },
       {
         q: "What happens after the 7 days?",
         a: "To carry on, choose a Monthly, Quarterly or Yearly plan. When a trial or plan ends, access pauses until we confirm your payment and switch your account back on. Nothing is charged automatically, and your records are kept safe in the meantime.",
       },
       {
+        q: "Can the till check that a bank transfer really arrived?",
+        a: "Yes, if the owner connects Monnify, which is Moniepoint's payment service for businesses. The cashier chooses Transfer (automatic), and the till shows a one-time account number and the exact amount. When the customer pays, the order turns Paid by itself. Nobody, including the owner, can mark a transfer order paid by hand. You need a Monnify account, and Monnify must approve your business before real payments work.",
+      },
+      {
+        q: "What does automatic transfer cost?",
+        a: "NairaPlate adds no charge for it. Monnify takes a fee from each transfer, and the business owner pays it. Monnify's published rate is 1.5% of each transfer (up to ₦2,000) plus 7.5% VAT on that fee, which is about ₦48 on a ₦3,000 plate. Check Monnify's pricing page for today's rate before you switch it on.",
+      },
+      {
+        q: "Does NairaPlate work with my POS terminal or another POS app?",
+        a: "NairaPlate has its own till. It does not connect to other POS terminals or apps, so card or transfer payments taken on another device are not read by NairaPlate. Automatic confirmation of bank transfers works through Monnify.",
+      },
+      {
+        q: "Is there a setup fee?",
+        a: "Setup is free if you do it yourself. The setup guide takes you through it step by step. If you would like help, guided setup is optional and paid. Message us on WhatsApp.",
+      },
+      {
         q: "How much does it cost?",
-        a: "Message us on WhatsApp for current prices. We will tell you what each plan costs and how to pay.",
+        a: "{prices} Every plan has every feature. Message us on WhatsApp to pay, and we will give you the payment details. Setup is free if you do it yourself.",
       },
       {
         q: "How do I pay?",
@@ -149,13 +182,22 @@ const GROUPS: Group[] = [
   },
 ];
 
+const PRICES_FALLBACK = "Message us on WhatsApp for current prices.";
+const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+/** The visible answer shows the prices an admin has set, so it never goes stale. The structured data uses the generic line. */
+function pricesText(p: { monthly_kobo: number | null; quarterly_kobo: number | null; yearly_kobo: number | null }): string {
+  const parts = [["Monthly", p.monthly_kobo], ["Quarterly", p.quarterly_kobo], ["Yearly", p.yearly_kobo]]
+    .filter((x): x is [string, number] => typeof x[1] === "number").map(([n, v]) => `${n} ${naira(v)}`);
+  return parts.length === 0 ? PRICES_FALLBACK : `${parts.join(", ")}.`;
+}
+
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: GROUPS.flatMap((g) => g.items).map((i) => ({
     "@type": "Question",
     name: i.q,
-    acceptedAnswer: { "@type": "Answer", text: i.a },
+    acceptedAnswer: { "@type": "Answer", text: i.a.replace("{prices}", PRICES_FALLBACK) },
   })),
 });
 
@@ -175,6 +217,7 @@ export const Route = createFileRoute("/faq")({
 });
 
 function FaqPage() {
+  const { prices } = usePublicSettings();
   return (
     <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
@@ -192,7 +235,7 @@ function FaqPage() {
               Questions kitchen owners ask us.
             </h1>
             <p className="np-sub" style={{ color: C.onNavy, lineHeight: 1.6, margin: "20px 0 0", maxWidth: 640 }}>
-              Straight answers about costing, staff, security, the free trial and paying. Can&apos;t find yours? Message us on WhatsApp.
+              Straight answers about costing, stock, bank transfers, staff, security, the free trial and paying. Can&apos;t find yours? Message us on WhatsApp.
             </p>
           </div>
         </section>
@@ -254,7 +297,7 @@ function FaqPage() {
                           +
                         </span>
                       </summary>
-                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{item.a}</p>
+                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{item.a.replace("{prices}", pricesText(prices))}</p>
                     </details>
                   ))}
                 </div>
