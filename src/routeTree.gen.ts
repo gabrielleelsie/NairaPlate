@@ -45,6 +45,7 @@ import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
 import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
 import { Route as ApiPublicBusinessSignupRouteImport } from './routes/api/public/business-signup'
 import { Route as ApiPublicCashDrawerCloseRouteImport } from './routes/api/public/cash-drawer-close'
+import { Route as ApiPublicCashDrawerForceCloseRouteImport } from './routes/api/public/cash-drawer-force-close'
 import { Route as ApiPublicCateringRemindersRouteImport } from './routes/api/public/catering-reminders'
 import { Route as ApiPublicContactRouteImport } from './routes/api/public/contact'
 import { Route as ApiPublicDailySummaryRouteImport } from './routes/api/public/daily-summary'
@@ -240,6 +241,12 @@ const ApiPublicCashDrawerCloseRoute =
     path: '/api/public/cash-drawer-close',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCashDrawerForceCloseRoute =
+  ApiPublicCashDrawerForceCloseRouteImport.update({
+    id: '/api/public/cash-drawer-force-close',
+    path: '/api/public/cash-drawer-force-close',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCateringRemindersRoute =
   ApiPublicCateringRemindersRouteImport.update({
     id: '/api/public/catering-reminders',
@@ -346,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/cash-drawer-force-close': typeof ApiPublicCashDrawerForceCloseRoute
   '/api/public/catering-reminders': typeof ApiPublicCateringRemindersRoute
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
@@ -397,6 +405,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/cash-drawer-force-close': typeof ApiPublicCashDrawerForceCloseRoute
   '/api/public/catering-reminders': typeof ApiPublicCateringRemindersRoute
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
@@ -449,6 +458,7 @@ export interface FileRoutesById {
   '/suppliers/': typeof SuppliersIndexRoute
   '/api/public/business-signup': typeof ApiPublicBusinessSignupRoute
   '/api/public/cash-drawer-close': typeof ApiPublicCashDrawerCloseRoute
+  '/api/public/cash-drawer-force-close': typeof ApiPublicCashDrawerForceCloseRoute
   '/api/public/catering-reminders': typeof ApiPublicCateringRemindersRoute
   '/api/public/contact': typeof ApiPublicContactRoute
   '/api/public/daily-summary': typeof ApiPublicDailySummaryRoute
@@ -502,6 +512,7 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/cash-drawer-force-close'
     | '/api/public/catering-reminders'
     | '/api/public/contact'
     | '/api/public/daily-summary'
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/cash-drawer-force-close'
     | '/api/public/catering-reminders'
     | '/api/public/contact'
     | '/api/public/daily-summary'
@@ -604,6 +616,7 @@ export interface FileRouteTypes {
     | '/suppliers/'
     | '/api/public/business-signup'
     | '/api/public/cash-drawer-close'
+    | '/api/public/cash-drawer-force-close'
     | '/api/public/catering-reminders'
     | '/api/public/contact'
     | '/api/public/daily-summary'
@@ -656,6 +669,7 @@ export interface RootRouteChildren {
   SuppliersIndexRoute: typeof SuppliersIndexRoute
   ApiPublicBusinessSignupRoute: typeof ApiPublicBusinessSignupRoute
   ApiPublicCashDrawerCloseRoute: typeof ApiPublicCashDrawerCloseRoute
+  ApiPublicCashDrawerForceCloseRoute: typeof ApiPublicCashDrawerForceCloseRoute
   ApiPublicCateringRemindersRoute: typeof ApiPublicCateringRemindersRoute
   ApiPublicContactRoute: typeof ApiPublicContactRoute
   ApiPublicDailySummaryRoute: typeof ApiPublicDailySummaryRoute
@@ -925,6 +939,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCashDrawerCloseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cash-drawer-force-close': {
+      id: '/api/public/cash-drawer-force-close'
+      path: '/api/public/cash-drawer-force-close'
+      fullPath: '/api/public/cash-drawer-force-close'
+      preLoaderRoute: typeof ApiPublicCashDrawerForceCloseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/catering-reminders': {
       id: '/api/public/catering-reminders'
       path: '/api/public/catering-reminders'
@@ -1056,6 +1077,7 @@ const rootRouteChildren: RootRouteChildren = {
   SuppliersIndexRoute: SuppliersIndexRoute,
   ApiPublicBusinessSignupRoute: ApiPublicBusinessSignupRoute,
   ApiPublicCashDrawerCloseRoute: ApiPublicCashDrawerCloseRoute,
+  ApiPublicCashDrawerForceCloseRoute: ApiPublicCashDrawerForceCloseRoute,
   ApiPublicCateringRemindersRoute: ApiPublicCateringRemindersRoute,
   ApiPublicContactRoute: ApiPublicContactRoute,
   ApiPublicDailySummaryRoute: ApiPublicDailySummaryRoute,
