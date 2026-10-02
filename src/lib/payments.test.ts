@@ -84,7 +84,7 @@ describe("classifyLogin", () => {
 describe("monnifyFeeKobo", () => {
   it("is 1.5% plus 7.5% VAT on the fee", () => {
     expect(monnifyFeeKobo(300_000)).toBe(4838);       // ₦3,000: ₦45.00 × 1.075 = ₦48.375 -> ₦48.38
-    expect(monnifyFeeKobo(50_000_000)).toBe(806_250); // ₦500,000: ₦7,500 × 1.075 = ₦8,062.50
+    expect(monnifyFeeKobo(500_000)).toBe(8063);       // ₦5,000: ₦75.00 × 1.075 = ₦80.625 -> ₦80.63 (100 of these in a month is about ₦8,063)
   });
   it("stops at the ₦2,000 cap before VAT", () => {
     expect(monnifyFeeKobo(100_000_000)).toBe(215_000); // a ₦1,000,000 transfer: ₦2,000 × 1.075 = ₦2,150
