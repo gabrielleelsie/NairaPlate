@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { planPriceInput, type Prices } from "@/lib/platform-settings";
 import { accessState, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
@@ -546,6 +547,8 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
   const today = lagosDateKey(new Date());
   const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [amount, setAmount] = useState("");
+  const [typed, setTyped] = useState(false); // once the admin types an amount, the plan price no longer overwrites it
+  const [prices, setPrices] = useState<Prices | null>(null);
   const [ref, setRef] = useState("");
   const [paidOn, setPaidOn] = useState(today);
   const [preview, setPreview] = useState<string | null>(null);
@@ -553,6 +556,15 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
   const kobo = Math.round(Number(amount.replace(/[^\d.]/g, "")) * 100);
   const valid = kobo > 0 && ref.trim().length >= 2 && !!paidOn && paidOn <= today;
   const payload = { action: "record_payment", business_id: businessId, plan, amount_kobo: kobo, payment_reference: ref.trim(), paid_on: paidOn };
+
+  useEffect(() => {
+    let live = true;
+    callApi({ action: "get_settings" }).then(({ status, data }) => {
+      if (live && status === 200) setPrices(((data["settings"] ?? {}) as { prices?: Prices }).prices ?? null);
+    });
+    return () => { live = false; };
+  }, []);
+  useEffect(() => { if (!typed) setAmount(planPriceInput(prices, plan)); }, [plan, prices, typed]);
 
   useEffect(() => {
     setPreview(null); setPerr(null);
@@ -579,7 +591,8 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
         </div>
         <div className="space-y-1">
           <Label htmlFor="rp-amt">Amount paid (₦)</Label>
-          <Input id="rp-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 15000" />
+          <Input id="rp-amt" inputMode="decimal" value={amount} onChange={(e) => { setTyped(true); setAmount(e.target.value); }} placeholder="e.g. 15000" />
+          {planPriceInput(prices, plan) && <p className="text-xs text-muted-foreground">Filled in from the {plan} plan price. You can change it.</p>}
         </div>
         <div className="space-y-1">
           <Label htmlFor="rp-ref">Payment reference</Label>
@@ -595,7 +608,7 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
       {suspended && <p className="text-sm text-amber-900">This business is suspended. Recording a payment does not reactivate it.</p>}
       <Button disabled={busy || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {
         const d = await act(payload, (r) => `Payment saved for ${businessName}. Access now runs until ${formatLagosDate(String(r["period_end"]))}.${r["still_suspended"] ? " The business is still suspended." : ""}`);
-        if (d) { setAmount(""); setRef(""); }
+        if (d) { setTyped(false); setAmount(planPriceInput(prices, plan)); setRef(""); }
       }}>Save payment</Button>
     </section>
   );
