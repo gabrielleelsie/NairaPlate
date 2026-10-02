@@ -158,11 +158,11 @@ const GROUPS: Group[] = [
       },
       {
         q: "Is there a setup fee?",
-        a: "No. You can set everything up yourself, at no cost, with the setup guide. If you would like help, we offer guided setup as an optional paid service. Message us on WhatsApp.",
+        a: "Setup is free if you do it yourself. The setup guide takes you through it step by step. If you would like help, guided setup is optional and paid. Message us on WhatsApp.",
       },
       {
         q: "How much does it cost?",
-        a: "{prices} Every plan has every feature. Message us on WhatsApp to pay, and we will give you the payment details. There is no setup fee.",
+        a: "{prices} Every plan has every feature. Message us on WhatsApp to pay, and we will give you the payment details. Setup is free if you do it yourself.",
       },
       {
         q: "How do I pay?",
