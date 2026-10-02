@@ -5,7 +5,7 @@
 //
 // Two tiers of action:
 //   Tier 1 — a valid platform admin session is enough:
-//     list_businesses, business_detail, set_status (approved | rejected | reactivate), unlock_staff
+//     list_businesses, business_detail, set_status (approved | rejected | reactivate), unlock_staff, set_feature (catering on or off)
 //   Tier 2 — the admin must also re-enter their OWN current PIN (step-up auth), because a
 //     stolen session token alone must never be able to take over or shut down a business:
 //     suspend_business, emergency_reset_owner_pin (also limited to once per business per 24h)
@@ -39,6 +39,7 @@ const ActionSchema = z.discriminatedUnion("action", [
     reason: z.string().trim().max(300).optional(),
   }),
   z.object({ action: z.literal("unlock_staff"), business_id: z.string().trim().min(1).max(100), staff_id: z.string().uuid() }),
+  z.object({ action: z.literal("set_feature"), business_id: z.string().trim().min(1).max(100), feature: z.literal("catering"), enabled: z.boolean() }),
   z.object({ action: z.literal("platform_health") }),
   z.object({
     action: z.literal("record_payment"),
@@ -316,8 +317,12 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             : { data: [] as { id: string; display_name: string }[] };
           const recName = new Map((recorders ?? []).map((r) => [r.id, r.display_name]));
 
+          const { data: featureRows } = await admin.from("business_features").select("feature, enabled").eq("business_id", body.business_id);
+          const features = { catering: (featureRows ?? []).some((f) => f.feature === "catering" && f.enabled === true) };
+
           const now = Date.now();
           return json({
+            features,
             business: { ...biz, reason: biz.rejection_reason,
               has_access: biz.status === "approved" && !!biz.access_ends_at && new Date(biz.access_ends_at).getTime() > now },
             payments: (pays ?? []).map((p) => ({ ...p, recorded_by_name: recName.get(p.recorded_by) ?? "Platform admin" })),
@@ -466,6 +471,22 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             details: `${adminName} marked the message from ${m.name} as handled`,
           });
           return json({ ok: true });
+        }
+
+        // ---------- set_feature: switch catering on or off for one business (tier 1: it only shows or hides screens) ----------
+        if (body.action === "set_feature") {
+          const { data: biz } = await admin.from("businesses").select("id, name").eq("id", body.business_id).maybeSingle();
+          if (!biz) return json({ error: "Business not found." }, 404);
+          const { error } = await admin.from("business_features").upsert(
+            { business_id: body.business_id, feature: body.feature, enabled: body.enabled, updated_at: new Date().toISOString(), updated_by_name: adminName },
+            { onConflict: "business_id,feature" });
+          if (error) return json({ error: "Could not change that setting." }, 500);
+          await writeAudit(admin, {
+            business_id: body.business_id, actor_id: adminId, actor_role: "platform_admin",
+            action: "feature_switched", entity_type: "business_features", entity_id: null,
+            details: `${adminName} switched catering orders ${body.enabled ? "on" : "off"} for ${biz.name}`,
+          });
+          return json({ ok: true, feature: body.feature, enabled: body.enabled });
         }
 
         // ---------- unlock_staff: clear a PIN lockout (tier 1, low risk) ----------

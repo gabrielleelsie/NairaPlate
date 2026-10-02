@@ -32,7 +32,7 @@ export async function calculateCashflowForecast(supabase: SupabaseClient, busine
     supabase.from("cash_drawers").select("id,business_id,opening_float_kobo,opened_at").eq("business_id", business_id).eq("status", "open"),
     supabase.from("customer_credits").select("amount_kobo").eq("business_id", business_id).eq("settled", false),
     supabase.from("catering_deposits").select("id,customer_name,event_date,deposit_kobo,additional_payments_kobo,total_contract_kobo")
-      .eq("business_id", business_id).eq("settled", false).gte("event_date", from).lte("event_date", to),
+      .eq("business_id", business_id).eq("settled", false).in("status", ["confirmed", "delivered"]).gte("event_date", from).lte("event_date", to),
     supabase.from("suppliers").select("id,name").eq("business_id", business_id),
     supabase.from("supplier_transactions").select("*").eq("business_id", business_id),
   ]);

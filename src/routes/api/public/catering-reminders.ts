@@ -47,17 +47,21 @@ export const Route = createFileRoute("/api/public/catering-reminders")({
         const { data: businesses, error: bErr } = await q;
         if (bErr) return json({ error: "Could not read businesses." }, 500);
 
+        const { data: featureRows } = await admin.from("business_features").select("business_id").eq("feature", "catering").eq("enabled", true);
+        const cateringOn = new Set((featureRows ?? []).map((r) => r.business_id as string));
+
         const { data: done } = await admin.from("catering_reminder_log").select("business_id").eq("kind", kind).eq("reminder_date", today);
         const already = new Set((done ?? []).map((r) => r.business_id as string));
 
         const outcomes: Outcome[] = [];
         for (const b of businesses ?? []) {
           const id = b.id as string, name = b.name as string;
+          if (!cateringOn.has(id)) continue; // catering is not switched on for this business: no email, and not listed
           if (already.has(id)) { outcomes.push({ business_id: id, result: "already_sent" }); continue; }
 
           const { data: rows } = await admin.from("catering_deposits")
             .select("event_time, customer_name, phone, items_summary, total_contract_kobo, deposit_kobo, additional_payments_kobo, settled")
-            .eq("business_id", id).eq("event_date", eventDate);
+            .eq("business_id", id).eq("event_date", eventDate).eq("status", "confirmed");
           const orders: ReminderOrder[] = (rows ?? []).map((r) => ({
             event_time: (r.event_time as string | null) ?? null, customer_name: String(r.customer_name ?? ""), phone: (r.phone as string | null) ?? null,
             items_summary: (r.items_summary as string | null) ?? null, total_contract_kobo: Number(r.total_contract_kobo ?? 0),

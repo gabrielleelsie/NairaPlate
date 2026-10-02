@@ -20,6 +20,7 @@ const SignupSchema = z.object({
   owner_name: z.string().trim().min(1, "Your name is required").max(80),
   pin: z.string().regex(/^\d{4,8}$/, "PIN must be 4–8 digits"),
   contact: z.string().trim().min(5, "Phone or email is required").max(120),
+  caters: z.boolean().optional(),
 });
 
 function json(body: unknown, status = 200) {
@@ -71,6 +72,14 @@ export const Route = createFileRoute("/api/public/business-signup")({
         if (error) {
           if (error.code === "23505") return json({ error: "That business code is taken." }, 409);
           return json({ error: "Could not register the business." }, 500);
+        }
+
+        // The sign-up question "Do you cater for events?" switches catering on. A failure here never blocks the signup: support can switch it on later.
+        if (d.caters) {
+          const { error: fErr } = await admin.from("business_features").upsert(
+            { business_id: d.business_id, feature: "catering", enabled: true, updated_at: new Date().toISOString(), updated_by_name: "Sign-up question" },
+            { onConflict: "business_id,feature" });
+          if (fErr) console.error("could not switch catering on at sign-up", fErr.message);
         }
 
         // Tell the platform admins a kitchen is waiting. Never blocks the signup.
