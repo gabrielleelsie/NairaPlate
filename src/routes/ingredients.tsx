@@ -2,6 +2,7 @@ import { SEASONS, seasonLabel } from "@/lib/season";
 import { GRADES, gradeLabel } from "@/lib/grade";
 import { gradeSeasonProblem, needsGradeAndSeason } from "@/lib/ingredient-price";
 import { reasonLabel as stockReasonLabel } from "@/lib/stock";
+import { describePurchases, normalisePurchases, type PurchaseView } from "@/lib/purchases";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -41,7 +42,7 @@ function formatPriceDate(iso: string | null): string | null {
   return d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 type Conversion = { id: string; ingredient_id: string; market_unit: string; base_qty: number };
-type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string; grade: string | null; season: string | null };
+type Purchase = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; payment_method: string | null; recorded_at: string; grade: string | null; season: string | null; kind?: "purchase" | "reversal"; reverses_id?: string | null; reason?: string | null };
 
 const EDIT_ROLES = new Set(["owner", "supa_admin", "purchaser"]);
 
@@ -377,7 +378,7 @@ function StockTrailPanel({ ingredient }: { ingredient: Ingredient }) {
 }
 
 function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
-  const [rows, setRows] = useState<Purchase[] | null>(null);
+  const [rows, setRows] = useState<PurchaseView[] | null>(null);
   const [err, setErr] = useState(false);
   const [gf, setGf] = useState<string>("all");
   const [sf, setSf] = useState<string>("all");
@@ -386,14 +387,14 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
     let cancelled = false;
     supabase
       .from("purchases")
-      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at,grade,season")
+      .select("id,ingredient_id,qty,market_unit,total_kobo,payment_method,recorded_at,grade,season,kind,reverses_id,reason")
       .eq("ingredient_id", ingredient.id)
       .order("recorded_at", { ascending: false })
       .limit(50)
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) setErr(true);
-        else setRows((data ?? []) as Purchase[]);
+        else setRows(describePurchases(normalisePurchases(data as unknown[])));
       });
     return () => { cancelled = true; };
   }, [ingredient.id]);
@@ -430,13 +431,14 @@ function PriceHistoryPanel({ ingredient }: { ingredient: Ingredient }) {
       {rows !== null && rows.length > 0 && (
         <ul className="mt-2 space-y-1 text-sm">
           {rows.filter((p) => (gf === "all" || p.grade === gf) && (sf === "all" || p.season === sf)).map((p) => {
-            const qty = Number(p.qty);
-            const unitPrice = qty > 0 ? Math.round(Number(p.total_kobo) / qty) : null;
+            const qty = Math.abs(Number(p.qty));
+            const unitPrice = !p.isReversal && qty > 0 ? Math.round(Number(p.total_kobo) / qty) : null;
             return (
               <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-foreground">
-                  {qty} {marketUnitLabel(p.market_unit)} for {formatNaira(Number(p.total_kobo))}
+                <span className={p.reversed ? "text-muted-foreground line-through" : "text-foreground"}>
+                  {p.isReversal ? "Reversed: " : ""}{qty} {marketUnitLabel(p.market_unit)} for {formatNaira(Math.abs(Number(p.total_kobo)))}
                   {unitPrice !== null && <> · {formatNaira(unitPrice)} per {marketUnitLabel(p.market_unit)}</>}
+                  {p.isReversal && p.reason ? <span className="no-underline"> · {p.reason}</span> : null}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatPriceDate(p.recorded_at)}

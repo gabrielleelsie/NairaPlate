@@ -10,7 +10,7 @@ export const STOCK_MODE_HELP: Record<StockMode, string> = {
 };
 
 export const REASON_LABEL: Record<string, string> = {
-  purchase: "Bought", batch_use: "Used in a batch", sale_use: "Used in a sale", sale_void: "Sale voided, put back",
+  purchase: "Bought", purchase_reversed: "Purchase reversed", batch_use: "Used in a batch", sale_use: "Used in a sale", sale_void: "Sale voided, put back",
   wastage: "Wastage", wastage_removed: "Wastage entry removed", count_correction: "Stock-take correction",
   opening_count: "Opening count", opening_balance: "Starting figure", unlabelled: "Changed by hand",
 };

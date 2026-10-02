@@ -76,8 +76,8 @@ function SupplierDetail() {
         {lines.length === 0 && <li className="text-muted-foreground">No credit purchases or payments yet.</li>}
         {lines.map((t) => {
           const reversed = undone.get(t.id);
-          const label = t.type === "payment" ? "Payment made" : t.type === "reversal" ? "Payment reversed" : "Bought on credit";
-          const sign = t.type === "payment" ? "−" : "+";
+          const label = t.type === "payment" ? "Payment made" : t.type === "reversal" ? "Payment reversed" : t.type === "purchase_reversal" ? "Purchase reversed" : "Bought on credit";
+          const sign = t.type === "payment" || t.type === "purchase_reversal" ? "−" : "+";
           return (
             <li key={t.id} className="rounded-md border p-3 space-y-1">
               <div className="flex justify-between">
@@ -94,7 +94,7 @@ function SupplierDetail() {
                 </div>
               </div>
               {reversed && <div className="text-xs font-semibold text-destructive">Reversed: {reversed.reason}</div>}
-              {t.type === "reversal" && t.reason && <div className="text-xs text-muted-foreground">Reason: {t.reason}</div>}
+              {(t.type === "reversal" || t.type === "purchase_reversal") && t.reason && <div className="text-xs text-muted-foreground">Reason: {t.reason}</div>}
               {canReverse(t, role, undone) && (reverseFor === t.id ? (
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Input aria-label="Reason for reversing" className="flex-1" placeholder="Why is this being reversed? (5 or more characters)" value={reason} onChange={(e) => setReason(e.target.value)} />

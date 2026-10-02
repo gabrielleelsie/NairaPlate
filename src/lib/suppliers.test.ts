@@ -75,3 +75,17 @@ describe("balanceWords", () => {
     expect(balanceWords(0, f)).toBe("You owe them nothing");
   });
 });
+
+describe("reversed credit purchases", () => {
+  const t = (o: Partial<SupplierTxn>): SupplierTxn => ({ id: "x", supplier_id: "s1", type: "purchase_on_credit", amount_kobo: 0, purchase_id: null, note: null, created_at: "2026-10-01T10:00:00Z", ...o });
+  it("takes a reversed credit purchase off what is owed", () => {
+    const rows = [t({ id: "a", amount_kobo: 100000 }), t({ id: "b", type: "purchase_reversal", amount_kobo: 100000, reverses_id: "a", reason: "wrong invoice", created_at: "2026-10-01T11:00:00Z" })];
+    expect(supplierBalance(rows, "s1")).toBe(0);
+    expect(reversalOf(rows).get("a")?.id).toBe("b");
+  });
+  it("leaves the supplier owing you after a part payment and a reversal", () => {
+    const rows = [t({ id: "a", amount_kobo: 100000 }), t({ id: "p", type: "payment", amount_kobo: 80000, created_at: "2026-10-01T10:30:00Z" }),
+      t({ id: "b", type: "purchase_reversal", amount_kobo: 100000, reverses_id: "a", created_at: "2026-10-01T11:00:00Z" })];
+    expect(supplierBalance(rows, "s1")).toBe(-80000);
+  });
+});

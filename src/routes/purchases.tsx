@@ -13,6 +13,9 @@ import { SEASONS, extractSeason, isSeason, seasonHint, seasonLabel, type Season 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isOwnerRole } from "@/lib/catering-order";
+import { PURCHASE_COLUMNS, describePurchases, livePurchases, normalisePurchases, reasonOk, reversalPreview, reverseBlocked, type IngredientNow, type PurchaseRow } from "@/lib/purchases";
+import { TXN_COLUMNS, normaliseTxns, supplierBalance } from "@/lib/suppliers";
 
 export const Route = createFileRoute("/purchases")({
   ssr: false,
@@ -31,7 +34,7 @@ export const Route = createFileRoute("/purchases")({
 
 const ROLES = new Set(["purchaser", "owner", "supa_admin"]);
 const PAY = ["cash", "transfer", "credit"] as const;
-type Hist = { id: string; ingredient_id: string; qty: number; market_unit: string; total_kobo: number; recorded_at: string; raw_transcript: string | null; grade: string | null; season: string | null };
+type Hist = PurchaseRow;
 type IngGrade = { id: string; current_grade: string | null; current_season: string | null };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,6 +45,10 @@ function PurchaseScreen() {
   const [ingredients, setIngredients] = useState<CostIngredient[]>([]);
   const [conversions, setConversions] = useState<CostConversion[]>([]);
   const [history, setHistory] = useState<Hist[]>([]);
+  const [ingNow, setIngNow] = useState<Map<string, IngredientNow>>(new Map());
+  const [reverseFor, setReverseFor] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+  const [revBalance, setRevBalance] = useState<number | null>(null);
   const [ingId, setIngId] = useState("");
   const [qty, setQty] = useState("");
   const [unit, setUnit] = useState("");
@@ -64,16 +71,17 @@ function PurchaseScreen() {
 
   async function load() {
     const [i, c, h, s] = await Promise.all([
-      supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo,current_grade,current_season").order("name"),
+      supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo,current_grade,current_season,price_updated_at,stock_base_qty").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
-      supabase.from("purchases").select("id,ingredient_id,qty,market_unit,total_kobo,recorded_at,raw_transcript,grade,season").order("recorded_at", { ascending: false }).limit(30),
+      supabase.from("purchases").select(PURCHASE_COLUMNS).order("recorded_at", { ascending: false }).limit(30),
       supabase.from("suppliers").select("id,name").order("name"),
     ]);
     setLastSeasons(new Map(((i.data ?? []) as IngGrade[]).map((x) => [x.id, x.current_season])));
     setLastGrades(new Map(((i.data ?? []) as IngGrade[]).map((x) => [x.id, x.current_grade])));
-    setIngredients((i.data ?? []).map(({ current_grade: _g, current_season: _s, ...x }) => ({ ...x, current_cost_kobo: Number(x.current_cost_kobo) })));
+    setIngNow(new Map((i.data ?? []).map((x) => [x.id, { price_updated_at: (x.price_updated_at as string | null) ?? null, stock_base_qty: Number(x.stock_base_qty ?? 0), base_unit: x.base_unit as string, name: x.name as string }])));
+    setIngredients((i.data ?? []).map(({ current_grade: _g, current_season: _s, price_updated_at: _p, stock_base_qty: _q, ...x }) => ({ ...x, current_cost_kobo: Number(x.current_cost_kobo) })));
     setConversions((c.data ?? []).map((x) => ({ ...x, base_qty: Number(x.base_qty) })));
-    setHistory((h.data ?? []) as Hist[]);
+    setHistory(normalisePurchases(h.data as unknown[]));
     setSuppliers((s.data ?? []) as { id: string; name: string }[]);
   }
   useEffect(() => { load(); setMicOk(!!getSR()); }, []);
@@ -83,10 +91,11 @@ function PurchaseScreen() {
     if (!ingId) { setPastPrices([]); return; }
     let cancelled = false;
     const since = new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString();
-    supabase.from("purchases").select("qty,market_unit,total_kobo,grade").eq("ingredient_id", ingId).gte("recorded_at", since)
+    supabase.from("purchases").select("id,qty,market_unit,total_kobo,grade,recorded_at,payment_method,ingredient_id,season,kind,reverses_id").eq("ingredient_id", ingId).gte("recorded_at", since)
       .then(({ data }) => {
         if (cancelled) return;
-        setPastPrices((data ?? []).filter((x) => Number(x.qty) > 0).map((x) => ({ grade: x.grade as string | null, market_unit: x.market_unit as string, unit_price: Number(x.total_kobo) / Number(x.qty) })));
+        // Reversals, and purchases that were reversed, do not count towards a season hint.
+        setPastPrices(livePurchases(normalisePurchases(data as unknown[])).filter((x) => x.qty > 0).map((x) => ({ grade: x.grade, market_unit: x.market_unit, unit_price: x.total_kobo / x.qty })));
       });
     return () => { cancelled = true; };
   }, [ingId, history.length]);
@@ -156,6 +165,27 @@ function PurchaseScreen() {
     const r = data as { previous_cost_kobo: number; current_cost_kobo: number; flagged: boolean; pct: number | null; note: string | null; season: string; previous_grade: string | null };
     setMsg({ ok: true, text: `Saved ${qty} ${marketUnitLabel(unit)} of ${ing?.name}. New price ${formatNaira(r.current_cost_kobo)} per ${ing?.base_unit} (was ${formatNaira(r.previous_cost_kobo)}).${r.flagged ? ` Price up ${r.pct}% on the last grade ${grade} (${seasonLabel(season).toLowerCase()} season). Owner alerted.` : ""}${r.note === "first_of_grade" ? ` First time buying grade ${grade}${r.previous_grade ? ` (last was grade ${r.previous_grade})` : ""}, so no price alert.` : ""}` });
     setQty(""); setPaid(""); setTranscript(null); setUnsure(new Set());
+    load();
+  }
+
+  async function openReverse(h: PurchaseRow) {
+    setReverseFor(h.id); setReverseReason(""); setRevBalance(null); setMsg(null);
+    if (h.payment_method === "credit" && h.supplier_id) {
+      const { data } = await supabase.from("supplier_transactions").select(TXN_COLUMNS).eq("supplier_id", h.supplier_id);
+      setRevBalance(supplierBalance(normaliseTxns(data as unknown[]), h.supplier_id));
+    }
+  }
+
+  async function reversePurchase(h: PurchaseRow) {
+    if (!reasonOk(reverseReason) || busy) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc("reverse_purchase" as never, { p_purchase_id: h.id, p_reason: reverseReason.trim() } as never);
+    setBusy(false);
+    if (error) return setMsg({ ok: false, text: "Not reversed: " + error.message });
+    const r = data as { stock_after: number; below_zero: boolean; supplier_owes_you_kobo: number };
+    const name = ingNow.get(h.ingredient_id)?.name ?? "The ingredient";
+    setMsg({ ok: true, text: `The purchase was reversed. ${name} is back to its earlier price.${r.below_zero ? ` Stock is now below zero (${Number(r.stock_after)}). Check the stock count.` : ""}${Number(r.supplier_owes_you_kobo) > 0 ? ` This reversal leaves the supplier owing you ${formatNaira(Number(r.supplier_owes_you_kobo))}.` : ""}` });
+    setReverseFor(null); setReverseReason(""); setRevBalance(null);
     load();
   }
 
@@ -237,15 +267,45 @@ function PurchaseScreen() {
         <h2 className="font-semibold">Recent purchases</h2>
         {history.length === 0 && <p className="text-sm text-muted-foreground">None yet.</p>}
         <ul className="divide-y divide-border">
-          {history.map((h) => (
-            <li key={h.id} className="flex justify-between py-2 text-sm">
-              <span className="flex items-center gap-1">
-                {h.raw_transcript && <Mic aria-label="Voice entry" className="h-3 w-3 text-muted-foreground" />}
-                {names.get(h.ingredient_id) ?? "?"}{h.grade || h.season ? ` (${[h.grade, h.season ? seasonLabel(h.season).toLowerCase() : null].filter(Boolean).join(", ")})` : ""} · {Number(h.qty)} {marketUnitLabel(h.market_unit)}
-              </span>
-              <span className="text-right">{formatNaira(Number(h.total_kobo))}<br /><span className="text-xs text-muted-foreground">{new Date(h.recorded_at).toLocaleDateString("en-NG")}</span></span>
-            </li>
-          ))}
+          {describePurchases(history).map((h) => {
+            const ingr = ingNow.get(h.ingredient_id);
+            const blocked = isOwnerRole(session.role) && !h.isReversal && !h.reversed ? reverseBlocked(h, ingr, session.role) : null;
+            const canRev = isOwnerRole(session.role) && !h.isReversal && !h.reversed && blocked === null;
+            const pv = reverseFor === h.id && ingr ? reversalPreview(h, ingr, revBalance) : null;
+            return (
+              <li key={h.id} className="py-2 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className={"flex items-center gap-1" + (h.reversed ? " line-through text-muted-foreground" : "")}>
+                    {h.raw_transcript && <Mic aria-label="Voice entry" className="h-3 w-3 text-muted-foreground" />}
+                    {h.isReversal ? "Reversal: " : ""}{names.get(h.ingredient_id) ?? "?"}{h.grade || h.season ? ` (${[h.grade, h.season ? seasonLabel(h.season).toLowerCase() : null].filter(Boolean).join(", ")})` : ""} · {Math.abs(Number(h.qty))} {marketUnitLabel(h.market_unit)}
+                  </span>
+                  <span className={"text-right" + (h.reversed ? " line-through text-muted-foreground" : "")}>{h.isReversal ? "−" : ""}{formatNaira(Math.abs(Number(h.total_kobo)))}<br /><span className="text-xs text-muted-foreground">{new Date(h.recorded_at).toLocaleDateString("en-NG")}</span></span>
+                </div>
+                {h.reversed && <div className="text-xs font-semibold text-destructive">Reversed: {h.reversedByReason}</div>}
+                {h.isReversal && h.reason && <div className="text-xs text-muted-foreground">Reason: {h.reason}{h.recorded_by_name ? ` · ${h.recorded_by_name}` : ""}</div>}
+                {!h.isReversal && !h.reversed && blocked && isOwnerRole(session.role) && <div className="text-xs text-muted-foreground">{blocked}</div>}
+                {canRev && reverseFor !== h.id && <Button size="sm" variant="outline" onClick={() => openReverse(h)}>Reverse</Button>}
+                {canRev && reverseFor === h.id && (
+                  <div className="rounded-md bg-muted p-2 space-y-2">
+                    {pv && (
+                      <ul className="text-xs space-y-0.5">
+                        {pv.priceBackKobo != null && <li>{ingr?.name} goes back to {formatNaira(pv.priceBackKobo)} per {ingr?.base_unit}{pv.grade ? ` (grade ${pv.grade}${pv.season ? `, ${seasonLabel(pv.season).toLowerCase()}` : ""})` : ""}.</li>}
+                        <li>Stock goes down by {Number(h.base_qty)} {ingr?.base_unit}, to {pv.stockAfter} {ingr?.base_unit}.</li>
+                        {pv.belowZero && <li className="font-semibold text-destructive">Stock will go below zero. Check the stock count after this.</li>}
+                        {pv.supplierBalanceAfterKobo != null && <li>What you owe the supplier goes down by {formatNaira(Number(h.total_kobo))}.</li>}
+                        {pv.supplierOwesYouKobo > 0 && <li className="font-semibold text-destructive">This reversal leaves the supplier owing you {formatNaira(pv.supplierOwesYouKobo)}.</li>}
+                      </ul>
+                    )}
+                    <Input aria-label="Reason for reversing" placeholder="Why is this being reversed? (5 or more characters)" value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} />
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="destructive" disabled={busy || !reasonOk(reverseReason)} onClick={() => reversePurchase(h)}>Reverse this purchase</Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setReverseFor(null); setReverseReason(""); setRevBalance(null); }}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
     </main>

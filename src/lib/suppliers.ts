@@ -1,12 +1,12 @@
 // The ONE place supplier balances are worked out.
-// Balance owed = credit purchases + reversed payments - payments. A negative balance means the supplier owes you (an advance).
+// Balance owed = credit purchases + reversed payments - payments - reversed credit purchases. A negative balance means the supplier owes you (an advance).
 // Entries are never edited or deleted. A payment made by mistake is undone by a reversal entry (owner only, with a reason).
 import { isOwnerRole } from "@/lib/catering-order";
 
 export type SupplierTxn = {
   id: string;
   supplier_id: string;
-  type: "purchase_on_credit" | "payment" | "reversal";
+  type: "purchase_on_credit" | "payment" | "reversal" | "purchase_reversal";
   amount_kobo: number;
   purchase_id: string | null;
   note: string | null;
@@ -23,9 +23,9 @@ export const SUPPLIER_ROLES = new Set(["purchaser", "owner", "supa_admin"]);
 export const REVERSAL_REASON_MIN = 5;
 export const reasonOk = (s: string) => s.trim().length >= REVERSAL_REASON_MIN;
 
-/** What an entry does to the balance owed: a credit purchase adds, a payment takes off, a reversal puts a payment back. */
+/** What an entry does to the balance owed: a credit purchase adds, a payment takes off, a payment reversal puts it back, a reversed credit purchase takes it off. */
 export function signedAmount(t: SupplierTxn): number {
-  return t.type === "payment" ? -t.amount_kobo : t.amount_kobo;
+  return t.type === "payment" || t.type === "purchase_reversal" ? -t.amount_kobo : t.amount_kobo;
 }
 
 export function supplierBalance(txns: SupplierTxn[], supplierId: string): number {
@@ -50,7 +50,7 @@ export function normaliseTxns(rows: unknown[] | null): SupplierTxn[] {
 /** For each payment, whether a later reversal has undone it (and why). */
 export function reversalOf(txns: SupplierTxn[]): Map<string, SupplierTxn> {
   const m = new Map<string, SupplierTxn>();
-  for (const t of txns) if (t.type === "reversal" && t.reverses_id) m.set(t.reverses_id, t);
+  for (const t of txns) if ((t.type === "reversal" || t.type === "purchase_reversal") && t.reverses_id) m.set(t.reverses_id, t);
   return m;
 }
 
