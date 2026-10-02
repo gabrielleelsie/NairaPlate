@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira } from "@/lib/costing";
-import { SUPPLIER_ROLES, normaliseTxns, supplierBalance, type SupplierTxn } from "@/lib/suppliers";
+import { SUPPLIER_ROLES, normaliseTxns, supplierBalance, type SupplierTxn, TXN_COLUMNS } from "@/lib/suppliers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,7 @@ function SuppliersScreen() {
   async function load() {
     const [s, t] = await Promise.all([
       supabase.from("suppliers").select("id,name,phone,notes").order("name"),
-      supabase.from("supplier_transactions").select("id,supplier_id,type,amount_kobo,purchase_id,note,created_at"),
+      supabase.from("supplier_transactions").select(TXN_COLUMNS),
     ]);
     if (s.error) return setMsg({ ok: false, text: "Could not load: " + s.error.message });
     setSuppliers((s.data ?? []) as Supplier[]);
@@ -59,7 +59,8 @@ function SuppliersScreen() {
   if (!session || !SUPPLIER_ROLES.has(session.role))
     return <main className="p-6 space-y-2"><p>Purchasers and owners only.</p><Link className="underline" to="/app">Home</Link></main>;
 
-  const total = suppliers.reduce((s, x) => s + supplierBalance(txns, x.id), 0);
+  // What you owe suppliers: advances (a supplier who owes you) do not reduce it, the same as the 7-day cashflow.
+  const total = suppliers.reduce((s, x) => s + Math.max(0, supplierBalance(txns, x.id)), 0);
 
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
@@ -91,7 +92,7 @@ function SuppliersScreen() {
                   <div className="text-sm text-muted-foreground">{s.phone ?? "no phone"}</div>
                 </div>
                 <div className="text-right">
-                  <div className={bal > 0 ? "font-semibold text-destructive" : "font-semibold"}>{formatNaira(bal)}</div>
+                  <div className={bal > 0 ? "font-semibold text-destructive" : "font-semibold"}>{bal < 0 ? `They owe you ${formatNaira(-bal)}` : formatNaira(bal)}</div>
                   <div className="text-xs text-muted-foreground">{bal > 0 ? "you owe" : bal < 0 ? "overpaid" : "all clear"}</div>
                 </div>
               </Link>
