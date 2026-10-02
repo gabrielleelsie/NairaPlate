@@ -3,6 +3,7 @@ import { GRADES, gradeLabel } from "@/lib/grade";
 import { gradeSeasonProblem, needsGradeAndSeason } from "@/lib/ingredient-price";
 import { reasonLabel as stockReasonLabel } from "@/lib/stock";
 import { describePurchases, normalisePurchases, type PurchaseView } from "@/lib/purchases";
+import { UNIT_LOCK_MESSAGE, historyIds, saveErrorText, unitLocked } from "@/lib/ingredient-guard";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -50,6 +51,7 @@ function IngredientsScreen() {
   const { loading, session } = useStaffSession();
   const [items, setItems] = useState<Ingredient[]>([]);
   const [convs, setConvs] = useState<Conversion[]>([]);
+  const [withHistory, setWithHistory] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Ingredient | "new" | null>(null);
   const [unitsFor, setUnitsFor] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
@@ -57,10 +59,13 @@ function IngredientsScreen() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
-    const [a, b] = await Promise.all([
+    const [a, b, h] = await Promise.all([
       supabase.from("ingredients").select("id,name,category,base_unit,current_cost_kobo,previous_cost_kobo,min_threshold_qty,supplier,stock_base_qty,price_updated_at,current_grade,current_season").order("name"),
       supabase.from("unit_conversions").select("id,ingredient_id,market_unit,base_qty").order("market_unit"),
+      supabase.rpc("ingredient_ids_with_history" as never),
     ]);
+    // If this cannot be read, the unit stays editable on screen and the database still refuses the change.
+    setWithHistory(h.error ? new Set() : historyIds(h.data));
     if (a.error || b.error) return setMsg({ ok: false, text: "Could not load ingredients." });
     setItems((a.data ?? []) as Ingredient[]);
     setConvs((b.data ?? []) as Conversion[]);
@@ -94,6 +99,7 @@ function IngredientsScreen() {
         <IngredientForm
           businessId={session.businessId}
           initial={editing === "new" ? null : editing}
+          unitIsLocked={editing !== "new" && unitLocked(editing.id, withHistory)}
           onCancel={() => setEditing(null)}
           onSaved={(t) => { setEditing(null); setMsg({ ok: true, text: t }); load(); }}
           onError={(t) => setMsg({ ok: false, text: t })}
@@ -156,9 +162,9 @@ function IngredientsScreen() {
 }
 
 function IngredientForm({
-  businessId, initial, onCancel, onSaved, onError,
+  businessId, initial, unitIsLocked, onCancel, onSaved, onError,
 }: {
-  businessId: string; initial: Ingredient | null;
+  businessId: string; initial: Ingredient | null; unitIsLocked: boolean;
   onCancel: () => void; onSaved: (t: string) => void; onError: (t: string) => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
@@ -217,7 +223,7 @@ function IngredientForm({
     if (readErr || !live) { setBusy(false); return onError("Could not read the current price."); }
     const priceChanged = Number(live.current_cost_kobo) !== newCost;
     const { error } = await supabase.from("ingredients").update(fields).eq("id", initial.id);
-    if (error) { setBusy(false); return onError("Could not save ingredient."); }
+    if (error) { setBusy(false); return onError(saveErrorText(error.message, "Could not save ingredient.")); }
     if (priceChanged && newCost > 0) {
       const { error: priceErr } = await supabase.rpc("set_ingredient_price", { p_ingredient_id: initial.id, p_price_kobo: newCost, p_grade: grade, p_season: season });
       setBusy(false);
@@ -235,10 +241,11 @@ function IngredientForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label="Category" id="ing-cat"><Input id="ing-cat" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Grains, Protein…" /></Field>
         <Field label="Base unit" id="ing-unit">
-          <Select value={baseUnit} onValueChange={setBaseUnit}>
+          <Select value={baseUnit} onValueChange={setBaseUnit} disabled={unitIsLocked}>
             <SelectTrigger id="ing-unit" aria-label="Base unit"><SelectValue /></SelectTrigger>
             <SelectContent>{BASE_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
           </Select>
+          {unitIsLocked && <p className="text-xs text-muted-foreground" data-testid="unit-locked">{UNIT_LOCK_MESSAGE}</p>}
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
