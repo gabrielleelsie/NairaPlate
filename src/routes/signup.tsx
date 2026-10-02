@@ -34,6 +34,7 @@ function Signup() {
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [contact, setContact] = useState("");
+  const [caters, setCaters] = useState(false);
   const [codeState, setCodeState] = useState<CodeState>({ state: "idle" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +60,7 @@ function Signup() {
     e.preventDefault();
     if (!canSubmit) return;
     setBusy(true); setError(null);
-    const { data } = await call({ action: "signup", business_id: code.trim().toLowerCase(), name, owner_name: owner, pin, contact });
+    const { data } = await call({ action: "signup", business_id: code.trim().toLowerCase(), name, owner_name: owner, pin, contact, caters });
     setBusy(false);
     if (data.ok) setDone(true);
     else setError(data.error ?? "Could not register.");
@@ -104,6 +105,10 @@ function Signup() {
         {pin2 && pin !== pin2 && <p className="text-xs text-destructive">The two PINs don't match.</p>}
         <div className="space-y-1"><Label htmlFor="ct">Your phone or email</Label>
           <Input id="ct" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="0803 000 0000" /></div>
+        <label className="flex items-start gap-2 text-sm" htmlFor="cat">
+          <input id="cat" type="checkbox" className="mt-1" checked={caters} onChange={(e) => setCaters(e.target.checked)} />
+          <span><strong>Do you cater for events or take big orders?</strong> Tick this and we switch on catering orders (bookings, deposits and day-before reminders). You can leave it off.</span>
+        </label>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={!canSubmit}>{busy ? "Sending…" : "Register business"}</Button>
         <Link className="block text-center text-sm underline" to="/app">Already registered? Sign in</Link>

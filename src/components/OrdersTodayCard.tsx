@@ -19,7 +19,7 @@ export function OrdersTodayCard() {
     const now = new Date();
     const today = lagosDateKey(now), tomorrow = lagosDateKey(new Date(now.getTime() + 86_400_000));
     supabase.from("catering_deposits").select("id,customer_name,event_date,event_time,items_summary,total_contract_kobo,deposit_kobo,additional_payments_kobo,settled")
-      .in("event_date", [today, tomorrow]).order("event_date").order("event_time", { ascending: true, nullsFirst: false })
+      .eq("status", "confirmed").in("event_date", [today, tomorrow]).order("event_date").order("event_time", { ascending: true, nullsFirst: false })
       .then(({ data }) => {
         if (cancelled) return;
         setOrders((data ?? []).map((r) => ({
