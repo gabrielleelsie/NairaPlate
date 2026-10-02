@@ -1,6 +1,7 @@
 // The ONE place the 7-day cashflow forecast is worked out.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { expectedDrawerCash } from "@/lib/cash-drawer";
+import { balanceKobo } from "@/lib/credit";
 import { normaliseTxns, supplierBalance } from "@/lib/suppliers";
 
 export type CashflowForecast = {
@@ -30,7 +31,7 @@ export async function calculateCashflowForecast(supabase: SupabaseClient, busine
 
   const [drawers, credits, catering, suppliers, txns] = await Promise.all([
     supabase.from("cash_drawers").select("id,business_id,opening_float_kobo,opened_at").eq("business_id", business_id).eq("status", "open"),
-    supabase.from("customer_credits").select("amount_kobo").eq("business_id", business_id).eq("settled", false),
+    supabase.from("customer_credits").select("amount_kobo,paid_kobo,written_off_kobo").eq("business_id", business_id).eq("settled", false),
     supabase.from("catering_deposits").select("id,customer_name,event_date,deposit_kobo,additional_payments_kobo,total_contract_kobo")
       .eq("business_id", business_id).eq("settled", false).in("status", ["confirmed", "delivered"]).gte("event_date", from).lte("event_date", to),
     supabase.from("suppliers").select("id,name").eq("business_id", business_id),
@@ -47,7 +48,8 @@ export async function calculateCashflowForecast(supabase: SupabaseClient, busine
   const cash_on_hand_kobo = open_drawers.reduce((s, d) => s + d.expected_cash_kobo, 0);
 
   // (2) Owed to us — unsettled customer credit + catering balances with events in the window.
-  const customer_credit_kobo = (credits.data ?? []).reduce((s, c) => s + Number(c.amount_kobo), 0);
+  // What customers still owe: each debt minus what was paid or written off (single rule in credit.ts).
+  const customer_credit_kobo = (credits.data ?? []).reduce((s, c) => s + balanceKobo({ amount_kobo: Number(c.amount_kobo), paid_kobo: Number(c.paid_kobo ?? 0), written_off_kobo: Number(c.written_off_kobo ?? 0) }), 0);
   const catering_due = (catering.data ?? []).map((b) => ({
     id: b.id, customer_name: b.customer_name, event_date: b.event_date,
     remaining_kobo: Number(b.total_contract_kobo) - Number(b.deposit_kobo) - Number(b.additional_payments_kobo ?? 0),
