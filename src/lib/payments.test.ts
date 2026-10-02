@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basicAuth, classifyLogin, hmacSha512Hex, kobo, parseMonnifyPayment, parseTransferAccount, referenceOf, verifyMonnifySignature } from "./payments";
+import { FEE_CONFIRM, FEE_NOTICE, basicAuth, classifyLogin, monnifyFeeKobo, hmacSha512Hex, kobo, parseMonnifyPayment, parseTransferAccount, referenceOf, verifyMonnifySignature } from "./payments";
 
 const REF = "NP" + "AB".repeat(16);
 const good = { eventType: "SUCCESSFUL_TRANSACTION", eventData: { transactionReference: "MNFY|1", paymentReference: REF, amountPaid: 1500.5, paymentStatus: "PAID" } };
@@ -78,5 +78,22 @@ describe("classifyLogin", () => {
     expect(classifyLogin(null, null)).toBe("unreachable");
     expect(classifyLogin(502, null)).toBe("unreachable");
     expect(classifyLogin(503, okBody)).toBe("unreachable");
+  });
+});
+
+describe("monnifyFeeKobo", () => {
+  it("is 1.5% plus 7.5% VAT on the fee", () => {
+    expect(monnifyFeeKobo(300_000)).toBe(4838);       // ₦3,000: ₦45.00 × 1.075 = ₦48.375 -> ₦48.38
+    expect(monnifyFeeKobo(50_000_000)).toBe(806_250); // ₦500,000: ₦7,500 × 1.075 = ₦8,062.50
+  });
+  it("stops at the ₦2,000 cap before VAT", () => {
+    expect(monnifyFeeKobo(100_000_000)).toBe(215_000); // a ₦1,000,000 transfer: ₦2,000 × 1.075 = ₦2,150
+  });
+  it("is zero for no money", () => { expect(monnifyFeeKobo(0)).toBe(0); expect(monnifyFeeKobo(-5)).toBe(0); });
+  it("the notice and the pop-up say the owner pays and quote the same example", () => {
+    expect(FEE_NOTICE).toContain("you pay it");
+    expect(FEE_NOTICE).toContain("about ₦48");
+    expect(FEE_CONFIRM).toContain("You pay Monnify's fee");
+    expect(FEE_CONFIRM).toContain("about ₦48");
   });
 });

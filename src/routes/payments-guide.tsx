@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { FEE_NOTICE, FEE_NOTICE_TITLE } from "@/lib/payments";
 
 export const Route = createFileRoute("/payments-guide")({
   head: () => ({
@@ -66,6 +67,7 @@ function PaymentsGuide() {
 
       <Step n={5} title="Switch automatic transfers on">
         <p>Back on the NairaPlate Payments screen, under <b>How transfers are taken at your till</b>, choose <b>Transfers confirmed automatically</b>. Confirm the warning.</p>
+        <p className="rounded-md bg-muted p-3 text-foreground"><b>{FEE_NOTICE_TITLE}.</b> {FEE_NOTICE}</p>
         <p>From then on, the till shows Cash, <b>Transfer (automatic)</b> and Customer credit. The typed-in transfer and split choices are removed, because they cannot be checked.</p>
       </Step>
 
