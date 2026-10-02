@@ -7,7 +7,7 @@ import { normaliseTxns, supplierBalance } from "@/lib/suppliers";
 export type CashflowForecast = {
   window: { from: string; to: string }; // Lagos calendar dates, inclusive
   cash_on_hand_kobo: number;
-  open_drawers: { id: string; opened_at: string; opening_float_kobo: number; cash_sales_kobo: number; expected_cash_kobo: number }[];
+  open_drawers: { id: string; opened_at: string; opening_float_kobo: number; cash_sales_kobo: number; catering_cash_kobo: number; debt_cash_kobo: number; expected_cash_kobo: number }[];
   owed_to_us_kobo: number;
   customer_credit_kobo: number;
   customer_credit_count: number;

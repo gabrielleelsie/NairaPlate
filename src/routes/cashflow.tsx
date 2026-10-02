@@ -54,7 +54,7 @@ function CashflowScreen() {
             {f.open_drawers.length === 0
               ? "No shift is open, so no drawer cash is counted."
               : f.open_drawers.map((d) => (
-                  <div key={d.id}>Shift opened {new Date(d.opened_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Lagos" })}: float {formatNaira(d.opening_float_kobo)} + cash sales {formatNaira(d.cash_sales_kobo)}</div>
+                  <div key={d.id}>Shift opened {new Date(d.opened_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Lagos" })}: float {formatNaira(d.opening_float_kobo)} + cash sales {formatNaira(d.cash_sales_kobo)}{d.catering_cash_kobo !== 0 ? ` + catering cash ${formatNaira(d.catering_cash_kobo)}` : ""}{d.debt_cash_kobo !== 0 ? ` + debt payments in cash ${formatNaira(d.debt_cash_kobo)}` : ""}</div>
                 ))}
           </Part>
 
