@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceWarning, balanceWords, canReverse, reasonOk, reversalOf, signedAmount, supplierBalance, withRunningBalance, type SupplierTxn } from "@/lib/suppliers";
+import { PAYMENT_METHODS, TXN_COLUMNS, advanceWarning, balanceWords, canReverse, methodLabel, methodProblem, reasonOk, reversalOf, signedAmount, supplierBalance, withRunningBalance, type SupplierTxn } from "@/lib/suppliers";
 
 const t = (o: Partial<SupplierTxn> & Pick<SupplierTxn, "id" | "type" | "amount_kobo" | "created_at">): SupplierTxn =>
   ({ supplier_id: "s1", purchase_id: null, note: null, ...o });
@@ -87,5 +87,30 @@ describe("reversed credit purchases", () => {
     const rows = [t({ id: "a", amount_kobo: 100000 }), t({ id: "p", type: "payment", amount_kobo: 80000, created_at: "2026-10-01T10:30:00Z" }),
       t({ id: "b", type: "purchase_reversal", amount_kobo: 100000, reverses_id: "a", created_at: "2026-10-01T11:00:00Z" })];
     expect(supplierBalance(rows, "s1")).toBe(-80000);
+  });
+});
+
+describe("payment method", () => {
+  it("offers four ways to pay and never offers legacy", () => {
+    expect(PAYMENT_METHODS.map((m) => m.value)).toEqual(["cash_from_drawer", "cash_outside_drawer", "bank_transfer", "other"]);
+  });
+  it("says which payments have no method recorded", () => {
+    expect(methodLabel(null)).toBe("method not recorded");
+    expect(methodLabel(undefined)).toBe("method not recorded");
+    expect(methodLabel("legacy")).toBe("method not recorded");
+    expect(methodLabel("bank_transfer")).toBe("Bank transfer");
+    expect(methodLabel("cash_from_drawer")).toBe("Cash from the drawer");
+  });
+  it("needs a method, and a note of 5 or more characters for Other", () => {
+    expect(methodProblem("", "x")).toMatch(/Choose how/);
+    expect(methodProblem("legacy", "x")).toMatch(/Choose how/);
+    expect(methodProblem("bank_transfer", "")).toBeNull();
+    expect(methodProblem("cash_from_drawer", "")).toBeNull();
+    expect(methodProblem("other", "abc")).toMatch(/at least 5/);
+    expect(methodProblem("other", "    ab   ")).toMatch(/at least 5/);
+    expect(methodProblem("other", "POS card")).toBeNull();
+  });
+  it("the screens read the method column", () => {
+    expect(TXN_COLUMNS).toContain("payment_method");
   });
 });

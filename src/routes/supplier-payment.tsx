@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
-import { SUPPLIER_ROLES, TXN_COLUMNS, advanceWarning, balanceWords, normaliseTxns, supplierBalance, type SupplierTxn } from "@/lib/suppliers";
+import { PAYMENT_METHODS, SUPPLIER_ROLES, TXN_COLUMNS, advanceWarning, balanceWords, methodProblem, normaliseTxns, supplierBalance, type SupplierTxn } from "@/lib/suppliers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,7 @@ function SupplierPayment() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [fromDrawer, setFromDrawer] = useState(false);
+  const [method, setMethod] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function load() {
@@ -56,14 +56,14 @@ function SupplierPayment() {
     if (!supplierId || !(amount_kobo > 0)) return;
     setBusy(true); setMsg(null);
     // The database records the payment and works out the balance. Paying more than is owed is allowed once the person has confirmed it.
-    // "Paid from the cash drawer": the payment and the cash taken out of the open shift are saved together, or neither is.
-    const { data, error } = await supabase.rpc((fromDrawer ? "record_supplier_payment_from_drawer" : "record_supplier_payment") as never, { p_supplier_id: supplierId, p_amount_kobo: amount_kobo, p_note: note.trim() } as never);
+    // The person must say how it was paid. "Cash from the drawer": the payment and the cash taken out of the open shift are saved together, or neither is.
+    const { data, error } = await supabase.rpc("record_supplier_payment_v2" as never, { p_supplier_id: supplierId, p_amount_kobo: amount_kobo, p_note: note.trim(), p_method: method } as never);
     setBusy(false); setConfirming(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
     const after = Number((data as { balance_kobo: number }).balance_kobo);
     const name = suppliers.find((s) => s.id === supplierId)?.name;
     setMsg({ ok: true, text: `Paid ${formatNaira(amount_kobo)} to ${name}. ${balanceWords(after, formatNaira)} now.` });
-    setAmount(""); setNote(""); setFromDrawer(false); load();
+    setAmount(""); setNote(""); setMethod(""); load();
   }
 
   if (loading) return <main className="p-6">Loading…</main>;
@@ -73,6 +73,8 @@ function SupplierPayment() {
   const owed = supplierId ? supplierBalance(txns, supplierId) : null;
   const amountKobo = nairaToKobo(amount);
   const warning = owed === null ? null : advanceWarning(owed, amountKobo);
+  const problem = method ? methodProblem(method, note) : null;
+  const chosen = PAYMENT_METHODS.find((m) => m.value === method);
 
   return (
     <main className="mx-auto max-w-xl p-4 space-y-4">
@@ -85,11 +87,15 @@ function SupplierPayment() {
         {owed !== null && <p className="text-sm text-muted-foreground">{balanceWords(owed, formatNaira)}.</p>}
       </div>
       <div className="space-y-1"><Label htmlFor="sp-amt">Amount paid (₦)</Label><Input id="sp-amt" type="number" min={0} value={amount} onChange={(e) => { setConfirming(false); setAmount(e.target.value); }} /></div>
-      <div className="space-y-1"><Label htmlFor="sp-note">Note (optional)</Label><Input id="sp-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. transfer to Opay" /></div>
-      <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" className="mt-1" checked={fromDrawer} onChange={(e) => setFromDrawer(e.target.checked)} />
-        <span>Paid from the cash drawer. Tick this only if the money came out of the till. It is taken off the open shift's expected cash. Leave it unticked for a bank transfer or cash from anywhere else.</span>
-      </label>
+      <div className="space-y-1"><Label htmlFor="sp-note">{method === "other" ? "Note (required for Other)" : "Note (optional)"}</Label><Input id="sp-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. transfer to Opay" /></div>
+      <div className="space-y-1"><Label htmlFor="sp-method">How was it paid?</Label>
+        <select id="sp-method" className={sel} value={method} onChange={(e) => { setConfirming(false); setMethod(e.target.value); }}>
+          <option value="">Choose how it was paid</option>
+          {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        {chosen && <p className="text-xs text-muted-foreground">{chosen.hint}</p>}
+        {problem && <p className="text-sm text-destructive">{problem}</p>}
+      </div>
       {confirming && warning && (
         <div className="space-y-2 rounded-md border border-destructive p-3" data-testid="advance-confirm">
           <p className="font-semibold">This is more than you owe. The supplier will owe you the difference.</p>
@@ -100,7 +106,7 @@ function SupplierPayment() {
           </div>
         </div>
       )}
-      {!confirming && <Button className="w-full" onClick={() => (warning ? setConfirming(true) : save())} disabled={busy || !supplierId || !(Number(amount) > 0)}>{busy ? "Saving…" : "Record payment"}</Button>}
+      {!confirming && <Button className="w-full" onClick={() => (warning ? setConfirming(true) : save())} disabled={busy || !supplierId || !(Number(amount) > 0) || !method || !!problem}>{busy ? "Saving…" : "Record payment"}</Button>}
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
     </main>
   );

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira } from "@/lib/costing";
-import { SUPPLIER_ROLES, TXN_COLUMNS, balanceWords, canReverse, normaliseTxns, reasonOk, reversalOf, supplierBalance, withRunningBalance, type SupplierTxn } from "@/lib/suppliers";
+import { SUPPLIER_ROLES, TXN_COLUMNS, balanceWords, canReverse, methodLabel, normaliseTxns, reasonOk, reversalOf, supplierBalance, withRunningBalance, type SupplierTxn } from "@/lib/suppliers";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -85,7 +85,7 @@ function SupplierDetail() {
                   <div className={`font-medium ${reversed ? "text-muted-foreground line-through" : ""}`}>{label}</div>
                   <div className="text-sm text-muted-foreground">
                     {new Date(t.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    {t.note ? ` · ${t.note}` : ""}{t.recorded_by_name ? ` · ${t.recorded_by_name}` : ""}
+                    {t.type === "payment" ? ` · ${methodLabel(t.payment_method)}` : ""}{t.note ? ` · ${t.note}` : ""}{t.recorded_by_name ? ` · ${t.recorded_by_name}` : ""}
                   </div>
                 </div>
                 <div className="text-right">
