@@ -4,6 +4,7 @@ import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { dayRangeIso, payoutVariance } from "@/lib/payouts";
+import { CORRECTION_COLUMNS, canReverse, friendlyReversalError, pairReversals, reasonOk, type Correctable, type WithReversal } from "@/lib/corrections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/payouts")({
 
 const ROLES = new Set(["owner", "supa_admin"]);
 const sel = "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm";
-type Payout = { id: string; channel: string; gross_sales_kobo: number; commission_kobo: number; net_payout_kobo: number; period_start: string | null; period_end: string | null; created_at: string };
+type Payout = Correctable & { id: string; channel: string; gross_sales_kobo: number; commission_kobo: number; net_payout_kobo: number; period_start: string | null; period_end: string | null; created_at: string };
 const today = () => new Date().toLocaleDateString("en-CA");
 const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -39,13 +40,15 @@ function PayoutsScreen() {
   const [commission, setCommission] = useState("");
   const [net, setNet] = useState("");
   const [history, setHistory] = useState<Payout[]>([]);
+  const [reverseFor, setReverseFor] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function loadBase() {
     const [o, h] = await Promise.all([
       supabase.from("orders").select("channel"),
-      supabase.from("channel_payouts").select("*").order("created_at", { ascending: false }),
+      supabase.from("channel_payouts").select(`*,${CORRECTION_COLUMNS}`).order("created_at", { ascending: false }),
     ]);
     const used = new Set<string>(["Walk-in", "Delivery"]);
     (o.data ?? []).forEach((r) => r.channel && used.add(String(r.channel)));
@@ -84,6 +87,17 @@ function PayoutsScreen() {
     const r = data as { variance_kobo: number; flag_id: string | null };
     setMsg({ ok: true, text: `Payout saved. ${Number(r.variance_kobo) === 0 ? "It matches exactly." : `Difference: ${formatNaira(Number(r.variance_kobo))}. The mismatch has been added to Alerts.`}` });
     setCommission(""); setNet(""); loadBase();
+  }
+
+  async function reverse(p: Payout) {
+    if (!reasonOk(reverseReason)) return;
+    setBusy(true); setMsg(null);
+    const { error } = await supabase.rpc("reverse_payout" as never, { p_payout_id: p.id, p_reason: reverseReason.trim() } as never);
+    setBusy(false);
+    if (error) return setMsg({ ok: false, text: friendlyReversalError(error.message) });
+    setReverseFor(null); setReverseReason("");
+    setMsg({ ok: true, text: "Payout reversed. Record the correct payout above if you need to." });
+    loadBase();
   }
 
   if (loading) return <main className="p-6">Loading…</main>;
@@ -128,18 +142,29 @@ function PayoutsScreen() {
       <section className="space-y-2">
         <h2 className="font-semibold">Past payouts</h2>
         <ul className="space-y-2" data-testid="history">
-          {history.length === 0 && <li className="text-muted-foreground">None yet.</li>}
-          {history.map((p) => {
+          {pairReversals(history).length === 0 && <li className="text-muted-foreground">None yet.</li>}
+          {pairReversals(history).map((p) => {
             const v = payoutVariance(p.gross_sales_kobo, p.commission_kobo, p.net_payout_kobo);
             return (
-              <li key={p.id} className="rounded-md border p-3 text-sm space-y-1">
-                <div className="flex justify-between font-medium"><span>{p.channel}</span>
+              <li key={p.id} className={`rounded-md border p-3 text-sm space-y-1 ${p.reversed ? "opacity-60" : ""}`}>
+                <div className="flex justify-between font-medium"><span>{p.channel}{p.reversed && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">Reversed</span>}</span>
                   <span>{p.period_start && p.period_end ? `${fmtDay(p.period_start)} – ${fmtDay(p.period_end)}` : `saved ${new Date(p.created_at).toLocaleDateString("en-GB")}`}</span></div>
-                <div className="grid grid-cols-2 gap-x-3 text-muted-foreground">
+                <div className={`grid grid-cols-2 gap-x-3 text-muted-foreground ${p.reversed ? "line-through" : ""}`}>
                   <span>Sales: {formatNaira(p.gross_sales_kobo)}</span><span>Commission: {formatNaira(p.commission_kobo)}</span>
                   <span>Paid in: {formatNaira(p.net_payout_kobo)}</span>
-                  <span className={v.variance_kobo !== 0 ? "text-destructive font-semibold" : ""}>Difference: {v.variance_kobo === 0 ? "none" : formatNaira(v.variance_kobo)}</span>
+                  <span className={v.variance_kobo !== 0 && !p.reversed ? "text-destructive font-semibold" : ""}>Difference: {v.variance_kobo === 0 ? "none" : formatNaira(v.variance_kobo)}</span>
                 </div>
+                {p.reversed && <p className="text-xs text-muted-foreground">Reversed{p.reversedBy ? ` by ${p.reversedBy}` : ""}{p.reversedAt ? ` on ${new Date(p.reversedAt).toLocaleDateString("en-GB")}` : ""}: {p.reversalReason}. It no longer counts.</p>}
+                {canReverse(session.role, p) && (reverseFor === p.id ? (
+                  <div className="space-y-2 rounded-md bg-muted p-2">
+                    <Label htmlFor={`rev-${p.id}`}>Reason (at least 5 characters)</Label>
+                    <Input id={`rev-${p.id}`} value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} />
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="destructive" disabled={busy || !reasonOk(reverseReason)} onClick={() => reverse(p)}>Reverse this payout</Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setReverseFor(null); setReverseReason(""); }}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : <Button size="sm" variant="outline" onClick={() => { setReverseFor(p.id); setReverseReason(""); setMsg(null); }}>Reverse</Button>)}
               </li>
             );
           })}

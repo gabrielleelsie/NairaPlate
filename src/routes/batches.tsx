@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CORRECTION_COLUMNS, canReverse, friendlyReversalError, pairReversals, reasonOk, type Correctable } from "@/lib/corrections";
 
 export const Route = createFileRoute("/batches")({
   ssr: false,
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/batches")({
 const ROLES = new Set(["cook", "owner", "supa_admin"]);
 type Recipe = { id: string; name: string; yield_portions: number };
 type Item = CostRecipeItem & { recipe_id: string };
+type BatchRow = Correctable & { id: string; recipe_id: string; actual_yield: number | null; ingredient_cost_kobo: number; packaging_kobo: number; utilities_kobo: number; created_at: string };
 type Summary = {
   recipe: string; ingredient_cost_kobo: number; packaging_kobo: number; utilities_kobo: number;
   actual_yield: number; theoretical_yield: number; realized_per_plate: number; recipe_per_plate: number; flags: number;
@@ -47,20 +49,43 @@ function BatchScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [recent, setRecent] = useState<BatchRow[]>([]);
+  const [dishNames, setDishNames] = useState<Record<string, string>>({});
+  const [reverseFor, setReverseFor] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function load() {
-    const [r, ri, i, c] = await Promise.all([
+    const [r, ri, i, c, b, rn] = await Promise.all([
       supabase.from("recipes").select("id,name,yield_portions").eq("is_current", true).order("name"),
       supabase.from("recipe_items").select("recipe_id,ingredient_id,quantity,unit"),
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
+      supabase.from("batches").select(`id,recipe_id,actual_yield,ingredient_cost_kobo,packaging_kobo,utilities_kobo,created_at,${CORRECTION_COLUMNS}`).order("created_at", { ascending: false }).limit(40),
+      supabase.from("recipes").select("id,name"),
     ]);
+    setRecent(((b.data ?? []) as unknown as BatchRow[]).map((x) => ({
+      ...x, actual_yield: x.actual_yield === null ? null : Number(x.actual_yield), ingredient_cost_kobo: Number(x.ingredient_cost_kobo),
+      packaging_kobo: Number(x.packaging_kobo), utilities_kobo: Number(x.utilities_kobo),
+    })));
+    setDishNames(Object.fromEntries((rn.data ?? []).map((x) => [x.id, x.name])));
     setRecipes((r.data ?? []).map((x) => ({ ...x, yield_portions: Number(x.yield_portions) })));
     setItems((ri.data ?? []).map((x) => ({ ...x, quantity: Number(x.quantity) })));
     setIngredients((i.data ?? []).map((x) => ({ ...x, current_cost_kobo: Number(x.current_cost_kobo) })));
     setConversions((c.data ?? []).map((x) => ({ ...x, base_qty: Number(x.base_qty) })));
   }
   useEffect(() => { load(); }, []);
+
+  async function reverse(b: BatchRow) {
+    if (!reasonOk(reverseReason)) return;
+    setBusy(true); setNote(null);
+    const { error } = await supabase.rpc("reverse_batch" as never, { p_batch_id: b.id, p_reason: reverseReason.trim() } as never);
+    setBusy(false);
+    if (error) return setNote({ ok: false, text: friendlyReversalError(error.message) });
+    setReverseFor(null); setReverseReason("");
+    setNote({ ok: true, text: "Batch reversed. The ingredients it used are back in stock." });
+    load();
+  }
 
   const recipe = recipes.find((r) => r.id === recipeId);
   const scaleNum = Number(scale);
@@ -109,6 +134,7 @@ function BatchScreen() {
       flags: Number((data as { low_stock_flags?: number } | null)?.low_stock_flags ?? 0),
     });
     setActual(""); setPackaging(""); setUtilities(""); setScale("1");
+    load();
   }
 
   if (loading) return <main className="p-6">Loading…</main>;
@@ -166,6 +192,36 @@ function BatchScreen() {
           {summary.flags > 0 && <p className="text-sm">Stock alerts sent to the purchaser: {summary.flags}.</p>}
         </div>
       )}
+      <section className="space-y-2" data-testid="recent-batches">
+        <h2 className="font-semibold">Recent batches</h2>
+        {note && <p className={note.ok ? "text-primary" : "text-destructive"} role="status">{note.text}</p>}
+        <ul className="space-y-2">
+          {pairReversals(recent).length === 0 && <li className="text-sm text-muted-foreground">None yet.</li>}
+          {pairReversals(recent).map((b) => (
+            <li key={b.id} className={`rounded-md border p-3 text-sm space-y-1 ${b.reversed ? "opacity-60" : ""}`}>
+              <div className="flex justify-between font-medium">
+                <span>{dishNames[b.recipe_id] ?? "Dish"}{b.reversed && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">Reversed</span>}</span>
+                <span>{new Date(b.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</span>
+              </div>
+              <p className={`text-muted-foreground ${b.reversed ? "line-through" : ""}`}>
+                {b.actual_yield ?? "?"} plates · ingredients {formatNaira(b.ingredient_cost_kobo)} · packaging {formatNaira(b.packaging_kobo)} · gas/power {formatNaira(b.utilities_kobo)}
+              </p>
+              {b.reversed && <p className="text-xs text-muted-foreground">Reversed{b.reversedBy ? ` by ${b.reversedBy}` : ""}: {b.reversalReason}. The stock was put back.</p>}
+              {canReverse(session.role, b) && (reverseFor === b.id ? (
+                <div className="space-y-2 rounded-md bg-muted p-2">
+                  <p>The ingredients this batch used go back into stock. Stock that was used since is not checked.</p>
+                  <Label htmlFor={`rev-${b.id}`}>Reason (at least 5 characters)</Label>
+                  <Input id={`rev-${b.id}`} value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} />
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="destructive" disabled={busy || !reasonOk(reverseReason)} onClick={() => reverse(b)}>Reverse this batch</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setReverseFor(null); setReverseReason(""); }}>Cancel</Button>
+                  </div>
+                </div>
+              ) : <Button size="sm" variant="outline" onClick={() => { setReverseFor(b.id); setReverseReason(""); setNote(null); }}>Reverse</Button>)}
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }
