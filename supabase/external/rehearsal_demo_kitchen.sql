@@ -188,7 +188,7 @@ begin
   v := pg_temp.t('Staff','Owner cannot set a PIN directly','owner', pg_temp.dml($q$update public.staff_users set pin_hash = 'x' where business_id = 'demo-kitchen'$q$), 'BLOCKED');
   v := pg_temp.t('Staff','Cashier cannot read PIN hashes','cashier', $q$select count(pin_hash)::text from public.staff_users$q$, 'BLOCKED');
   v := pg_temp.t('Business','Owner cannot extend their own plan','owner', pg_temp.dml($q$update public.businesses set access_ends_at = now() + interval '10 years' where id = 'demo-kitchen'$q$), 'BLOCKED');
-  v := pg_temp.t('Business','Owner cannot change their approval status','owner', pg_temp.dml($q$update public.businesses set status = 'approved' where id = 'demo-kitchen'$q$), 'BLOCKED');
+  v := pg_temp.t('Business','Owner cannot change their approval status','owner', pg_temp.dml($q$update public.businesses set status = 'suspended' where id = 'demo-kitchen'$q$), 'BLOCKED');
   v := pg_temp.t('Business','Owner cannot delete their business with ledger history','owner', pg_temp.dml($q$delete from public.businesses where id = 'demo-kitchen'$q$), 'BLOCKED');
   v := pg_temp.t('Open by design','Owner edits a recipe name','owner', pg_temp.dml(format($q$update public.recipes set category = category where id = %L$q$, eba)), 'INFO');
   v := pg_temp.t('Open by design','Cook can delete an alert (margin_flags)','cook', pg_temp.dml($q$delete from public.margin_flags where business_id = 'demo-kitchen'$q$), 'INFO');
