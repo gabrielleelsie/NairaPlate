@@ -6,6 +6,7 @@ import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { calendarMessage, googleCalendarUrl, icsFile, icsFileName, outlookCalendarUrl } from "@/lib/catering-calendar";
 import { BUCKET_LABEL, daysFromToday, distanceLabel, groupBookings, longDate, readBack, reminderMessage, timeLabel, whatsappUrl } from "@/lib/catering";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { useCateringEnabled } from "@/lib/features";
@@ -40,6 +41,20 @@ const received = (b: Booking) => b.deposit_kobo + b.additional_payments_kobo;
 const remaining = (b: Booking) => b.total_contract_kobo - received(b);
 const EMPTY = { name: "", phone: "", date: "", time: "", address: "", notes: "", delivery: "", discount: "", deposit: "", depositMethod: "" };
 const STATUS_STYLE: Record<OrderStatus, string> = { enquiry: "bg-amber-100 text-amber-900", confirmed: "bg-blue-100 text-blue-900", delivered: "bg-green-100 text-green-900", cancelled: "bg-gray-200 text-gray-700" };
+
+/** Gives the calendar file to the phone's share sheet (so it can go straight to the customer on WhatsApp), or downloads it where sharing is not available. */
+async function shareCalendarFile(name: string, text: string): Promise<"shared" | "downloaded" | "cancelled"> {
+  const file = new File([text], name, { type: "text/calendar" });
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  if (nav.share && nav.canShare?.({ files: [file] })) {
+    try { await nav.share({ files: [file], title: "Catering order" }); return "shared"; } catch { return "cancelled"; }
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: "text/calendar" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return "downloaded";
+}
 
 function CateringScreen() {
   const { loading, session } = useStaffSession();
@@ -285,6 +300,8 @@ function CateringScreen() {
             {g.rows.map((b) => {
               const wa = whatsappUrl(b.phone, reminderMessage({ customer: b.customer_name, businessName: bizName, eventDate: b.event_date ?? "", eventTime: b.event_time, balanceKobo: Math.max(0, remaining(b)) }));
               const lineItems = items.get(b.id) ?? [];
+              const cal = b.status === "confirmed" && b.event_date ? { id: b.id, customer: b.customer_name, businessName: bizName, eventDate: b.event_date, eventTime: b.event_time, address: b.delivery_address, summary: b.items_summary } : null;
+              const calWa = cal ? whatsappUrl(b.phone, calendarMessage(cal) ?? "") : null;
               const actions = statusActions(b.status, role);
               return (
                 <li key={b.id} className={`rounded-md border p-3 space-y-1 ${b.status === "cancelled" ? "opacity-70" : ""}`} data-testid="booking">
@@ -330,6 +347,23 @@ function CateringScreen() {
                     ) : <Button size="sm" variant="outline" onClick={() => { setPayFor(b.id); setPayAmt(""); }}>Record balance payment</Button>)}
                     {wa && b.status === "confirmed" && g.bucket !== "past" && <a className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm" href={wa} target="_blank" rel="noopener noreferrer">Remind customer on WhatsApp</a>}
                   </div>
+                  {cal && (
+                    <details className="pt-1" data-testid="calendar">
+                      <summary className="cursor-pointer text-sm font-medium">Add to calendar</summary>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={async () => {
+                          const text = icsFile(cal);
+                          if (!text) return;
+                          const r = await shareCalendarFile(icsFileName(cal), text);
+                          if (r === "downloaded") setMsg({ ok: true, text: "Calendar file saved. Open it to add the event to any calendar, or send it to the customer." });
+                        }}>Share calendar file (any calendar)</Button>
+                        {googleCalendarUrl(cal) && <a className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm" href={googleCalendarUrl(cal)!} target="_blank" rel="noopener noreferrer">Google Calendar</a>}
+                        {outlookCalendarUrl(cal) && <a className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm" href={outlookCalendarUrl(cal)!} target="_blank" rel="noopener noreferrer">Outlook</a>}
+                        {calWa && <a className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm" href={calWa} target="_blank" rel="noopener noreferrer">Send calendar links to customer on WhatsApp</a>}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">The entry is for {b.event_time ? `${timeLabel(b.event_time)}, lasting 2 hours` : "the whole day"}, with an alert one day before. It holds the date, address and items only, no prices.</p>
+                    </details>
+                  )}
                   {(() => {
                     const hist = describeEntries(payments.get(b.id) ?? []);
                     if (hist.length === 0) return null;
