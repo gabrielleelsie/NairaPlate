@@ -4,6 +4,9 @@
 -- functions and policies, and reports what was allowed or refused. Safe to re-run. Read the result in the error message.
 -- "expect" is the safe outcome: ALLOWED for things a role should be able to do, BLOCKED for things nobody should be able to do.
 -- A row with ok = false is a finding. TEST_ERROR means the test itself was wrong (never counted as a pass).
+-- HOW TO RUN: paste the whole file into the Supabase SQL editor and press Run. It ALWAYS ends with a red error that starts with
+-- "REHEARSAL DONE. NOTHING WAS SAVED." That error is the report, not a fault. The first line says ALL CLEAR or ATTENTION, then the counts.
+-- Only rows that need a look are listed: findings, test errors, and information rows. Every other step passed.
 do $rehearsal$
 declare
   v text; j jsonb;
@@ -246,6 +249,6 @@ begin
   perform pg_temp.note('Result','Audit events made in this test', coalesce((select string_agg(action || ':' || n, ', ' order by action) from (select action, count(*) n from public.audit_logs where created_at = now() group by 1) s), 'none'));
 
   select count(*) filter (where ok is false), count(*) filter (where ok is true), count(*) filter (where outcome = 'TEST_ERROR') into n_fail, n_ok, n_err from pg_temp.rr;
-  select string_agg(format('%s | %s | %s | %s | expect %s | %s%s | %s', n, area, step, role, expect, outcome, case when ok is false then '  <== FINDING' else '' end, detail), E'\n' order by n) into res from pg_temp.rr;
-  raise exception E'REHEARSAL DONE. NOTHING WAS SAVED. passed=%, findings=%, test_errors=%\n%', n_ok, n_fail, n_err, res;
+  select string_agg(format('%s | %s | %s | %s | expect %s | %s%s | %s', n, area, step, role, expect, outcome, case when ok is false then '  <== FINDING' else '' end, detail), E'\n' order by n) into res from pg_temp.rr where ok is distinct from true;
+  raise exception E'REHEARSAL DONE. NOTHING WAS SAVED. % (passed=%, findings=%, test_errors=%)\n%', case when n_fail = 0 and n_err = 0 then 'ALL CLEAR' else 'ATTENTION: look at the FINDING rows' end, n_ok, n_fail, n_err, coalesce(res, 'no rows to show');
 end $rehearsal$;
