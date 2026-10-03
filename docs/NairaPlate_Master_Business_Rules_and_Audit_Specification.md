@@ -9,7 +9,7 @@ status: "Reference manual. Describes the system as it stands on 3 October 2026, 
 
 **Version 1.2, 3 October 2026**
 
-Version 1.2 adds the owner corrections for channel payouts, price decisions and batches (Step 7): the database functions are live and rehearsed; the three screens are released but **have not yet been used by a person** (Part 8.3). Version 1.1 recorded the sweep results: the batch fault (F0), the table locks A1 to A4 and the permission clean-up (B1 to B3) are now applied on the live database. Version 1.0 (2 October 2026) described them as open.
+Version 1.2 corrects Part 4.5 (the sale-time cost snapshot already existed and was described wrongly in 1.1) and adds the owner corrections for channel payouts, price decisions and batches (Step 7): the database functions are live and rehearsed; the three screens are released but **have not yet been used by a person** (Part 8.3). Version 1.1 recorded the sweep results: the batch fault (F0), the table locks A1 to A4 and the permission clean-up (B1 to B3) are now applied on the live database. Version 1.0 (2 October 2026) described them as open.
 
 This is the reference for how money, stock and records work in NairaPlate. It is written in two layers.
 
@@ -250,7 +250,8 @@ See 3.4. A negative result means the supplier owes you.
 ## 4.5 Profit and loss
 
 - **Gross sales** (paid orders), **cost of goods** (recipe cost of plates sold, plus wastage), **gross margin** and **food cost percentage** come from one calculation (`src/lib/pnl.ts`). [C]
-- **Known limitation, stated in the code:** ingredient prices are not versioned. Historical recipes are costed with each ingredient's **current** price, not the price on the day. The result carries this limitation as a note. [C]
+- **Cost frozen at the moment of sale.** Since 1 October 2026 every sold line stores what one plate cost at that moment (`order_items.cost_per_plate_kobo`, set by the database from the recipe version and its cost grade). A signed-in person cannot change it afterwards ("The cost of a sold item cannot be changed"). The profit and loss uses that stored figure as it is, so later price rises do not rewrite earlier sales. [C]
+- **Known limitation:** sold lines from before 1 October 2026 carry no stored cost. They are costed with each ingredient's **current** price, and the result counts them as "estimated". In the live data on 3 October 2026, 107 of 110 sold lines are in this group, because almost all are older test sales; all 3 lines since the change carry a frozen cost. Ingredient prices themselves are still not versioned, so a restated cost for old sales is not possible. Wastage entries store their own cost when logged. [C]
 
 ---
 
@@ -422,7 +423,7 @@ Ranked by what matters most. Each says what it is, what could go wrong, and the 
 - **Expiry reminder emails** exist but are switched off and not scheduled.
 - **Backups.** Database backups and point-in-time recovery should be confirmed in the Supabase dashboard. This document cannot confirm them.
 - **No staging environment.** Changes are tested locally and then run on the live database.
-- **Profit and loss uses current ingredient prices** for historical costing (Part 4.5).
+- **Older sales are costed at today's prices.** Sold lines from before 1 October 2026 have no frozen cost (Part 4.5). Sales since then are frozen.
 - **Other deletes left open by decision:** suppliers, recipes, wastage entries, unit conversions and alerts can still be edited or deleted by owners. Each is a configuration or log table, not a ledger.
 - **Recipe price edits.** An owner can change a dish's price directly without a price decision record. Sales keep the price they were sold at.
 
