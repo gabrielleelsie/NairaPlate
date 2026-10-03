@@ -11,6 +11,7 @@ begin
   end if;
   return NEW;
 end $function$;
+revoke all on function public.block_direct_insert() from public, anon;
 
 drop policy if exists order_adjustments_insert on public.order_adjustments;
 drop policy if exists order_adjustments_update on public.order_adjustments;

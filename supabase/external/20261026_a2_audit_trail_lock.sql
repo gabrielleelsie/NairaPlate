@@ -11,6 +11,7 @@ begin
   end if;
   return NEW;
 end $function$;
+revoke all on function public.block_direct_insert() from public, anon;
 
 drop policy if exists audit_logs_insert on public.audit_logs;
 drop trigger if exists audit_logs_no_direct_insert on public.audit_logs;

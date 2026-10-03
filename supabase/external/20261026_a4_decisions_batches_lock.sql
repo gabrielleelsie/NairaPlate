@@ -13,6 +13,7 @@ begin
   end if;
   return NEW;
 end $function$;
+revoke all on function public.block_direct_insert() from public, anon;
 
 -- price decisions: frozen, except that the link to a deleted recipe or user is emptied by the database itself
 create or replace function public.price_decisions_protect()

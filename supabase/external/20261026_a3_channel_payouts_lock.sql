@@ -11,6 +11,7 @@ begin
   end if;
   return NEW;
 end $function$;
+revoke all on function public.block_direct_insert() from public, anon;
 
 drop policy if exists channel_payouts_insert on public.channel_payouts;
 drop policy if exists channel_payouts_update on public.channel_payouts;
