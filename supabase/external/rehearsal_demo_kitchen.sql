@@ -17,7 +17,7 @@ declare
   supplier constant text := '6c4dfc9f-2891-4045-86b6-59e0b3a16c6a';
   credit_open constant text := 'ba8f5112-4638-48ac-bb16-4333ec983e85'; cat_open constant text := '2d025e15-25e9-4c7b-82d2-39bdf31d0798';
   items text := '[{"recipe_id":"f830cd82-7953-4439-8a2c-98d90605967d","quantity":1}]';
-  o1 text; o2 text; cr text; pur1 text; oldp text; pay1 text; cp text; cnt text; d1 text; d_stale text; pcount text; q_id text; q2_id text; po_id text; pu3 text; st3 text; b_id text; p_id text; d_id text; d_price bigint; old_b text; res text; n_fail int; n_ok int; n_err int;
+  o1 text; o2 text; cr text; pur1 text; oldp text; pay1 text; cp text; cnt text; d1 text; d_stale text; pcount text; q_id text; st4 text; st5 text; q2_id text; po_id text; pu3 text; st3 text; b_id text; p_id text; d_id text; d_price bigint; old_b text; res text; n_fail int; n_ok int; n_err int;
 begin
   if (select count(*) from public.businesses where id = biz) = 0 then raise exception 'Wrong project: no demo-kitchen business here. Nothing was done.'; end if;
 
@@ -115,9 +115,9 @@ begin
   v := pg_temp.t('Stock','Nobody can delete a stock movement','owner', pg_temp.dml($q$delete from public.stock_movements where business_id = 'demo-kitchen'$q$), 'BLOCKED');
 
   -- ===== 3. SUPPLIER LEDGER =====
-  v := pg_temp.t('Supplier','Purchaser records a supplier payment','purchaser', format($q$select public.record_supplier_payment(%L, 50000, 'rehearsal part payment')::text$q$, supplier), 'ALLOWED');
+  v := pg_temp.t('Supplier','Purchaser records a supplier payment','purchaser', format($q$select public.record_supplier_payment_v2(%L, 50000, 'rehearsal part payment', 'bank_transfer')::text$q$, supplier), 'ALLOWED');
   pay1 := (v::jsonb ->> 'id');
-  v := pg_temp.t('Supplier','Cashier cannot record a supplier payment','cashier', format($q$select public.record_supplier_payment(%L, 50000, 'x')::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier','Cashier cannot record a supplier payment','cashier', format($q$select public.record_supplier_payment_v2(%L, 50000, 'x', 'bank_transfer')::text$q$, supplier), 'BLOCKED');
   v := pg_temp.t('Supplier','Purchaser cannot reverse a payment','purchaser', format($q$select public.reverse_supplier_payment(%L, 'purchaser trying to reverse')::text$q$, pay1), 'BLOCKED');
   v := pg_temp.t('Supplier','Owner reverses the payment with a reason','owner', format($q$select public.reverse_supplier_payment(%L, 'paid the wrong supplier')::text$q$, pay1), 'ALLOWED');
   v := pg_temp.t('Supplier','The same payment cannot be reversed twice','owner', format($q$select public.reverse_supplier_payment(%L, 'second reversal attempt')::text$q$, pay1), 'BLOCKED');
@@ -249,8 +249,26 @@ begin
   v := pg_temp.t('Cash out','The supplier payment made a payout of the same amount','owner', format($q$select count(*)::text from public.cash_drawer_payouts where supplier_txn_id = %L and kind = 'payout' and amount_kobo = 50000$q$, st3), 'ALLOWED');
   v := pg_temp.t('Cash out','Owner reverses the supplier payment','owner', format($q$select public.reverse_supplier_payment(%L, 'paid the wrong supplier')::text$q$, st3), 'ALLOWED');
   v := pg_temp.t('Cash out','Reversing the supplier payment reversed its payout too','owner', format($q$select count(*)::text from public.cash_drawer_payouts z join public.cash_drawer_payouts p on p.id = z.reverses_id where z.kind = 'reversal' and p.supplier_txn_id = %L$q$, st3), 'ALLOWED');
-  v := pg_temp.t('Cash out','A supplier payment NOT paid from the drawer makes no payout','purchaser', format($q$select public.record_supplier_payment(%L, 10000, 'rehearsal bank transfer')::text$q$, supplier), 'ALLOWED');
+  v := pg_temp.t('Cash out','A supplier payment NOT paid from the drawer makes no payout','purchaser', format($q$select public.record_supplier_payment_v2(%L, 10000, 'rehearsal bank transfer', 'bank_transfer')::text$q$, supplier), 'ALLOWED');
   v := pg_temp.t('Cash out','Only the two linked supplier payouts exist (the other made none)','owner', $q$select count(*)::text from (select 1 from public.cash_drawer_payouts where category = 'supplier_payment' and kind = 'payout' having count(*) = 1) x$q$, 'ALLOWED');
+  -- ===== supplier payment method =====
+  v := pg_temp.t('Supplier method','Purchaser pays a supplier by bank transfer','purchaser', format($q$select public.record_supplier_payment_v2(%L, 10000, 'rehearsal method transfer', 'bank_transfer')::text$q$, supplier), 'ALLOWED');
+  st4 := (v::jsonb ->> 'id');
+  v := pg_temp.t('Supplier method','The method was saved on the payment','owner', format($q$select count(*)::text from public.supplier_transactions where id = %L and payment_method = 'bank_transfer'$q$, st4), 'ALLOWED');
+  v := pg_temp.t('Supplier method','Purchaser pays from the drawer through the new function','purchaser', format($q$select public.record_supplier_payment_v2(%L, 20000, 'rehearsal drawer method', 'cash_from_drawer')::text$q$, supplier), 'ALLOWED');
+  st5 := (v::jsonb ->> 'id');
+  v := pg_temp.t('Supplier method','That payment made a linked payout and has the drawer method','owner', format($q$select count(*)::text from public.cash_drawer_payouts p join public.supplier_transactions t on t.id = p.supplier_txn_id where t.id = %L and t.payment_method = 'cash_from_drawer' and p.amount_kobo = 20000$q$, st5), 'ALLOWED');
+  v := pg_temp.t('Supplier method','Cash from somewhere else is allowed and makes no payout','purchaser', format($q$select public.record_supplier_payment_v2(%L, 5000, 'rehearsal outside cash', 'cash_outside_drawer')::text$q$, supplier), 'ALLOWED');
+  v := pg_temp.t('Supplier method','Other with a note is allowed','purchaser', format($q$select public.record_supplier_payment_v2(%L, 5000, 'paid by POS card', 'other')::text$q$, supplier), 'ALLOWED');
+  v := pg_temp.t('Supplier method','Other without a note is refused','purchaser', format($q$select public.record_supplier_payment_v2(%L, 5000, 'abc', 'other')::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier method','A payment with no method is refused','purchaser', format($q$select public.record_supplier_payment_v2(%L, 5000, 'x', null)::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier method','The old-screen method (legacy) cannot be chosen','purchaser', format($q$select public.record_supplier_payment_v2(%L, 5000, 'x', 'legacy')::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier method','Cashier cannot pay a supplier','cashier', format($q$select public.record_supplier_payment_v2(%L, 5000, 'x', 'bank_transfer')::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier method','Signed-out visitor cannot pay a supplier','anon', format($q$select public.record_supplier_payment_v2(%L, 5000, 'x', 'bank_transfer')::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier method','Nobody signed in can call the internal writer directly','purchaser', format($q$select public.record_supplier_payment_core(%L, 5000, 'x', 'bank_transfer')::text$q$, supplier), 'BLOCKED');
+  v := pg_temp.t('Supplier method','The method cannot be edited afterwards','owner', pg_temp.dml(format($q$update public.supplier_transactions set payment_method = 'other' where id = %L$q$, st4)), 'BLOCKED');
+  v := pg_temp.t('Supplier method','Owner reverses the drawer payment and its payout follows','owner', format($q$select public.reverse_supplier_payment(%L, 'paid the wrong supplier')::text$q$, st5), 'ALLOWED');
+  v := pg_temp.t('Supplier method','The payout of that payment was reversed too','owner', format($q$select count(*)::text from public.cash_drawer_payouts z join public.cash_drawer_payouts p on p.id = z.reverses_id where z.kind = 'reversal' and p.supplier_txn_id = %L$q$, st5), 'ALLOWED');
   perform pg_temp.note('Cash out','Cash paid out on the shift so far (kobo, payouts minus reversals)', (select coalesce(sum(amount_kobo), 0)::text from public.cash_drawer_payouts where kind in ('payout','reversal')));
   v := pg_temp.t('Catering deposit','Cashier takes a catering order with a cash deposit and a method','cashier', format($q$select public.create_catering_order('Rehearsal Event', '08000000002', current_date + 5, '12:00'::time, null, null, %L::jsonb, 0, 0, 50000, 'cash', 'confirmed')::text$q$, items), 'INFO');
   v := pg_temp.t('Catering deposit','A deposit without a method is refused by the new order function','cashier', format($q$select public.create_catering_order('Rehearsal Event 2', null, current_date + 5, '12:00'::time, null, null, %L::jsonb, 0, 0, 50000, null, 'confirmed')::text$q$, items), 'BLOCKED');
