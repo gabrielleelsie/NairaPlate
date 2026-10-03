@@ -1,18 +1,20 @@
 ---
 title: "NairaPlate: Master Business Rules and Audit Specification"
-version: "1.0"
-date: "2 October 2026"
-status: "Reference manual. Describes the system as it stands on 2 October 2026."
+version: "1.1"
+date: "3 October 2026"
+status: "Reference manual. Describes the system as it stands on 3 October 2026, after the security sweep locks were applied."
 ---
 
 # NairaPlate: Master Business Rules and Audit Specification
 
-**Version 1.0, 2 October 2026**
+**Version 1.1, 3 October 2026**
+
+Version 1.1 records the sweep results: the batch fault (F0), the table locks A1 to A4 and the permission clean-up (B1 to B3) are now applied on the live database. Version 1.0 (2 October 2026) described them as open.
 
 This is the reference for how money, stock and records work in NairaPlate. It is written in two layers.
 
 - **Parts 1 to 9** are for owners, accountants and managers. They are in plain language: what the rules are, who can do what, how a mistake is corrected, how the numbers are worked out, and what the system does and does not record.
-- **Appendices A to I** are for engineers and auditors. They list the tables, access rules, functions, triggers, constraints, server routes and audit events, as read from the live database on 2 October 2026.
+- **Appendices A to I** are for engineers and auditors. They list the tables, access rules, functions, triggers, constraints, server routes and audit events, as read from the live database on 2 and 3 October 2026.
 
 ## How this document was produced, and how far to trust it
 
@@ -21,7 +23,7 @@ This is the reference for how money, stock and records work in NairaPlate. It is
 - Every rule is marked with how it was proved, using these codes:
   - **[C]** read from the live database or code.
   - **[L]** tested on a local copy of the database during the build.
-  - **[R]** tested on the live database in a rehearsal on 2 October 2026 that always undoes itself (Part 8).
+  - **[R]** tested on the live database in a rehearsal (2 and 3 October 2026) that always undoes itself (Part 8).
   - **[S]** the screen has not yet been used by a person in the Demo Kitchen test. A rule can be proved at the database level and still be unproven on the screen.
 - Where something is not proved, or does not work, this document says so. Part 9 lists every known gap in one place.
 - Money is stored in **kobo** (whole numbers). 100 kobo is ₦1. Times are Nigeria time (UTC+1).
@@ -189,7 +191,7 @@ An alert raised by a purchase stays after the purchase is reversed. It records w
 ## 3.6 Wastage, batches and stock counts
 
 - **Wastage:** cooks, purchasers and owners can log it. The database reduces stock. Owners can remove a wastage entry, which puts the stock back and is itself recorded in the stock trail. Wastage entries are a plain log, not a ledger, and an owner can edit or delete them. [C][R]
-- **Batches:** cooks and owners log a batch of a dish that is set to "cooked in batches". The batch reduces stock for each ingredient. A dish set to "made to order" cannot have batches. **As of 2 October 2026, logging a batch is failing for everyone because of a database fault. A fix is prepared and not yet applied (Part 9, F0).** [C][R]
+- **Batches:** cooks and owners log a batch of a dish that is set to "cooked in batches". The batch reduces stock for each ingredient. A dish set to "made to order" cannot have batches. Logging a batch was failing for everyone until 3 October 2026 because of a database fault (F0); the fix is applied and a batch of a normal dish was logged successfully in the rehearsal. A batch cannot be edited or deleted by anyone signed in. [C][R]
 - **Stock counts:** counted amounts are compared with what the system expected. A difference needs a note. A cook's or purchaser's count waits for an owner to approve. Approval applies the counts as "stock-take correction" lines. [C][R]
 
 ## 3.7 Cash drawer (shifts)
@@ -207,7 +209,7 @@ A **shift** is one cashier's period at the till, with an opening float and a clo
 
 - **Channel payouts** (money received from a delivery platform) are recorded by the owner. The database works out gross sales for the period and compares with what was received, and raises an alert for any difference. [C]
 - **Price decisions** (publish, adjust portion, defer) are recorded by the owner. Publishing changes the dish's price. [C]
-- Both tables can currently also be written to directly by owners. That is a known gap (Part 9, A3 and A4).
+- Both tables are now frozen: they can only be written by the app's own functions (`log_channel_payout`, `decide_price`) and cannot be edited or deleted by anyone signed in. A wrongly entered payout or decision cannot be fixed by editing it. A correction function is planned (Part 9). [C][R]
 
 ---
 
@@ -285,7 +287,7 @@ Being honest about gaps matters more than a long list:
 ## 5.3 Protection of the audit trail itself
 
 - Nobody can edit or delete an audit line. [C][R]
-- **Gap:** any signed-in staff member, including a cook, can currently *add* an audit line to their own business, with any description and any "actor". This means the trail can be padded or forged. It cannot be erased. Closing this is plan A2 in Part 9. [C][R]
+- Nobody signed in can *add* an audit line either. Lines are written only by database functions and server routes, so a cook can no longer pad or forge the trail (this was gap A2, closed on 3 October 2026). [C][R]
 
 ---
 
@@ -312,7 +314,7 @@ For each kind of transaction: where it is recorded, what writes it, who may do i
 | 15 | Purchase reversal | purchases, stock, price, supplier entry | `reverse_purchase` | Owner | Final | purchase reversed | No |
 | 16 | Price change | ingredient price, grade price | `set_ingredient_price` | Purchaser, owner | Another price change | cost changed | No |
 | 17 | Wastage | wastage log, stock trail | direct entry; database adjusts stock | Cook, purchaser, owner | Owner removes the entry | none | No |
-| 18 | Batch | batches, stock trail | `log_batch` | Cook, owner | none | none | No. **Failing today** |
+| 18 | Batch | batches, stock trail | `log_batch` | Cook, owner | none | none | No |
 | 19 | Stock count | stock counts, lines, stock trail | `submit_stock_count`, `decide_stock_count` | Cook, purchaser, owner; owner approves | A new count | stock count submitted, approved, rejected | No |
 | 20 | Shift open | cash drawers | `open_cash_drawer` | Cashier, owner | n/a | drawer opened | n/a |
 | 21 | Shift close | cash drawers | server route | Cashier (own), owner | Count adjustment | shortage or overage | n/a |
@@ -335,10 +337,10 @@ Events that do not fit the table: staff changes and PIN resets (server routes, a
 
 **The locks, in layers.**
 
-- **Row security** on all 45 tables. No rule lets a signed-out visitor read or write anything. [C][R]
-- **Write functions.** Money tables have no direct write access for signed-in people. Only database functions, which check the role, the business and the plan, can write. [C][R]
+- **Row security** on all 47 tables (45 app tables and 2 private backup tables). No rule lets a signed-out visitor read or write anything. [C][R]
+- **Write functions.** Money tables, refund records, the audit trail, payouts, price decisions and batches have no direct write access for signed-in people. Only database functions, which check the role, the business and the plan, can write. [C][R]
 - **Guard triggers.** Even where a write path exists, a trigger on the table refuses edits and deletes of finished records, and refuses direct writes to protected columns. [C][R]
-- **Fixed search path.** All 61 database functions that run with extra privilege have their search path fixed, so they cannot be tricked into using a different table. [C]
+- **Fixed search path.** All 62 database functions that run with extra privilege have their search path fixed, so they cannot be tricked into using a different table. [C]
 - **Secrets** (payment provider keys, the scheduler secret) are stored in the database vault and never returned to the browser. [C]
 
 **Staff sign-in.** PINs are hashed. The server is the only place a PIN is checked. A signed-in person's role and business come from the server and cannot be set from the browser. Businesses must be approved. A business that is suspended or whose plan has ended is locked out. Owners can still sign in to see the locked screen. [C]
@@ -354,25 +356,23 @@ Events that do not fit the table: staff changes and PIN resets (server routes, a
 - 236 automated checks across 25 test files pass on the current code. They cover the shared calculations (balances, reversals, expected cash, adjustments, labels and rules shown on screens). [L]
 - For every step of the ledger programme, the database changes were tested on a local copy of the database before release: the loophole shown first, then every allowed action, every refusal, other businesses, every role, repeated runs, and the rollback. [L]
 
-## 8.2 The live rehearsal, 2 October 2026
+## 8.2 The live rehearsal, 2 and 3 October 2026
 
 A script acted as each role in the Demo Kitchen business, using the real database functions and rules, and then always ended with a deliberate error so that nothing was saved. [R]
 
-- **127 steps.** 107 passed, 9 were flagged, and 11 were information only.
-- **Passed (examples):** a cashier took a cash sale and voided it; part and full refunds worked and over-refunds were refused; cooks, purchasers and visitors were refused where they should be; a purchaser logged a credit purchase and an owner reversed it, restoring the price and the supplier balance; supplier, customer-credit and catering payments and reversals followed the role rules; stock counts needed owner approval; drawer shifts opened once and could not be opened twice; closed shifts could not be rewritten by anyone; an owner could add a count adjustment; another business could see none of Demo Kitchen's data and could not act on it; visitors could read and write nothing.
-- **The 9 flagged steps:**
-  - **6 genuine gaps:** A1 (a cashier could write a refund record directly, and an owner could edit refund amounts, 2 steps), A2 (a cook could write an audit line), A3 (an owner could write and edit channel payouts directly, 2 steps), A4 (an owner could delete batches directly).
-  - **2 caused by the batch fault F0:** logging a batch, and writing a batch directly, both failed with the same database error.
-  - **1 false alarm:** the test changed a business's status to the value it already had, which is not a change. The re-test with a real change (to suspended) was refused.
-- **One step passed for the wrong reason:** the test for writing a price decision used a value the table rejects, so it looked refused. The re-test with a valid value showed an owner **can** write, edit and delete price decisions directly (A4).
-- A re-test also confirmed that an owner cannot suspend their own business or extend their own plan, a cook cannot create alerts, and cashiers cannot edit recipes or suppliers.
-- **Not saved:** the rehearsal changed nothing. The stale 25 September shift is still open.
+- **First run, 2 October (127 steps):** 107 passed, 9 were flagged, 11 were information only. The flags were six genuine gaps (A1, A2, A3, A4), two steps caused by the batch fault (F0), and one false alarm (the test set a business status to the value it already had).
+- **Run after F0, B1 to B3, A1 and A2 were applied:** 114 passed, 6 flagged, 0 test errors. The 6 were exactly A3 and A4.
+- **Final run, 3 October, after A3 and A4 were applied:** 119 passed, 1 flagged, 0 test errors, plus information rows. The one flag was again the false alarm of setting a status to its current value. The test was corrected to use a different value, and that step was re-run: an owner trying to change their own business status is refused ("Only the platform admin can change a business's status").
+- **Passed (examples):** a cashier took a cash sale and voided it; part and full refunds worked and over-refunds were refused; cooks, purchasers and visitors were refused where they should be; a purchaser logged a credit purchase and an owner reversed it, restoring the price and the supplier balance; supplier, customer-credit and catering payments and reversals followed the role rules; stock counts needed owner approval; shifts opened once and could not be opened twice; closed shifts could not be rewritten; an owner could add a count adjustment; another business could see none of Demo Kitchen's data and could not act on it; visitors could read and write nothing; no owner could write, edit or delete refund records, audit lines, payouts, price decisions or batches directly; the real functions for a price decision and for a batch of a normal dish still worked.
+- **By design, still refused:** a batch of a "made to order" dish; automatic transfer sales in a business that has not switched them on.
+- **Not saved:** the rehearsal changed nothing.
+- What the rehearsal cannot show: it tests the database as each role, not a person using the screens.
 
 ## 8.3 What is not yet proved
 
 - **The new screens have not been used by a person.** Customer credit, purchase reversal, the ingredient lock and the cash drawer screens passed their database tests, but the Demo Kitchen walk-through by a person has not been reported. [S]
 - **Monnify automatic transfer confirmation** has not been tested end to end with real keys. [S]
-- **The real stock-take, wastage and sale functions** were exercised by the live rehearsal for the sale, void, refund, wastage and stock-count paths. The batch path failed because of the database fault. [R]
+- **The real stock-take, wastage and sale functions** were exercised by the live rehearsal for the sale, void, refund, wastage and stock-count paths. The batch path now works for a dish that is not set to "made to order". [R]
 
 ---
 
@@ -384,12 +384,12 @@ Ranked by what matters most. Each says what it is, what could go wrong, and the 
 
 | Ref | What | Risk | Status |
 |---|---|---|---|
-| **F0** | **Logging a batch fails for everyone.** The trigger that stamps the recipe version on batches also tries to set a plate cost, which batches do not have. Error: `record "new" has no field "cost_per_plate_kobo"`. Confirmed live on 2 October 2026. No batch has been logged since 25 September. | Cooks cannot log batches. Stock is not reduced for batch dishes. | Fix written and tested locally (`20261025_batch_trigger_fix.sql`). **Not applied.** |
-| **A1** | Refund records (`order_adjustments`) can be written directly by cashiers and owners, and edited by owners. | A forged part refund lowers expected cash and can hide a drawer shortage. | Plan prepared. No change made. |
-| **A2** | Audit lines can be added directly by any signed-in staff. | The audit trail can be padded or forged. | Plan prepared. No change made. |
-| **A3** | Channel payouts can be written and edited directly by owners. | Payout figures can be altered after the check. | Plan prepared. No change made. |
-| **A4** | Price decisions and batches can be written, edited or deleted directly by owners. | Decision history and batch history can be altered. | Plan prepared. Depends on F0. |
-| **B1 to B3** | Visitors still hold table privileges (blocked by row security), signed-in users hold TRUNCATE, TRIGGER and REFERENCES, and visitors can be given execute on trigger functions. None is reachable through the app. | Defence in depth only. | Batch written and tested locally. **Not applied.** |
+| **F0** | **Logging a batch fails for everyone.** The trigger that stamps the recipe version on batches also tries to set a plate cost, which batches do not have. Error: `record "new" has no field "cost_per_plate_kobo"`. Confirmed live on 2 October 2026. No batch has been logged since 25 September. | Cooks cannot log batches. Stock is not reduced for batch dishes. | **Closed 3 October 2026.** Fix applied (`20261025_batch_trigger_fix.sql`) and a batch was logged in the rehearsal. |
+| **A1** | Refund records (`order_adjustments`) can be written directly by cashiers and owners, and edited by owners. | A forged part refund lowers expected cash and can hide a drawer shortage. | **Closed 3 October 2026.** Direct writes refused, edits blocked. |
+| **A2** | Audit lines can be added directly by any signed-in staff. | The audit trail can be padded or forged. | **Closed 3 October 2026.** Direct writes refused. |
+| **A3** | Channel payouts can be written and edited directly by owners. | Payout figures can be altered after the check. | **Closed 3 October 2026.** Frozen; only `log_channel_payout` writes. |
+| **A4** | Price decisions and batches can be written, edited or deleted directly by owners. | Decision history and batch history can be altered. | **Closed 3 October 2026.** Frozen; only `decide_price` and `log_batch` write. Corrections need a future function. |
+| **B1 to B3** | Visitors still hold table privileges (blocked by row security), signed-in users hold TRUNCATE, TRIGGER and REFERENCES, and visitors can be given execute on trigger functions. None is reachable through the app. | Defence in depth only. | **Closed 3 October 2026.** Visitors hold no table privileges, signed-in users no longer hold TRUNCATE, TRIGGER or REFERENCES, and visitors cannot run any trigger function. Backups of the old grants are kept in two private tables. |
 | **B5** | The sign-in screen needs to show who can sign in, so one server action (`list_staff`) returns the id, display name, role and active flag of a business's active staff to **anyone who knows the business code**, without signing in. Business codes are short names such as `demo-kitchen`. It never returns PINs, phones or emails. | An outsider can list staff names and roles of a business whose code they know, and then try PINs. Repeated wrong PINs lock the account (failed attempts and a lock time are saved, and one account lock is in the live audit trail). I have not tested the lockout limits. | Design choice. Needs a decision. |
 | **B4** | `business_has_access`, `catering_enabled`, `payment_mode_of` and `trial_limits_apply` accept a business id from the caller. A signed-in person who guesses another business's id can learn whether it is active, has catering on, its payment mode, or is on a trial. | Low. No money or customer data. | Accepted and documented. These functions are needed by the access rules. |
 
@@ -400,6 +400,9 @@ Ranked by what matters most. Each says what it is, what could go wrong, and the 
 - **A shift closed by an owner without a count** has no difference and cannot be adjusted.
 
 ## Other open items
+
+- **Correction functions** for channel payouts, price decisions and batches. These tables are frozen, so a mistake cannot be edited away until a correction function is built (decision: freeze now, correct later).
+- **Stale shift.** The 25 September shift in Demo Kitchen is still open and needs to be closed by the owner with a reason.
 
 - **PIN hashing.** The upgrade (a stronger scheme with a secret pepper and re-hashing at sign-in) is planned and not built.
 - **Public prices for visitors.** Prices are shown to signed-in people only. Showing them to signed-out visitors needs a decision.
@@ -433,30 +436,30 @@ Each step shipped as: database change, a check query, a rollback, a tested local
 
 # Part 11. Sign-off checklist for the security and safety sweep
 
-| # | Check | Result on 2 October 2026 |
+| # | Check | Result on 3 October 2026 |
 |---|---|---|
-| 1 | Every table has row security | Done: 45 of 45 [C] |
+| 1 | Every table has row security | Done: 47 of 47 [C] |
 | 2 | No rule opens any table to signed-out visitors | Done: 0 rules [C] |
-| 3 | Every privileged function has a fixed search path | Done: 61 of 61 [C] |
+| 3 | Every privileged function has a fixed search path | Done: 62 of 62 [C] |
 | 4 | Every function that moves money checks role and business | Done: every writer function listed in Part 6 checks the role in its body and filters by the caller's business [C][R] |
-| 5 | Money tables cannot be written directly | Done for sales, catering, credit, supplier, purchases, drawers, stock. **Open for refund records (A1), audit trail (A2), payouts (A3), price decisions and batches (A4)** |
-| 6 | Finished records cannot be edited or deleted | Done for all ledgers and the audit trail [C][R] |
+| 5 | Money tables cannot be written directly | Done for sales, catering, credit, supplier, purchases, drawers, stock, refund records, the audit trail, payouts, price decisions and batches [C][R] |
+| 6 | Finished records cannot be edited or deleted | Done for all ledgers, refund records, the audit trail, payouts, price decisions and batches [C][R] |
 | 7 | Each business sees only its own data | Done: 6 table reads and 4 actions tested against another business [R] |
 | 8 | Staff secrets cannot be read or written from the browser | Done [C][R] |
 | 9 | Every kind of money event is accounted for | Done: Part 6 lists 26 |
-| 10 | Every core path works end to end | **Not done:** batch logging fails (F0) |
+| 10 | Every core path works end to end | Done at database level: sale, void, refund, purchase, reversal, payments, stock count, shift, batch and price decision all ran in the rehearsal [R] |
 | 11 | New screens used by a person in Demo Kitchen | **Not done** [S] |
 | 12 | Backups confirmed | **Not done:** needs the Supabase dashboard |
 
-**Sign-off is not yet possible.** F0 must be fixed, A1 to A4 decided, and the Demo Kitchen walk-through completed.
+**Sign-off is not yet possible.** The database controls are in place, but two items are outstanding and both need a person: the Demo Kitchen walk-through on the screens (check 11) and confirmation of backups (check 12). The stale 25 September shift should also be closed.
 
 ---
 
 # Technical appendices
 
-All appendices were read from the live database and the code on 2 October 2026 unless stated. They are for engineers and auditors.
+All appendices were read from the live database and the code on 2 and 3 October 2026 unless stated. They are for engineers and auditors.
 
-**Totals at that moment:** 45 tables, 78 access rules (policies), 79 functions (50 callable, 29 trigger functions), 36 triggers, 66 foreign keys, 5 scheduled jobs, 2 vault secrets.
+**Totals on 3 October 2026:** 47 tables (45 app tables and 2 private grant-backup tables), 67 access rules (policies, 29 of them write rules), 82 functions (50 callable, 32 trigger functions, 62 of them with extra privilege, all with a fixed search path), 46 triggers, 66 foreign keys, 5 scheduled jobs, 2 vault secrets.
 
 # Appendix A. Tables and who can write to them
 
@@ -466,8 +469,8 @@ All appendices were read from the live database and the code on 2 October 2026 u
 |---|---|---|---|---|---|
 | archived_app_state_snapshots | Archived | nobody | - | - | - |
 | archived_saved_recipe_configs | Archived | nobody | - | - | - |
-| audit_logs | Audit trail | owner, supa_admin | **any role (A2)** | - | - |
-| batches | Production log | cook, owner, supa_admin | **cook, owner, supa_admin (A4)** | **owner, supa_admin (A4)** | **owner, supa_admin (A4)** |
+| audit_logs | Audit trail | owner, supa_admin | - | - | - |
+| batches | Production log | cook, owner, supa_admin | - | - | - |
 | business_features | Settings | any member | - | - | - |
 | business_news_prefs | Settings | any member | - | - | - |
 | business_payment_settings | Settings | owner, cashier, supa_admin | - | - | - |
@@ -478,7 +481,7 @@ All appendices were read from the live database and the code on 2 October 2026 u
 | catering_order_items | Catering order | cook, owner, cashier, purchaser, supa_admin | - | - | - |
 | catering_payments | Ledger | owner, cashier, supa_admin | - | - | - |
 | catering_reminder_log | System log | nobody (server only) | - | - | - |
-| channel_payouts | Payout record | owner, supa_admin | **owner, supa_admin (A3)** | **owner, supa_admin (A3)** | - |
+| channel_payouts | Payout record | owner, supa_admin | - | - | - |
 | contact_messages | Platform | platform admin | - (server) | platform admin | - |
 | credit_payments | Ledger | owner, cashier, supa_admin | - | - | - |
 | customer_credits | Ledger | owner, cashier, supa_admin | - | - | - |
@@ -488,13 +491,13 @@ All appendices were read from the live database and the code on 2 October 2026 u
 | margin_flags | Alerts | by the role the alert is for | owner, supa_admin | by role (to mark seen) | owner, supa_admin |
 | news_feed_status | System | nobody | - | - | - |
 | news_items | Reference | cook, owner, cashier, purchaser, supa_admin | - | - | - |
-| order_adjustments | Sales record (voids, refunds) | owner, cashier, supa_admin | **owner, cashier, supa_admin (A1)** | **owner, supa_admin (A1)** | - |
+| order_adjustments | Sales record (voids, refunds) | owner, cashier, supa_admin | - | - | - |
 | order_items | Sales | owner, cashier, supa_admin | - | - | - |
 | orders | Sales | owner, cashier, supa_admin | - | - | - |
 | payment_events | System | nobody | - | - | - |
 | payment_requests | Payments | owner, cashier, supa_admin | - | - | - |
 | platform_settings | Platform | nobody directly (read through `public_settings`) | - | - | - |
-| price_decisions | Decision log | owner, supa_admin | **owner, supa_admin (A4)** | **owner, supa_admin (A4)** | **owner, supa_admin (A4)** |
+| price_decisions | Decision log | owner, supa_admin | - | - | - |
 | purchases | Ledger | owner, purchaser, supa_admin | - | - | - |
 | recipe_items | Configuration | cook, owner, cashier, purchaser, supa_admin | cook, owner, supa_admin | cook, owner, supa_admin | owner, supa_admin |
 | recipe_variants | Configuration | owner, supa_admin | - | - | - |
@@ -542,7 +545,7 @@ Every function below fixes its search path. "Definer" functions run with the pri
 | `set_ingredient_price(ingredient, price, grade, season)` | definer | owner, purchaser, supa_admin | Change a price |
 | `record_supplier_payment(supplier, amount, note)` | definer | owner, purchaser, supa_admin | Supplier payment |
 | `reverse_supplier_payment(payment, reason)` | definer | owner, supa_admin | Reverse a supplier payment |
-| `log_batch(...)` | definer | cook, owner, supa_admin | Log a batch (**failing, F0**) |
+| `log_batch(...)` | definer | cook, owner, supa_admin | Log a batch |
 | `submit_stock_count(note, opening, lines)` | definer | cook, owner, purchaser, supa_admin | Submit a count |
 | `decide_stock_count(count, approve)` | definer | owner, supa_admin | Approve or reject a count |
 | `log_channel_payout(...)` | definer | owner, supa_admin | Record a channel payout and compare |
@@ -564,7 +567,9 @@ Every function below fixes its search path. "Definer" functions run with the pri
 
 | Table | Trigger | Function | When | What it does |
 |---|---|---|---|---|
-| batches | batches_stamp_version | stamp_recipe_version | before insert | Stamps the recipe version. **Faulty on batches (F0)** |
+| batches | batches_stamp_version | stamp_batch_version | before insert | Stamps the recipe version only (own function since 3 October 2026, F0 fix) |
+| batches | batches_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts from signed-in people (A4) |
+| batches | batches_no_change | ledger_block_change | before update, delete | Refuses edits and deletes (A4) |
 | batches | batches_stock_mode_check | check_batch_stock_mode | before insert | Refuses batches for "made to order" dishes; labels stock changes "batch use" |
 | businesses | audit_business_review | audit_business_review | after update | Audit line for status changes |
 | businesses | businesses_status_guard | businesses_status_guard | before insert, update | Only the platform changes status; billing columns only through the server |
@@ -582,12 +587,16 @@ Every function below fixes its search path. "Definer" functions run with the pri
 | ingredients | ingredients_protect_delete | ingredients_protect | before delete | Refuses delete once history exists |
 | ingredients | ingredients_trial_limit | enforce_trial_ingredient_limit | before insert | Trial plan limit |
 | ingredients | trg_audit_ingredient_cost | audit_ingredient_cost | after update | "Cost changed" audit line |
+| order_adjustments | order_adjustments_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts (A1) |
+| order_adjustments | order_adjustments_no_change | ledger_block_change | before update, delete | Refuses edits and deletes (A1) |
 | order_adjustments | trg_audit_order_adjustment | audit_order_adjustment | after insert | "Order adjusted" audit line |
 | order_items | order_items_apply_stock | apply_sale_stock | after insert | Reduces stock for "made to order" dishes |
 | order_items | order_items_lock_cost | order_items_lock_cost | before update | Keeps the plate cost fixed |
 | order_items | order_items_stamp_version | stamp_recipe_version | before insert | Stamps recipe version and plate cost |
 | orders | orders_payment_guard | orders_payment_guard | before insert, update | Rules for who can mark an order paid |
 | orders | orders_reverse_stock | reverse_sale_stock | after update | Puts stock back when a sale is voided |
+| price_decisions | price_decisions_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts (A4) |
+| price_decisions | price_decisions_protect | price_decisions_protect | before update, delete | Refuses edits and deletes, except the database emptying the link to a deleted recipe or user (A4) |
 | price_decisions | trg_audit_price_published | audit_price_published | after insert | "Price published" audit line |
 | purchases | purchases_check | purchases_check | before insert | Reversal rules; refuses direct inserts |
 | purchases | purchases_no_change | ledger_block_change | before update, delete | Refuses edits and deletes |
@@ -648,7 +657,9 @@ All 16 routes run on the server with the service key. Each one checks the caller
 
 **Written by server routes:** login_success, login_failed, account_locked, staff_created, role_changed, staff_deactivated, pin_reset, drawer_discrepancy, drawer_force_closed, platform_unlock_staff, emergency_owner_pin_reset, emergency_reset_blocked, security_alert_undelivered, email_undelivered, business_approved, business_rejected, business_suspended, business_reactivated, contact_message_handled, subscription_payment_recorded, platform_setting_changed, payment_provider_connected, feature_switched.
 
-Event types that no one has triggered yet in the live data (for example credit_payment_recorded, drawer_opened, purchase_reversed) are proved by the rehearsal on 2 October 2026, where each one was written and then undone. [R]
+Also written by the database function `cancel_unpaid_order`: unpaid_order_cancelled (missing from version 1.0 of this list).
+
+Event types that no one has triggered yet in the live data (for example credit_payment_recorded, drawer_opened, purchase_reversed) are proved by the rehearsals on 2 and 3 October 2026, where each one was written and then undone. [R]
 
 # Appendix G. SQL files for the programme
 
@@ -665,8 +676,12 @@ All files are in `supabase/external/`. Each step has the change, a check query a
 | 20261022_purchase_ledger_a / b | Step 4 |
 | 20261023_ingredient_guard | Step 4b |
 | 20261024_cash_drawer_ledger_a / b | Step 5 |
-| **20261025_batch_trigger_fix** | **F0 fix. Written and tested locally. Not applied.** |
-| **20261025_hygiene_batch** | **B1 to B3. Written and tested locally. Not applied.** |
+| 20261025_batch_trigger_fix | F0 fix. Applied 3 October 2026 |
+| 20261025_hygiene_batch | B1 to B3. Applied 3 October 2026 |
+| 20261026_a1_refund_records_lock | A1. Applied 3 October 2026 |
+| 20261026_a2_audit_trail_lock | A2. Applied 3 October 2026 |
+| 20261026_a3_channel_payouts_lock | A3. Applied 3 October 2026 |
+| 20261026_a4_decisions_batches_lock | A4. Applied 3 October 2026 |
 | rehearsal_demo_kitchen.sql | The self-undoing rehearsal used in Part 8 |
 
 # Appendix H. Glossary
