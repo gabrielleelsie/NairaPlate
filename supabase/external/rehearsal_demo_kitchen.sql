@@ -14,7 +14,7 @@ declare
   supplier constant text := '6c4dfc9f-2891-4045-86b6-59e0b3a16c6a';
   credit_open constant text := 'ba8f5112-4638-48ac-bb16-4333ec983e85'; cat_open constant text := '2d025e15-25e9-4c7b-82d2-39bdf31d0798';
   items text := '[{"recipe_id":"f830cd82-7953-4439-8a2c-98d90605967d","quantity":1}]';
-  o1 text; o2 text; cr text; pur1 text; oldp text; pay1 text; cp text; cnt text; d1 text; d_stale text; pcount text; res text; n_fail int; n_ok int; n_err int;
+  o1 text; o2 text; cr text; pur1 text; oldp text; pay1 text; cp text; cnt text; d1 text; d_stale text; pcount text; b_id text; p_id text; d_id text; d_price bigint; old_b text; res text; n_fail int; n_ok int; n_err int;
 begin
   if (select count(*) from public.businesses where id = biz) = 0 then raise exception 'Wrong project: no demo-kitchen business here. Nothing was done.'; end if;
 
@@ -142,8 +142,38 @@ begin
   -- ===== 6. WASTAGE, BATCHES, STOCK TAKE =====
   v := pg_temp.t('Wastage','Cook logs wastage (open by design; the database adjusts stock)','cook', pg_temp.dml(format($q$insert into public.wastage_logs (business_id, ingredient_id, qty, unit, cost_kobo, reason, logged_by) values ('demo-kitchen', %L, 0.1, 'kg', 8500, 'spoiled', %L)$q$, garri, pg_temp.u('cook'))), 'ALLOWED');
   v := pg_temp.t('Batches','Cook logs a batch of a dish that is not made to order (real batch function)','cook', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, rec2, (select coalesce(jsonb_agg(jsonb_build_object('ingredient_id', ingredient_id, 'base_qty', 0.01)), '[]'::jsonb)::text from public.recipe_items where recipe_id = rec2::uuid)), 'ALLOWED');
+  b_id := (v::jsonb ->> 'batch_id');
   v := pg_temp.t('Batches','A batch of a made-to-order dish is refused by design','cook', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, eba, format('[{"ingredient_id":"%s","base_qty":0.2},{"ingredient_id":"%s","base_qty":0.1}]', garri, egusi)), 'BLOCKED');
   v := pg_temp.t('Batches','Cashier cannot log a batch','cashier', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, eba, format('[{"ingredient_id":"%s","base_qty":0.2},{"ingredient_id":"%s","base_qty":0.1}]', garri, egusi)), 'BLOCKED');
+  -- ===== 6b. OWNER CORRECTIONS (Step 7): payouts, price decisions, batches =====
+  v := pg_temp.t('Corrections','Owner records a payout on a channel with no sales (real payout function)','owner', $q$select public.log_channel_payout('Rehearsal channel', current_date - 1, current_date, 0, 0, null)::text$q$, 'ALLOWED');
+  p_id := (v::jsonb -> 'payout' ->> 'id');
+  v := pg_temp.t('Corrections','Cashier cannot reverse a payout','cashier', format($q$select public.reverse_payout(%L, 'cashier trying it')::text$q$, p_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','Signed-out visitor cannot reverse a payout','anon', format($q$select public.reverse_payout(%L, 'visitor trying it')::text$q$, p_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','Another business cannot reverse our payout','owner', format($q$select public.reverse_payout(%L, 'not your payout')::text$q$, p_id), 'BLOCKED', other);
+  v := pg_temp.t('Corrections','A payout reversal needs a reason of 5 or more characters','owner', format($q$select public.reverse_payout(%L, 'no')::text$q$, p_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','Owner cannot write a reversal row directly','owner', pg_temp.dml(format($q$insert into public.channel_payouts (business_id, channel, kind, reverses_id, reason) values ('demo-kitchen','x','reversal', %L, 'forged reversal')$q$, p_id)), 'BLOCKED');
+  v := pg_temp.t('Corrections','Owner reverses the payout with a reason','owner', format($q$select public.reverse_payout(%L, 'entered for the wrong week')::text$q$, p_id), 'ALLOWED');
+  v := pg_temp.t('Corrections','The same payout cannot be reversed twice','owner', format($q$select public.reverse_payout(%L, 'second reversal attempt')::text$q$, p_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','A reversed payout and its reversal net to zero','owner', $q$select count(*)::text from (select 1 from public.channel_payouts where channel = 'Rehearsal channel' having sum(net_payout_kobo) = 0 and sum(gross_sales_kobo) = 0 and count(*) = 2) x$q$, 'ALLOWED');
+  select selling_price_kobo into d_price from public.recipes where id = rec2::uuid;
+  v := pg_temp.t('Corrections','Owner publishes a price (real decision function)','owner', format($q$select to_jsonb(public.decide_price(%L::uuid, 'publish', %s, %L::uuid))::text$q$, rec2, d_price + 5000, pg_temp.u('owner')), 'ALLOWED');
+  d_id := (v::jsonb ->> 'id');
+  v := pg_temp.t('Corrections','Cashier cannot reverse a price decision','cashier', format($q$select public.reverse_price_decision(%L, 'cashier trying it')::text$q$, d_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','Another business cannot reverse our price decision','owner', format($q$select public.reverse_price_decision(%L, 'not your decision')::text$q$, d_id), 'BLOCKED', other);
+  v := pg_temp.t('Corrections','Owner cannot write a decision reversal row directly','owner', pg_temp.dml(format($q$insert into public.price_decisions (business_id, recipe_id, decision, kind, reverses_id, reason) values ('demo-kitchen', %L, 'reversal', 'reversal', %L, 'forged reversal')$q$, rec2, d_id)), 'BLOCKED');
+  v := pg_temp.t('Corrections','Owner reverses the decision: the price goes back','owner', format($q$select public.reverse_price_decision(%L, 'published by mistake')::text$q$, d_id), 'ALLOWED');
+  v := pg_temp.t('Corrections','The dish price is back to what it was','owner', format($q$select count(*)::text from public.recipes where id = %L::uuid and selling_price_kobo = %s$q$, rec2, d_price), 'ALLOWED');
+  v := pg_temp.t('Corrections','The same decision cannot be reversed twice','owner', format($q$select public.reverse_price_decision(%L, 'second reversal attempt')::text$q$, d_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','Cook cannot reverse a batch','cook', format($q$select public.reverse_batch(%L, 'cook trying it')::text$q$, b_id), 'BLOCKED');
+  v := pg_temp.t('Corrections','Another business cannot reverse our batch','owner', format($q$select public.reverse_batch(%L, 'not your batch')::text$q$, b_id), 'BLOCKED', other);
+  v := pg_temp.t('Corrections','Owner cannot write a batch reversal row directly','owner', pg_temp.dml(format($q$insert into public.batches (business_id, recipe_id, kind, reverses_id, reason) values ('demo-kitchen', %L, 'reversal', %L, 'forged reversal')$q$, rec2, b_id)), 'BLOCKED');
+  v := pg_temp.t('Corrections','Owner reverses the batch with a reason','owner', format($q$select public.reverse_batch(%L, 'logged on the wrong day')::text$q$, b_id), 'ALLOWED');
+  v := pg_temp.t('Corrections','The reversal put stock back (rows made in this test)','owner', $q$select count(*)::text from public.stock_movements where reason = 'batch_reversed' and created_at = now()$q$, 'ALLOWED');
+  v := pg_temp.t('Corrections','The same batch cannot be reversed twice','owner', format($q$select public.reverse_batch(%L, 'second reversal attempt')::text$q$, b_id), 'BLOCKED');
+  select id::text into old_b from public.batches b where kind = 'entry' and business_id = biz and not exists (select 1 from public.stock_movements m where m.ref_id = b.id and m.reason = 'batch_use') limit 1;
+  v := pg_temp.t('Corrections','A batch recorded before reversals existed cannot be reversed','owner', format($q$select public.reverse_batch(%L, 'old batch, no stock trail')::text$q$, old_b), 'BLOCKED');
+
   v := pg_temp.t('Stock take','Purchaser submits a count (waits for an owner)','purchaser', format($q$select public.submit_stock_count('rehearsal count', false, %L::jsonb)::text$q$, format('[{"ingredient_id":"%s","counted_base":1,"note":"counted again"}]', rice)), 'ALLOWED');
   pcount := (v::jsonb ->> 'id');
   v := pg_temp.t('Stock take','Cashier cannot count stock','cashier', format($q$select public.submit_stock_count('x', false, %L::jsonb)::text$q$, format('[{"ingredient_id":"%s","counted_base":1,"note":"x"}]', rice)), 'BLOCKED');
