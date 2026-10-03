@@ -4,7 +4,7 @@
 **How long:** about 60 minutes. You can stop after any part and carry on later.
 **Where:** use the live app in a browser. Test business code: `demo-kitchen`. Everything you do is test data. Reversals are final, so use test entries only.
 
-**How to use it:** do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick **Pass** or **Fail**. If a step fails, write what you saw (the exact words of any message) in **Notes** and move on.
+**How to use it:** do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick **Pass** or **Fail**. If a step fails, write what you saw (the exact words of any message) in the margin next to the step and move on.
 
 Menu names below are the ones on the app's home screen. The home screen groups them as **Sell**, **Buy & Stock**, **Kitchen** and **Oversight**. The "Home" link at the top of every screen takes you back.
 

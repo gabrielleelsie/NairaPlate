@@ -9,7 +9,7 @@
 
 ## Your sign-in details (the person running the test fills these in)
 
-| | |
+| Item | Detail |
 |---|---|
 | Website | ______________________________ |
 | Business code | `demo-kitchen` |
@@ -31,7 +31,7 @@
 
 ## Tasks
 
-Do the tasks in order. Read each task out loud before you do it. Your guide to what to expect is in the right-hand column, but try the task first without looking at it. If the screen does not match, say so.
+Do the tasks in order. Read each task out loud before you do it. Under each task, "You should see" tells you what to expect. Try the task first without peeking. If the screen does not match, say so out loud.
 
 ### Task 1. Sign in
 
