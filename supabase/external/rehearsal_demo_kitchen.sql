@@ -157,7 +157,7 @@ begin
   v := pg_temp.t('Corrections','The same payout cannot be reversed twice','owner', format($q$select public.reverse_payout(%L, 'second reversal attempt')::text$q$, p_id), 'BLOCKED');
   v := pg_temp.t('Corrections','A reversed payout and its reversal net to zero','owner', $q$select count(*)::text from (select 1 from public.channel_payouts where channel = 'Rehearsal channel' having sum(net_payout_kobo) = 0 and sum(gross_sales_kobo) = 0 and count(*) = 2) x$q$, 'ALLOWED');
   select selling_price_kobo into d_price from public.recipes where id = rec2::uuid;
-  v := pg_temp.t('Corrections','Owner publishes a price (real decision function)','owner', format($q$select public.decide_price(%L::uuid, 'publish', %s, %L::uuid)::text$q$, rec2, d_price + 5000, pg_temp.u('owner')), 'ALLOWED');
+  v := pg_temp.t('Corrections','Owner publishes a price (real decision function)','owner', format($q$select to_jsonb(public.decide_price(%L::uuid, 'publish', %s, %L::uuid))::text$q$, rec2, d_price + 5000, pg_temp.u('owner')), 'ALLOWED');
   d_id := (v::jsonb ->> 'id');
   v := pg_temp.t('Corrections','Cashier cannot reverse a price decision','cashier', format($q$select public.reverse_price_decision(%L, 'cashier trying it')::text$q$, d_id), 'BLOCKED');
   v := pg_temp.t('Corrections','Another business cannot reverse our price decision','owner', format($q$select public.reverse_price_decision(%L, 'not your decision')::text$q$, d_id), 'BLOCKED', other);
