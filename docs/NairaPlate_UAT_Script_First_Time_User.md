@@ -94,10 +94,21 @@ You rang up the wrong dish for the cash sale in Task 3. Cancel it.
 
 **You should see:** the order says **Part refunded**. On the **Adjustments** tab you see your refund.
 
+### Task 7b. Take cash out for a market run
+
+During the day the cook needs ₦4,000 of tomatoes from the market and you give it from the drawer.
+
+1. Go to **Home**, then **Cash drawer**.
+2. Scroll down to **Cash taken out**.
+3. Type `4000` for the **Amount (₦)**. Under **What for**, choose **Market run**. In **Note**, type what it was for, for example `tomatoes and pepper`.
+4. Press **Take cash out**.
+
+**You should see:** a message that it was recorded, and the entry in the list below. **Did you understand what the limit text above the form means? ______________**
+
 ### Task 8. Count the drawer and close the day
 
 1. Go to **Cash drawer**.
-2. Pretend you counted the cash in the drawer and it is ₦3,500. Type `3500` in **Cash counted in drawer (₦)**.
+2. Pretend you counted the cash in the drawer. Work it out: the float, plus the cash sales, minus the ₦4,000 you took out for the market run. Type that figure in **Cash counted in drawer (₦)**. (If you are not sure, type `3500` and read what the app tells you.)
 3. Press **Close shift**.
 
 **You should see:** "Shift closed", with a figure for the cash the app expected and any difference. If it shows a difference, that is fine. Read it out loud and tell us whether you understand it.

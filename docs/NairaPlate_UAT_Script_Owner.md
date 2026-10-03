@@ -107,6 +107,37 @@ For each row, sign out first (the sign-out icon in the top bar of the home scree
 | 7.4 | The same Cashier | Open **Orders** and look at an order made by someone else | Pressing **Void / Refund** and trying gives "Only an owner can adjust another cashier's order" | ☐ | ☐ |
 | 7.5 | A Purchaser | Look at the home screen | Only Buy & Stock. In **Purchases**, recent purchases have no **Reverse** button | ☐ | ☐ |
 
+## Part 7b. Cash taken out of the drawer (15 minutes)
+
+Do this with a shift open. If you closed it earlier, open a new one first (Home, then **Sell**, then **Cash drawer**, float `2000`, **Open shift**). The cashier steps (7b.1 to 7b.4) can be done signed in as the cashier or UAT Tester; the owner steps need you signed in as the Owner.
+
+| # | Sign in as | Go to | Do | You should see | Pass | Fail |
+|---|---|---|---|---|---|---|
+| 7b.1 | Cashier who opened the shift | Home, then **Sell**, then **Cash drawer** | Scroll to **Cash taken out**. Type **Amount (₦)** `4000`, **What for** Market run, **Note** `tomatoes and pepper`. Press **Take cash out** | "₦4,000.00 recorded as taken out of the drawer." It appears in the list as Recorded | ☐ | ☐ |
+| 7b.2 | Same cashier | Same section | Take out another `4000` (**Gas or fuel**, note `gas refill for the stove`) | Recorded. The text above the form now says you can take out about ₦2,000 more | ☐ | ☐ |
+| 7b.3 | Same cashier | Same section | Try `4000` again (**Transport**, note `bike to the market`). The button now says **Ask the owner**. Press it | A message that it is over your limit and is waiting for the owner. The list shows it as "Waiting for the owner" | ☐ | ☐ |
+| 7b.4 | Same cashier | Same page | Look at the **Close shift** button | It is greyed out, with a red message: a cash payout is waiting for the owner | ☐ | ☐ |
+| 7b.5 | Owner | **Cash drawer** | Find **Waiting for your approval**. Press **Decline**, type `no`: the **Decline this request** button stays greyed out. Then press **Approve** instead | The request becomes "Approved" and now counts as paid out | ☐ | ☐ |
+| 7b.6 | Cashier | **Cash drawer** | Ask for another large amount, for example `9000` (Other, note `large item for the stove`) | It waits for the owner | ☐ | ☐ |
+| 7b.7 | Owner | **Cash drawer** | Press **Decline**, type a reason such as `not needed on the shift`, press **Decline this request** | The request shows "Declined" with your reason and does not count | ☐ | ☐ |
+| 7b.8 | Owner | **Cash drawer** | Take out `20000` yourself (**Supplier settlement**, note `settled the flour account`) | Recorded straight away with no approval step, because owners have no limit | ☐ | ☐ |
+| 7b.9 | Owner | Same list | On that ₦20,000 payout press **Reverse**, type a reason, press **Reverse this payout** | It is struck through and marked Reversed. No Reverse button remains on it | ☐ | ☐ |
+| 7b.10 | Owner | **Cash drawer**, **Cashier limit** box | Type `12000` and press **Save limit** | "The limit was changed." The label now says ₦12,000.00. Put it back to `10000` afterwards | ☐ | ☐ |
+| 7b.11 | Purchaser | Home, then **Buy & Stock**, then **Purchases** | Log a purchase: **Payment** Cash. Tick **Paid from the cash drawer**. Submit | Saved. On the Cash drawer screen (as owner) a new payout "Purchase of …, paid from the drawer" appears | ☐ | ☐ |
+| 7b.12 | Owner | **Purchases**, **Recent purchases** | Reverse that purchase with a reason | The purchase is reversed AND the payout on the Cash drawer screen shows as Reversed with the same reason | ☐ | ☐ |
+| 7b.13 | Purchaser | Home, then **Buy & Stock**, then **Suppliers**, **Pay a supplier** | Pay a supplier `500`, tick **Paid from the cash drawer**, press **Record payment** | Saved. A payout "Payment to …, paid from the drawer" appears on the Cash drawer screen | ☐ | ☐ |
+| 7b.14 | Purchaser | Same screen | Pay a supplier `100` with the box **not** ticked | Saved. No new payout appears | ☐ | ☐ |
+| 7b.15 | Cashier | **Cash drawer** | Count the drawer: float, plus cash sales, minus everything taken out and approved (declined and reversed ones do not count). Type that in **Cash counted in drawer (₦)** and press **Close shift** | "Shift closed". The summary shows **Cash paid out of the drawer** and the shift is **Balanced** | ☐ | ☐ |
+| 7b.16 | Owner | **Cash drawer**, **Closed shifts** | Look at the closed shift | The line shows "paid out ₦…" with the figures | ☐ | ☐ |
+| 7b.17 | Cook or Purchaser | Open **Cash drawer** from the address bar if you can | The page says "Cashiers and owners only." | ☐ | ☐ |
+
+### Catering deposit method
+
+| # | Go to | Do | You should see | Pass | Fail |
+|---|---|---|---|---|---|
+| 7b.18 | Owner or cashier: Home, then **Sell**, then **Catering** | Start a booking. Type a **Deposit paid (₦)** of `500`. Do not choose how it was paid yet | A new box **How was the deposit paid?** appears. The booking cannot be saved: the message says to choose cash or transfer | ☐ | ☐ |
+| 7b.19 | Same booking | Choose **Cash** and book it | Booked. With a shift open, the cash deposit is counted in that shift's expected cash | ☐ | ☐ |
+
 ## Part 8. Final tidy-up
 
 | # | Do | Pass | Fail |
