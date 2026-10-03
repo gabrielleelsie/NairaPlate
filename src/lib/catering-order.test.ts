@@ -63,3 +63,16 @@ describe("totalsText", () => {
     expect(totalsText(t, 50000, 0, 100000)).toContain("still to pay");
   });
 });
+
+describe("deposit method", () => {
+  it("is needed once a deposit is entered and the screen asks for it", () => {
+    expect(draftProblem({ ...base, depositKobo: 50000, depositMethod: "" })).toBe("Choose how the deposit was paid: cash or transfer.");
+    expect(draftProblem({ ...base, depositKobo: 50000, depositMethod: "cash" })).toBeNull();
+    expect(draftProblem({ ...base, depositKobo: 50000, depositMethod: "transfer" })).toBeNull();
+    expect(draftProblem({ ...base, depositKobo: 50000, depositMethod: "cheque" })).toBe("Choose how the deposit was paid: cash or transfer.");
+  });
+  it("is not needed without a deposit, or when the caller does not ask for it", () => {
+    expect(draftProblem({ ...base, depositKobo: 0, depositMethod: "" })).toBeNull();
+    expect(draftProblem({ ...base, depositKobo: 50000 })).toBeNull();
+  });
+});

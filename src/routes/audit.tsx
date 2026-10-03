@@ -41,6 +41,13 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   email_undelivered: "Email not delivered",
   contact_message_handled: "Contact message handled",
   subscription_payment_recorded: "Subscription payment recorded",
+  cash_payout_recorded: "Cash taken out of the drawer",
+  cash_payout_requested: "Cash payout requested",
+  cash_payout_approved: "Cash payout approved",
+  cash_payout_declined: "Cash payout declined",
+  cash_payout_reversed: "Cash payout reversed",
+  cash_payout_left_on_closed_shift: "Cash payout left on a closed shift",
+  drawer_limit_changed: "Cash payout limit changed",
 };
 
 type Row = { id: string; actor_id: string | null; actor_role: string | null; action: string; details: string | null; created_at: string };

@@ -21,6 +21,8 @@ export function orderTotals(o: { lines: DraftLine[]; deliveryKobo: number; disco
 export function draftProblem(o: {
   role: string | null; customer: string; date: string; time: string; today: string; lines: DraftLine[];
   deliveryKobo: number; discountKobo: number; depositKobo: number;
+  /** How the deposit was paid. Leave undefined to skip the check (old callers); a deposit above zero then needs "cash" or "transfer". */
+  depositMethod?: string;
 }): string | null {
   const t = orderTotals(o);
   if (!o.customer.trim()) return "Enter the customer name.";
@@ -35,6 +37,7 @@ export function draftProblem(o: {
   if (o.discountKobo > t.subtotal) return "The discount cannot be more than the items total.";
   if (t.total <= 0) return "The order total must be more than zero.";
   if (o.depositKobo > t.total) return "The deposit cannot be more than the order total.";
+  if (o.depositKobo > 0 && o.depositMethod !== undefined && o.depositMethod !== "cash" && o.depositMethod !== "transfer") return "Choose how the deposit was paid: cash or transfer.";
   return null;
 }
 

@@ -9,6 +9,7 @@ import {
   type ShiftAdjustment, type ShiftRow,
 } from "@/lib/cash-drawer";
 import { entryWhen } from "@/lib/catering-payments";
+import { CashPayouts } from "@/components/CashPayouts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/drawer")({
 type Drawer = { id: string; opening_float_kobo: number; opened_at: string };
 type Summary = {
   opening_float_kobo: number; expected_cash_kobo: number; closing_counted_kobo: number | null; discrepancy_kobo: number | null;
-  cash_sales_kobo?: number; catering_cash_kobo?: number; debt_cash_kobo?: number;
+  cash_sales_kobo?: number; catering_cash_kobo?: number; debt_cash_kobo?: number; payouts_kobo?: number;
 };
 const ROLES = new Set(["cashier", "owner", "supa_admin"]);
 
@@ -52,6 +53,7 @@ function DrawerScreen() {
   const [adjFor, setAdjFor] = useState<string | null>(null);
   const [adjCount, setAdjCount] = useState("");
   const [adjReason, setAdjReason] = useState("");
+  const [pending, setPending] = useState(0);
 
   const owner = isOwnerRole(session?.role);
 
@@ -137,6 +139,7 @@ function DrawerScreen() {
           {summary.cash_sales_kobo != null && <p>Cash sales: {formatNaira(summary.cash_sales_kobo)}</p>}
           {!!summary.catering_cash_kobo && <p>Catering cash taken: {formatNaira(summary.catering_cash_kobo)}</p>}
           {!!summary.debt_cash_kobo && <p>Debt payments taken in cash: {formatNaira(summary.debt_cash_kobo)}</p>}
+          {!!summary.payouts_kobo && <p>Cash paid out of the drawer: −{formatNaira(summary.payouts_kobo)}</p>}
           <p>Expected cash: {formatNaira(summary.expected_cash_kobo)}</p>
           <p>Counted cash: {summary.closing_counted_kobo == null ? "not counted" : formatNaira(summary.closing_counted_kobo)}</p>
           <p className={d === 0 ? "font-semibold text-primary" : "font-semibold text-destructive"}>
@@ -151,7 +154,8 @@ function DrawerScreen() {
           <p>Shift open since {new Date(open.opened_at).toLocaleTimeString()} with a {formatNaira(open.opening_float_kobo)} float.</p>
           <Label htmlFor="amt">Cash counted in drawer (₦)</Label>
           <Input id="amt" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Button className="w-full" disabled={busy} onClick={closeShift}>Close shift</Button>
+          <Button className="w-full" disabled={busy || pending > 0} onClick={closeShift}>Close shift</Button>
+          {pending > 0 && <p className="text-sm text-destructive" role="alert">A cash payout is waiting for the owner. Ask them to approve or decline it, then close the shift.</p>}
         </section>
       ) : someoneElses ? (
         <section className="rounded-lg border p-4 space-y-2" data-testid="shift-open-elsewhere">
@@ -177,6 +181,9 @@ function DrawerScreen() {
           <Button className="w-full" disabled={busy} onClick={openShift}>Open shift</Button>
         </section>
       )}
+      {(open || (owner && bizOpen)) && (
+        <CashPayouts drawerId={(open?.id ?? bizOpen!.id)} role={session.role} canRecord={!!open || owner} onPending={setPending} />
+      )}
       {msg && <p className="text-primary">{msg}</p>}
       {err && <p className="text-destructive">{err}</p>}
 
@@ -194,7 +201,7 @@ function DrawerScreen() {
                     <span className="font-medium">{s.closed_at ? entryWhen(s.closed_at) : ""}{s.opened_by_name ? ` · ${s.opened_by_name}` : ""}</span>
                     <span className="text-xs rounded border px-1.5 py-0.5">{shiftLabel(s)}</span>
                   </div>
-                  <div>Float {formatNaira(s.opening_float_kobo)}{s.cash_sales_kobo != null ? ` · cash sales ${formatNaira(s.cash_sales_kobo)}` : ""}{s.catering_cash_kobo ? ` · catering cash ${formatNaira(s.catering_cash_kobo)}` : ""}{s.debt_cash_kobo ? ` · debts in cash ${formatNaira(s.debt_cash_kobo)}` : ""}</div>
+                  <div>Float {formatNaira(s.opening_float_kobo)}{s.cash_sales_kobo != null ? ` · cash sales ${formatNaira(s.cash_sales_kobo)}` : ""}{s.catering_cash_kobo ? ` · catering cash ${formatNaira(s.catering_cash_kobo)}` : ""}{s.debt_cash_kobo ? ` · debts in cash ${formatNaira(s.debt_cash_kobo)}` : ""}{s.payouts_kobo ? ` · paid out ${formatNaira(s.payouts_kobo)}` : ""}</div>
                   <div>Expected {s.expected_cash_kobo == null ? "—" : formatNaira(s.expected_cash_kobo)} · counted {s.closing_counted_kobo == null ? "not counted" : formatNaira(s.closing_counted_kobo)}
                     {s.discrepancy_kobo != null && <> · {s.discrepancy_kobo === 0 ? "balanced" : s.discrepancy_kobo < 0 ? `short ${formatNaira(-s.discrepancy_kobo)}` : `over ${formatNaira(s.discrepancy_kobo)}`}</>}</div>
                   {s.forced && s.close_reason && <div className="text-muted-foreground">Closed by {s.closed_by_name ?? "an owner"}: {s.close_reason}</div>}

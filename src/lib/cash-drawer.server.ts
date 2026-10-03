@@ -24,11 +24,12 @@ export async function closeDrawerRecord(
 
   const { data: done, error } = await admin.from("cash_drawers").update({
     closing_counted_kobo: o.countedKobo, expected_cash_kobo: r.expected_cash_kobo, discrepancy_kobo: discrepancy,
-    cash_sales_kobo: r.cash_sales_kobo, catering_cash_kobo: r.catering_cash_kobo, debt_cash_kobo: r.debt_cash_kobo,
+    cash_sales_kobo: r.cash_sales_kobo, catering_cash_kobo: r.catering_cash_kobo, debt_cash_kobo: r.debt_cash_kobo, payouts_kobo: r.payouts_kobo,
     closed_by: o.actor.id, closed_by_name: o.actor.name, forced: o.forced, close_reason: o.forced ? (o.reason ?? "").trim() : null,
     status: "closed", closed_at: closedAt,
   }).eq("id", drawer.id).eq("status", "open").select("id");
-  if (error) throw new DrawerCloseError("Could not close the shift.", 500);
+  // The database refuses to close a shift while a cash payout request is waiting for the owner. Say so plainly.
+  if (error) throw new DrawerCloseError(/waiting for the owner/i.test(error.message) ? "A cash payout is waiting for the owner. Ask them to approve or decline it, then close the shift." : "Could not close the shift.", /waiting for the owner/i.test(error.message) ? 409 : 500);
   if (!done || done.length === 0) throw new DrawerCloseError("This shift is already closed.", 409);
 
   const who = o.forced ? (drawer.opened_by_name ?? "a cashier") : o.actor.name;
@@ -52,7 +53,7 @@ export async function closeDrawerRecord(
       details: `${o.actor.name} closed ${who}'s open shift: ${(o.reason ?? "").trim()} (expected ${naira(r.expected_cash_kobo)}${o.countedKobo == null ? ", not counted" : `, counted ${naira(o.countedKobo)}`})` });
   }
   return {
-    opening_float_kobo: Number(drawer.opening_float_kobo), cash_sales_kobo: r.cash_sales_kobo, catering_cash_kobo: r.catering_cash_kobo, debt_cash_kobo: r.debt_cash_kobo,
+    opening_float_kobo: Number(drawer.opening_float_kobo), cash_sales_kobo: r.cash_sales_kobo, catering_cash_kobo: r.catering_cash_kobo, debt_cash_kobo: r.debt_cash_kobo, payouts_kobo: r.payouts_kobo,
     expected_cash_kobo: r.expected_cash_kobo, closing_counted_kobo: o.countedKobo, discrepancy_kobo: discrepancy, flag,
   };
 }
