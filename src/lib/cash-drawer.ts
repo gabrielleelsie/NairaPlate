@@ -4,18 +4,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isOwnerRole } from "@/lib/catering-order";
 
-export type DrawerForExpected = { business_id: string; opening_float_kobo: number | string; opened_at: string };
+export type DrawerForExpected = { id: string; business_id: string; opening_float_kobo: number | string; opened_at: string };
 
-export type DrawerExpected = { cash_sales_kobo: number; catering_cash_kobo: number; debt_cash_kobo: number; expected_cash_kobo: number };
+export type DrawerExpected = { cash_sales_kobo: number; catering_cash_kobo: number; debt_cash_kobo: number; payouts_kobo: number; expected_cash_kobo: number };
 
 export const sumKobo = (rows: { amount_kobo: unknown }[] | null | undefined): number => (rows ?? []).reduce((s, r) => s + Number(r.amount_kobo), 0);
 
 /**
  * Expected cash = float + cash portion of every PAID (or part-refunded) cash/split order since the shift opened, up to `untilIso`
- * + cash catering payments + cash debt payments recorded in the same window.
+ * + cash catering payments (deposits included, once they carry a cash method) + cash debt payments recorded in the same window
+ * - cash paid out of the drawer on this shift (payout entries minus reversals; waiting requests and declines do not count).
  * Voided ('cancelled') and fully 'refunded' orders add nothing. A partial refund comes out of the cash portion (never more than the cash taken).
  * Catering and debt reversals are entries too, with the same method and a minus amount, so a payment reversed inside the window nets to nothing.
- * NOT counted: catering deposits (no cash or transfer method is saved for them), cash purchases, supplier payments.
+ * NOT counted: catering deposits taken before methods were saved (the two carried-over ones), and any cash purchase or supplier payment that was
+ * not marked "paid from the cash drawer" (those are paid from somewhere else).
  */
 export async function expectedDrawerCash(
   supabase: SupabaseClient, drawer: DrawerForExpected, untilIso: string,
@@ -43,25 +45,28 @@ export async function expectedDrawerCash(
   const [cat, debt] = await Promise.all([window("catering_payments"), window("credit_payments")]);
   if (cat.error || debt.error) throw new Error("Could not read cash collections.");
   const catering_cash_kobo = sumKobo(cat.data), debt_cash_kobo = sumKobo(debt.data);
-  return { cash_sales_kobo, catering_cash_kobo, debt_cash_kobo, expected_cash_kobo: Number(drawer.opening_float_kobo) + cash_sales_kobo + catering_cash_kobo + debt_cash_kobo };
+  const { data: out, error: oute } = await supabase.from("cash_drawer_payouts").select("amount_kobo").eq("drawer_id", drawer.id).in("kind", ["payout", "reversal"]);
+  if (oute) throw new Error("Could not read cash payouts.");
+  const payouts_kobo = sumKobo(out);
+  return { cash_sales_kobo, catering_cash_kobo, debt_cash_kobo, payouts_kobo, expected_cash_kobo: Number(drawer.opening_float_kobo) + cash_sales_kobo + catering_cash_kobo + debt_cash_kobo - payouts_kobo };
 }
 
 export type ShiftRow = {
   id: string; status: "open" | "closed"; opened_at: string; closed_at: string | null; opened_by_name: string | null; closed_by_name: string | null;
   opening_float_kobo: number; closing_counted_kobo: number | null; expected_cash_kobo: number | null; discrepancy_kobo: number | null;
-  cash_sales_kobo: number | null; catering_cash_kobo: number | null; debt_cash_kobo: number | null; forced: boolean; close_reason: string | null;
+  cash_sales_kobo: number | null; catering_cash_kobo: number | null; debt_cash_kobo: number | null; payouts_kobo: number | null; forced: boolean; close_reason: string | null;
 };
 export type ShiftAdjustment = { id: string; drawer_id: string; amount_kobo: number; reason: string; recorded_by_name: string | null; created_at: string };
 
 /** The columns the shift list reads. */
-export const SHIFT_COLUMNS = "id,status,opened_at,closed_at,opened_by_name,closed_by_name,opening_float_kobo,closing_counted_kobo,expected_cash_kobo,discrepancy_kobo,cash_sales_kobo,catering_cash_kobo,debt_cash_kobo,forced,close_reason";
+export const SHIFT_COLUMNS = "id,status,opened_at,closed_at,opened_by_name,closed_by_name,opening_float_kobo,closing_counted_kobo,expected_cash_kobo,discrepancy_kobo,cash_sales_kobo,catering_cash_kobo,debt_cash_kobo,payouts_kobo,forced,close_reason";
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 export function normaliseShifts(rows: unknown[] | null): ShiftRow[] {
   return (rows ?? []).map((r) => {
     const x = r as ShiftRow;
     return { ...x, opening_float_kobo: Number(x.opening_float_kobo), closing_counted_kobo: num(x.closing_counted_kobo), expected_cash_kobo: num(x.expected_cash_kobo),
-      discrepancy_kobo: num(x.discrepancy_kobo), cash_sales_kobo: num(x.cash_sales_kobo), catering_cash_kobo: num(x.catering_cash_kobo), debt_cash_kobo: num(x.debt_cash_kobo), forced: !!x.forced };
+      discrepancy_kobo: num(x.discrepancy_kobo), cash_sales_kobo: num(x.cash_sales_kobo), catering_cash_kobo: num(x.catering_cash_kobo), debt_cash_kobo: num(x.debt_cash_kobo), payouts_kobo: num(x.payouts_kobo), forced: !!x.forced };
   });
 }
 export const normaliseAdjustments = (rows: unknown[] | null): ShiftAdjustment[] =>

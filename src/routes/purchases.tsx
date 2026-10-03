@@ -59,6 +59,7 @@ function PurchaseScreen() {
   const [pastPrices, setPastPrices] = useState<{ grade: string | null; market_unit: string; unit_price: number }[]>([]);
   const [lastGrades, setLastGrades] = useState<Map<string, string | null>>(new Map());
   const [pay, setPay] = useState<string>("cash");
+  const [fromDrawer, setFromDrawer] = useState(false);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [unsure, setUnsure] = useState<Set<string>>(new Set());
   const [listening, setListening] = useState(false);
@@ -155,16 +156,18 @@ function PurchaseScreen() {
     if (!conv || conv.error || !conv.base_qty) return setMsg({ ok: false, text: conv?.error ?? "No conversion set up." });
     setBusy(true); setMsg(null);
     // log_purchase also records the supplier debt (purchase_on_credit) in the same transaction.
-    const { data, error } = await supabase.rpc("log_purchase", {
+    // "Paid from the cash drawer": the purchase and the cash taken out of the open shift are saved together, or neither is.
+    const fromBox = pay === "cash" && fromDrawer;
+    const { data, error } = await supabase.rpc((fromBox ? "log_purchase_from_drawer" : "log_purchase") as never, {
       p_ingredient_id: ingId, p_qty: Number(qty), p_market_unit: unit,
       p_total_kobo: nairaToKobo(paid), p_payment_method: pay, p_grade: grade, p_season: season, p_raw_transcript: transcript,
       ...(supplierId ? { p_supplier_id: supplierId } : {}),
-    });
+    } as never);
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
-    const r = data as { previous_cost_kobo: number; current_cost_kobo: number; flagged: boolean; pct: number | null; note: string | null; season: string; previous_grade: string | null };
+    const r = data as unknown as { previous_cost_kobo: number; current_cost_kobo: number; flagged: boolean; pct: number | null; note: string | null; season: string; previous_grade: string | null };
     setMsg({ ok: true, text: `Saved ${qty} ${marketUnitLabel(unit)} of ${ing?.name}. New price ${formatNaira(r.current_cost_kobo)} per ${ing?.base_unit} (was ${formatNaira(r.previous_cost_kobo)}).${r.flagged ? ` Price up ${r.pct}% on the last grade ${grade} (${seasonLabel(season).toLowerCase()} season). Owner alerted.` : ""}${r.note === "first_of_grade" ? ` First time buying grade ${grade}${r.previous_grade ? ` (last was grade ${r.previous_grade})` : ""}, so no price alert.` : ""}` });
-    setQty(""); setPaid(""); setTranscript(null); setUnsure(new Set());
+    setQty(""); setPaid(""); setTranscript(null); setUnsure(new Set()); setFromDrawer(false);
     load();
   }
 
@@ -246,7 +249,13 @@ function PurchaseScreen() {
       <div className="space-y-1"><Label htmlFor="p-pay">Payment</Label>
         <select id="p-pay" className={sel} value={pay} onChange={(e) => setPay(e.target.value)}>
           {PAY.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-        </select></div>
+        </select>
+        {pay === "cash" && (
+          <label className="flex items-start gap-2 pt-1 text-sm">
+            <input type="checkbox" className="mt-1" checked={fromDrawer} onChange={(e) => setFromDrawer(e.target.checked)} />
+            <span>Paid from the cash drawer. Tick this only if the money came out of the till. It is taken off the open shift's expected cash. Leave it unticked for cash from anywhere else.</span>
+          </label>
+        )}</div>
       <div className="space-y-1"><Label htmlFor="p-sup">Supplier (optional)</Label>
         <select id="p-sup" className={sel} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
           <option value="">— none —</option>

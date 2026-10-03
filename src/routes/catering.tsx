@@ -38,7 +38,7 @@ type Item = { id: string; order_id: string; recipe_name: string; quantity: numbe
 type Dish = { id: string; name: string; selling_price_kobo: number };
 const received = (b: Booking) => b.deposit_kobo + b.additional_payments_kobo;
 const remaining = (b: Booking) => b.total_contract_kobo - received(b);
-const EMPTY = { name: "", phone: "", date: "", time: "", address: "", notes: "", delivery: "", discount: "", deposit: "" };
+const EMPTY = { name: "", phone: "", date: "", time: "", address: "", notes: "", delivery: "", discount: "", deposit: "", depositMethod: "" };
 const STATUS_STYLE: Record<OrderStatus, string> = { enquiry: "bg-amber-100 text-amber-900", confirmed: "bg-blue-100 text-blue-900", delivered: "bg-green-100 text-green-900", cancelled: "bg-gray-200 text-gray-700" };
 
 function CateringScreen() {
@@ -104,7 +104,7 @@ function CateringScreen() {
 
   const deliveryK = nairaToKobo(f.delivery), discountK = nairaToKobo(f.discount), depK = nairaToKobo(f.deposit);
   const totals = orderTotals({ lines, deliveryKobo: deliveryK, discountKobo: discountK, depositKobo: depK });
-  const problem = draftProblem({ role, customer: f.name, date: f.date, time: f.time, today, lines, deliveryKobo: deliveryK, discountKobo: discountK, depositKobo: depK });
+  const problem = draftProblem({ role, customer: f.name, date: f.date, time: f.time, today, lines, deliveryKobo: deliveryK, discountKobo: discountK, depositKobo: depK, depositMethod: f.depositMethod });
   const datePast = !!f.date && f.date < today;
 
   const touch = () => setChecking(false);
@@ -135,7 +135,7 @@ function CateringScreen() {
     const payload = lines.map((l) => (l.custom ? { name: l.name, quantity: l.quantity, unit_price_kobo: l.unitPriceKobo } : { recipe_id: l.recipeId, quantity: l.quantity }));
     const { data, error } = await supabase.rpc("create_catering_order" as never, {
       p_customer: f.name.trim(), p_phone: f.phone.trim(), p_event_date: f.date, p_event_time: f.time, p_address: f.address, p_notes: f.notes,
-      p_items: payload, p_delivery_fee_kobo: deliveryK, p_discount_kobo: discountK, p_deposit_kobo: depK, p_status: asEnquiry ? "enquiry" : "confirmed",
+      p_items: payload, p_delivery_fee_kobo: deliveryK, p_discount_kobo: discountK, p_deposit_kobo: depK, p_deposit_method: depK > 0 ? f.depositMethod : null, p_status: asEnquiry ? "enquiry" : "confirmed",
     } as never);
     setSaving(false); setChecking(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
@@ -246,6 +246,16 @@ function CateringScreen() {
           {owner && <div className="flex-1 space-y-1"><Label htmlFor="k-disc">Discount (₦, owner only)</Label><Input id="k-disc" type="number" min={0} value={f.discount} onChange={set("discount")} /></div>}
           <div className="flex-1 space-y-1"><Label htmlFor="k-dep">Deposit paid (₦)</Label><Input id="k-dep" type="number" min={0} value={f.deposit} onChange={set("deposit")} /></div>
         </div>
+        {depK > 0 && (
+          <div className="space-y-1"><Label htmlFor="k-depm">How was the deposit paid?</Label>
+            <select id="k-depm" className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={f.depositMethod} onChange={(e) => { touch(); setF((x) => ({ ...x, depositMethod: e.target.value })); }}>
+              <option value="">Choose…</option>
+              <option value="cash">Cash</option>
+              <option value="transfer">Transfer</option>
+            </select>
+            <p className="text-xs text-muted-foreground">A cash deposit counts in the cash drawer's expected cash.</p>
+          </div>
+        )}
         <div className="space-y-1"><Label htmlFor="k-notes">Notes (optional)</Label>
           <textarea id="k-notes" className="w-full min-h-16 rounded-md border border-input bg-background px-3 py-2" value={f.notes} onChange={set("notes")} placeholder="e.g. no pepper in half the jollof" /></div>
 

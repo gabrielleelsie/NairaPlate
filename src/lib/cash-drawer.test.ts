@@ -13,12 +13,12 @@ function fake(tables: Record<string, unknown[]>, failing: string[] = []): Supaba
     },
   } as unknown as SupabaseClient;
 }
-const drawer = { business_id: "b1", opening_float_kobo: 200000, opened_at: "2026-10-01T08:00:00Z" };
+const drawer = { id: "d1", business_id: "b1", opening_float_kobo: 200000, opened_at: "2026-10-01T08:00:00Z" };
 
 describe("expectedDrawerCash", () => {
   it("is the float plus cash sales when nothing else was collected", async () => {
     const r = await expectedDrawerCash(fake({ orders: [{ id: "o1", cash_amount_kobo: 300000 }, { id: "o2", cash_amount_kobo: 100000 }] }), drawer, "2026-10-01T20:00:00Z");
-    expect(r).toEqual({ cash_sales_kobo: 400000, catering_cash_kobo: 0, debt_cash_kobo: 0, expected_cash_kobo: 600000 });
+    expect(r).toEqual({ cash_sales_kobo: 400000, catering_cash_kobo: 0, debt_cash_kobo: 0, payouts_kobo: 0, expected_cash_kobo: 600000 });
   });
   it("adds cash catering payments and cash debt payments", async () => {
     const r = await expectedDrawerCash(fake({ orders: [{ id: "o1", cash_amount_kobo: 100000 }], catering_payments: [{ amount_kobo: 50000 }], credit_payments: [{ amount_kobo: 25000 }, { amount_kobo: 5000 }] }), drawer, "2026-10-01T20:00:00Z");
@@ -37,12 +37,29 @@ describe("expectedDrawerCash", () => {
     await expect(expectedDrawerCash(fake({}, ["catering_payments"]), drawer, "2026-10-01T20:00:00Z")).rejects.toThrow("Could not read cash collections.");
     await expect(expectedDrawerCash(fake({}, ["credit_payments"]), drawer, "2026-10-01T20:00:00Z")).rejects.toThrow();
   });
+  it("takes cash paid out of the drawer off the expected cash, and counts a reversal as cash put back", async () => {
+    const r = await expectedDrawerCash(fake({ orders: [{ id: "o1", cash_amount_kobo: 500000 }],
+      cash_drawer_payouts: [{ amount_kobo: 300000 }, { amount_kobo: 200000 }, { amount_kobo: -200000 }] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.payouts_kobo).toBe(300000); expect(r.expected_cash_kobo).toBe(200000 + 500000 - 300000);
+  });
+  it("lets an honest market run leave the drawer balanced", async () => {
+    // float 2,000 + cash sale 5,000 - market run 3,000 = 4,000 expected; the cashier counts 4,000: no shortage
+    const r = await expectedDrawerCash(fake({ orders: [{ id: "o1", cash_amount_kobo: 500000 }], cash_drawer_payouts: [{ amount_kobo: 300000 }] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.expected_cash_kobo).toBe(400000);
+  });
+  it("counts a cash catering deposit once it carries a cash method (it is a catering payment like the others)", async () => {
+    const r = await expectedDrawerCash(fake({ catering_payments: [{ amount_kobo: 100000 }] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.catering_cash_kobo).toBe(100000); expect(r.expected_cash_kobo).toBe(300000);
+  });
+  it("refuses to give an answer when cash payouts cannot be read", async () => {
+    await expect(expectedDrawerCash(fake({}, ["cash_drawer_payouts"]), drawer, "2026-10-01T20:00:00Z")).rejects.toThrow("Could not read cash payouts.");
+  });
   it("sumKobo copes with nothing and with text numbers", () => { expect(sumKobo(null)).toBe(0); expect(sumKobo([{ amount_kobo: "5" }, { amount_kobo: 7 }])).toBe(12); });
 });
 
 const shift = (o: Partial<ShiftRow> = {}): ShiftRow => ({
   id: "s1", status: "closed", opened_at: "2026-10-01T08:00:00Z", closed_at: "2026-10-01T20:00:00Z", opened_by_name: "Ada", closed_by_name: "Ada", opening_float_kobo: 500000,
-  closing_counted_kobo: 530000, expected_cash_kobo: 550000, discrepancy_kobo: -20000, cash_sales_kobo: 50000, catering_cash_kobo: 0, debt_cash_kobo: 0, forced: false, close_reason: null, ...o,
+  closing_counted_kobo: 530000, expected_cash_kobo: 550000, discrepancy_kobo: -20000, cash_sales_kobo: 50000, catering_cash_kobo: 0, debt_cash_kobo: 0, payouts_kobo: null, forced: false, close_reason: null, ...o,
 });
 const adj = (o: Partial<ShiftAdjustment>): ShiftAdjustment => ({ id: "a1", drawer_id: "s1", amount_kobo: 0, reason: "typo", recorded_by_name: "Owner", created_at: "2026-10-02T08:00:00Z", ...o });
 

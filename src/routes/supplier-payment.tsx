@@ -37,6 +37,7 @@ function SupplierPayment() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [fromDrawer, setFromDrawer] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function load() {
@@ -55,13 +56,14 @@ function SupplierPayment() {
     if (!supplierId || !(amount_kobo > 0)) return;
     setBusy(true); setMsg(null);
     // The database records the payment and works out the balance. Paying more than is owed is allowed once the person has confirmed it.
-    const { data, error } = await supabase.rpc("record_supplier_payment" as never, { p_supplier_id: supplierId, p_amount_kobo: amount_kobo, p_note: note.trim() } as never);
+    // "Paid from the cash drawer": the payment and the cash taken out of the open shift are saved together, or neither is.
+    const { data, error } = await supabase.rpc((fromDrawer ? "record_supplier_payment_from_drawer" : "record_supplier_payment") as never, { p_supplier_id: supplierId, p_amount_kobo: amount_kobo, p_note: note.trim() } as never);
     setBusy(false); setConfirming(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
     const after = Number((data as { balance_kobo: number }).balance_kobo);
     const name = suppliers.find((s) => s.id === supplierId)?.name;
     setMsg({ ok: true, text: `Paid ${formatNaira(amount_kobo)} to ${name}. ${balanceWords(after, formatNaira)} now.` });
-    setAmount(""); setNote(""); load();
+    setAmount(""); setNote(""); setFromDrawer(false); load();
   }
 
   if (loading) return <main className="p-6">Loading…</main>;
@@ -84,6 +86,10 @@ function SupplierPayment() {
       </div>
       <div className="space-y-1"><Label htmlFor="sp-amt">Amount paid (₦)</Label><Input id="sp-amt" type="number" min={0} value={amount} onChange={(e) => { setConfirming(false); setAmount(e.target.value); }} /></div>
       <div className="space-y-1"><Label htmlFor="sp-note">Note (optional)</Label><Input id="sp-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. transfer to Opay" /></div>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={fromDrawer} onChange={(e) => setFromDrawer(e.target.checked)} />
+        <span>Paid from the cash drawer. Tick this only if the money came out of the till. It is taken off the open shift's expected cash. Leave it unticked for a bank transfer or cash from anywhere else.</span>
+      </label>
       {confirming && warning && (
         <div className="space-y-2 rounded-md border border-destructive p-3" data-testid="advance-confirm">
           <p className="font-semibold">This is more than you owe. The supplier will owe you the difference.</p>

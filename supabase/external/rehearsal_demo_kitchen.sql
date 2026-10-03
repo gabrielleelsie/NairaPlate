@@ -17,7 +17,7 @@ declare
   supplier constant text := '6c4dfc9f-2891-4045-86b6-59e0b3a16c6a';
   credit_open constant text := 'ba8f5112-4638-48ac-bb16-4333ec983e85'; cat_open constant text := '2d025e15-25e9-4c7b-82d2-39bdf31d0798';
   items text := '[{"recipe_id":"f830cd82-7953-4439-8a2c-98d90605967d","quantity":1}]';
-  o1 text; o2 text; cr text; pur1 text; oldp text; pay1 text; cp text; cnt text; d1 text; d_stale text; pcount text; b_id text; p_id text; d_id text; d_price bigint; old_b text; res text; n_fail int; n_ok int; n_err int;
+  o1 text; o2 text; cr text; pur1 text; oldp text; pay1 text; cp text; cnt text; d1 text; d_stale text; pcount text; q_id text; q2_id text; po_id text; pu3 text; st3 text; b_id text; p_id text; d_id text; d_price bigint; old_b text; res text; n_fail int; n_ok int; n_err int;
 begin
   if (select count(*) from public.businesses where id = biz) = 0 then raise exception 'Wrong project: no demo-kitchen business here. Nothing was done.'; end if;
 
@@ -50,6 +50,14 @@ begin
       return v;
     end $f$ $h$;
   execute $h$ create or replace function pg_temp.dml(p text) returns text language sql as $$ select 'with x as (' || p || ' returning 1) select count(*)::text from x' $$ $h$;
+  execute $h$ create or replace function pg_temp.srv(p_area text, p_step text, p_sql text, p_expect text) returns void language plpgsql as $f$
+    declare o text; d text; good boolean;
+    begin
+      perform set_config('request.jwt.claims', '', true);
+      begin execute p_sql; o := 'ALLOWED'; d := ''; exception when others then o := 'REFUSED'; d := left(sqlerrm, 150); end;
+      good := case p_expect when 'BLOCKED' then o = 'REFUSED' else o = 'ALLOWED' end;
+      insert into pg_temp.rr (area, step, role, expect, outcome, ok, detail) values (p_area, p_step, 'server', p_expect, o, good, d);
+    end $f$ $h$;
   execute $h$ create or replace function pg_temp.note(a text, s text, d text) returns void language sql as $$ insert into pg_temp.rr (area, step, role, expect, outcome, ok, detail) values (a, s, 'system', 'INFO', 'INFO', null, d) $$ $h$;
 
   -- ===== 1. SALES, VOIDS AND REFUNDS =====
@@ -196,6 +204,56 @@ begin
   v := pg_temp.t('Drawer table','Cashier cannot insert a shift directly','cashier', pg_temp.dml($q$insert into public.cash_drawers (business_id, opened_by, opening_float_kobo) values ('demo-kitchen','d31b4e0f-1875-4fb6-a607-f84863bd8aa2', 5)$q$), 'BLOCKED');
   v := pg_temp.t('Drawer table','Cashier cannot close or change a shift directly','cashier', pg_temp.dml($q$update public.cash_drawers set status = 'closed', closing_counted_kobo = 1 where business_id = 'demo-kitchen' and status = 'open'$q$), 'BLOCKED');
   v := pg_temp.t('Drawer table','Nobody can delete a shift','owner', pg_temp.dml($q$delete from public.cash_drawers where business_id = 'demo-kitchen'$q$), 'BLOCKED');
+  -- ===== 7b. CASH PAID OUT OF THE DRAWER (Step 8). The shift is open here, opened by the cashier. =====
+  v := pg_temp.t('Cash out','Cashier takes out ₦4,000 for a market run','cashier', $q$select public.record_cash_payout(400000, 'market_run', 'tomatoes and pepper for the day')::text$q$, 'ALLOWED');
+  v := pg_temp.t('Cash out','Cashier takes out another ₦4,000 (running total ₦8,000, within the ₦10,000 limit)','cashier', $q$select public.record_cash_payout(400000, 'gas_fuel', 'gas refill for the stove')::text$q$, 'ALLOWED');
+  v := pg_temp.t('Cash out','Cashier asks for another ₦4,000 (would pass the limit): it becomes a request','cashier', $q$select public.record_cash_payout(400000, 'transport', 'bike to the market and back')::text$q$, 'ALLOWED');
+  q_id := (v::jsonb ->> 'id');
+  v := pg_temp.t('Cash out','The third payout was a request, not a payout (status requested)','cashier', $q$select count(*)::text from public.cash_drawer_payouts where kind = 'request' and created_at = now()$q$, 'ALLOWED');
+  v := pg_temp.t('Cash out','Cook cannot take cash out','cook', $q$select public.record_cash_payout(1000, 'other', 'cook trying it out')::text$q$, 'BLOCKED');
+  v := pg_temp.t('Cash out','Purchaser cannot take a free-standing payout','purchaser', $q$select public.record_cash_payout(1000, 'other', 'purchaser trying it')::text$q$, 'BLOCKED');
+  v := pg_temp.t('Cash out','Signed-out visitor cannot take cash out','anon', $q$select public.record_cash_payout(1000, 'other', 'visitor trying it out')::text$q$, 'BLOCKED');
+  v := pg_temp.t('Cash out','Another business cannot take cash out of our shift','owner', $q$select public.record_cash_payout(1000, 'other', 'not your drawer at all')::text$q$, 'BLOCKED', other);
+  v := pg_temp.t('Cash out','A note under 5 characters is refused','cashier', $q$select public.record_cash_payout(1000, 'other', 'abc')::text$q$, 'BLOCKED');
+  v := pg_temp.t('Cash out','A system category cannot be picked by hand','cashier', $q$select public.record_cash_payout(1000, 'purchase', 'sneaky category use')::text$q$, 'BLOCKED');
+  v := pg_temp.t('Cash out','Cashier cannot approve their own request','cashier', format($q$select public.approve_cash_payout(%L)::text$q$, q_id), 'BLOCKED');
+  v := pg_temp.t('Cash out','Another business cannot approve our request','owner', format($q$select public.approve_cash_payout(%L)::text$q$, q_id), 'BLOCKED', other);
+  perform pg_temp.srv('Cash out','A shift cannot be closed while a request is waiting', format($q$update public.cash_drawers set status = 'closed', closed_at = now() where business_id = %L and status = 'open'$q$, biz), 'BLOCKED');
+  v := pg_temp.t('Cash out','Owner declines a request only with a reason of 5 or more characters','owner', format($q$select public.decline_cash_payout(%L, 'no')::text$q$, q_id), 'BLOCKED');
+  v := pg_temp.t('Cash out','Owner approves the request','owner', format($q$select public.approve_cash_payout(%L)::text$q$, q_id), 'ALLOWED');
+  v := pg_temp.t('Cash out','The same request cannot be decided twice','owner', format($q$select public.decline_cash_payout(%L, 'too late to decline it')::text$q$, q_id), 'BLOCKED');
+  v := pg_temp.t('Cash out','Cashier asks for one more, which the owner declines','cashier', $q$select public.record_cash_payout(900000, 'other', 'a large item for the stove')::text$q$, 'ALLOWED');
+  q2_id := (v::jsonb ->> 'id');
+  v := pg_temp.t('Cash out','Owner declines it with a reason','owner', format($q$select public.decline_cash_payout(%L, 'not needed on the shift')::text$q$, q2_id), 'ALLOWED');
+  v := pg_temp.t('Cash out','Owner takes out any amount directly','owner', $q$select public.record_cash_payout(2000000, 'supplier_settlement', 'settled the flour account')::text$q$, 'ALLOWED');
+  po_id := (v::jsonb ->> 'id');
+  v := pg_temp.t('Cash out','Cashier cannot reverse a payout','cashier', format($q$select public.reverse_cash_payout(%L, 'cashier trying it')::text$q$, po_id), 'BLOCKED');
+  v := pg_temp.t('Cash out','Owner reverses the payout with a reason','owner', format($q$select public.reverse_cash_payout(%L, 'entered twice by mistake')::text$q$, po_id), 'ALLOWED');
+  v := pg_temp.t('Cash out','The same payout cannot be reversed twice','owner', format($q$select public.reverse_cash_payout(%L, 'second reversal attempt')::text$q$, po_id), 'BLOCKED');
+  v := pg_temp.t('Cash out table','Owner cannot write a payout row directly','owner', pg_temp.dml($q$insert into public.cash_drawer_payouts (business_id, drawer_id, kind, amount_kobo, category, note) select 'demo-kitchen', id, 'payout', 1, 'other', 'forged payout row' from public.cash_drawers where status = 'open'$q$), 'BLOCKED');
+  v := pg_temp.t('Cash out table','Owner cannot edit or delete a payout row','owner', pg_temp.dml($q$update public.cash_drawer_payouts set amount_kobo = 1 where business_id = 'demo-kitchen'$q$), 'BLOCKED');
+  v := pg_temp.t('Cash out table','Owner cannot delete a payout row','owner', pg_temp.dml($q$delete from public.cash_drawer_payouts where business_id = 'demo-kitchen'$q$), 'BLOCKED');
+  v := pg_temp.t('Cash out table','Another business cannot read our payouts','owner', $q$select count(*)::text from public.cash_drawer_payouts where business_id = 'demo-kitchen'$q$, 'BLOCKED', other);
+  v := pg_temp.t('Cash out limit','Cashier cannot change the limit','cashier', $q$select public.set_drawer_payout_limit(99999999)::text$q$, 'BLOCKED');
+  v := pg_temp.t('Cash out limit','Owner changes the limit','owner', $q$select public.set_drawer_payout_limit(1000000)::text$q$, 'ALLOWED');
+  v := pg_temp.t('Cash out limit','Owner cannot write the limit table directly','owner', pg_temp.dml($q$update public.drawer_settings set payout_limit_kobo = 1 where business_id = 'demo-kitchen'$q$), 'BLOCKED');
+  v := pg_temp.t('Cash out','Purchaser logs a cash purchase paid from the drawer','purchaser', format($q$select public.log_purchase_from_drawer(%L, 2, 'kg', 170000, 'cash', 'B', 'normal', null, null)::text$q$, garri), 'ALLOWED');
+  pu3 := (v::jsonb ->> 'purchase_id');
+  v := pg_temp.t('Cash out','A credit purchase cannot be paid from the drawer','purchaser', format($q$select public.log_purchase_from_drawer(%L, 2, 'kg', 170000, 'credit', 'B', 'normal', null, %L)::text$q$, garri, supplier), 'BLOCKED');
+  v := pg_temp.t('Cash out','Cashier cannot use the purchase wrapper','cashier', format($q$select public.log_purchase_from_drawer(%L, 2, 'kg', 170000, 'cash', 'B', 'normal', null, null)::text$q$, garri), 'BLOCKED');
+  v := pg_temp.t('Cash out','The purchase made a payout of the same amount','owner', format($q$select count(*)::text from public.cash_drawer_payouts where purchase_id = %L and kind = 'payout' and amount_kobo = 170000 and category = 'purchase'$q$, pu3), 'ALLOWED');
+  v := pg_temp.t('Cash out','Owner reverses the purchase','owner', format($q$select public.reverse_purchase(%L, 'bought from the wrong stall')::text$q$, pu3), 'ALLOWED');
+  v := pg_temp.t('Cash out','Reversing the purchase reversed its payout too','owner', format($q$select count(*)::text from public.cash_drawer_payouts z join public.cash_drawer_payouts p on p.id = z.reverses_id where z.kind = 'reversal' and p.purchase_id = %L$q$, pu3), 'ALLOWED');
+  v := pg_temp.t('Cash out','Purchaser pays a supplier from the drawer','purchaser', format($q$select public.record_supplier_payment_from_drawer(%L, 50000, 'rehearsal drawer payment')::text$q$, supplier), 'ALLOWED');
+  st3 := (v::jsonb ->> 'id');
+  v := pg_temp.t('Cash out','The supplier payment made a payout of the same amount','owner', format($q$select count(*)::text from public.cash_drawer_payouts where supplier_txn_id = %L and kind = 'payout' and amount_kobo = 50000$q$, st3), 'ALLOWED');
+  v := pg_temp.t('Cash out','Owner reverses the supplier payment','owner', format($q$select public.reverse_supplier_payment(%L, 'paid the wrong supplier')::text$q$, st3), 'ALLOWED');
+  v := pg_temp.t('Cash out','Reversing the supplier payment reversed its payout too','owner', format($q$select count(*)::text from public.cash_drawer_payouts z join public.cash_drawer_payouts p on p.id = z.reverses_id where z.kind = 'reversal' and p.supplier_txn_id = %L$q$, st3), 'ALLOWED');
+  v := pg_temp.t('Cash out','A supplier payment NOT paid from the drawer makes no payout','purchaser', format($q$select public.record_supplier_payment(%L, 10000, 'rehearsal bank transfer')::text$q$, supplier), 'ALLOWED');
+  v := pg_temp.t('Cash out','Only the two linked supplier payouts exist (the other made none)','owner', $q$select count(*)::text from (select 1 from public.cash_drawer_payouts where category = 'supplier_payment' and kind = 'payout' having count(*) = 1) x$q$, 'ALLOWED');
+  perform pg_temp.note('Cash out','Cash paid out on the shift so far (kobo, payouts minus reversals)', (select coalesce(sum(amount_kobo), 0)::text from public.cash_drawer_payouts where kind in ('payout','reversal')));
+  v := pg_temp.t('Catering deposit','Cashier takes a catering order with a cash deposit and a method','cashier', format($q$select public.create_catering_order('Rehearsal Event', '08000000002', current_date + 5, '12:00'::time, null, null, %L::jsonb, 0, 0, 50000, 'cash', 'confirmed')::text$q$, items), 'INFO');
+  v := pg_temp.t('Catering deposit','A deposit without a method is refused by the new order function','cashier', format($q$select public.create_catering_order('Rehearsal Event 2', null, current_date + 5, '12:00'::time, null, null, %L::jsonb, 0, 0, 50000, null, 'confirmed')::text$q$, items), 'BLOCKED');
   perform set_config('request.jwt.claims', '', true);
   update public.cash_drawers set status = 'closed', closing_counted_kobo = 190000, expected_cash_kobo = 200000, discrepancy_kobo = -10000, closed_at = now() where business_id = biz and status = 'open';
   select id::text into d1 from public.cash_drawers where business_id = biz and closing_counted_kobo = 190000 limit 1;
