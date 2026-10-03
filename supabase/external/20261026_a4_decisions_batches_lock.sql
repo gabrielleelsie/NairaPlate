@@ -33,6 +33,7 @@ begin
   end if;
   raise exception 'This record cannot be changed or deleted. Add a correction instead.';
 end $function$;
+revoke all on function public.price_decisions_protect() from public, anon;
 
 drop policy if exists price_decisions_insert on public.price_decisions;
 drop policy if exists price_decisions_update on public.price_decisions;
