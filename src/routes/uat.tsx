@@ -67,7 +67,7 @@ function UatPage() {
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
 
   const update = (id: string, i: number, patch: Partial<StepResult>) =>
-    setResults((r) => ({ ...r, [id]: r[id].map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
+    setResults((r) => ({ ...r, [id]: (r[id] ?? []).map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
 
   async function onExport() {
     setExporting(true);
@@ -140,7 +140,7 @@ function UatPage() {
         </Tabs>
 
         {visible.map((tc) => {
-          const res = results[tc.id];
+          const res = results[tc.id] ?? [];
           const sum = summaryOf(res);
           const c = tally(res);
           return (
@@ -188,11 +188,11 @@ function UatPage() {
                           <TableCell className="whitespace-normal">{s.action}</TableCell>
                           <TableCell className="whitespace-normal text-muted-foreground">{s.expected}</TableCell>
                           <TableCell>
-                            <Textarea rows={2} placeholder="What happened?" value={res[i].actual}
+                            <Textarea rows={2} placeholder="What happened?" value={res[i]?.actual ?? ""}
                               onChange={(e) => update(tc.id, i, { actual: e.target.value })} />
                           </TableCell>
                           <TableCell>
-                            <Select value={res[i].status} onValueChange={(v) => update(tc.id, i, { status: v as StepStatus })}>
+                            <Select value={res[i]?.status ?? "untested"} onValueChange={(v) => update(tc.id, i, { status: v as StepStatus })}>
                               <SelectTrigger aria-label={`Status step ${i + 1}`}><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {(Object.keys(STATUS_LABEL) as StepStatus[]).map((k) => (

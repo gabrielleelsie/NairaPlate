@@ -16,13 +16,13 @@ function cell(text: string, width: number, opts: { header?: boolean; status?: St
   return new TableCell({
     borders,
     width: { size: width, type: WidthType.DXA },
-    shading: fill ? { fill, type: ShadingType.CLEAR, color: "auto" } : undefined,
+    ...(fill ? { shading: { fill, type: ShadingType.CLEAR, color: "auto" } } : {}),
     margins: { top: 80, bottom: 80, left: 100, right: 100 },
     children: (text || "—").split("\n").map((line) => new Paragraph({
       children: [new TextRun({
         text: line, size: 18,
         bold: opts.header || !!opts.status,
-        color: opts.header ? "FFFFFF" : opts.status ? STATUS_COLOR[opts.status] : undefined,
+        ...(opts.header ? { color: "FFFFFF" } : opts.status ? { color: STATUS_COLOR[opts.status] } : {}),
       })],
     })),
   });
@@ -60,9 +60,9 @@ export async function exportUatDocx(args: {
     ]),
   ];
 
-  const cols = [600, 2400, 2400, 2560, 1400];
+  const cols: [number, number, number, number, number] = [600, 2400, 2400, 2560, 1400];
   for (const tc of UAT_CASES) {
-    const res = results[tc.id];
+    const res = results[tc.id] ?? [];
     children.push(
       new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 120 }, children: [new TextRun({ text: `${tc.id} | ${tc.title}`, bold: true, size: 28 })] }),
       p(`Module ${tc.module}: ${MODULES[tc.module]} — ${tc.area}`, { color: "4B5563", size: 20 }),
@@ -71,10 +71,10 @@ export async function exportUatDocx(args: {
         width: { size: W, type: WidthType.DXA },
         columnWidths: cols,
         rows: [
-          new TableRow({ tableHeader: true, children: ["#", "Action", "Expected Result", "Actual Result", "Status"].map((h, i) => cell(h, cols[i], { header: true })) }),
+          new TableRow({ tableHeader: true, children: ["#", "Action", "Expected Result", "Actual Result", "Status"].map((h, i) => cell(h, cols[i]!, { header: true })) }),
           ...tc.steps.map((s, i) => new TableRow({ children: [
             cell(String(i + 1), cols[0]), cell(s.action, cols[1]), cell(s.expected, cols[2]),
-            cell(res[i].actual, cols[3]), cell(res[i].status.toUpperCase(), cols[4], { status: res[i].status }),
+            cell(res[i]?.actual ?? "", cols[3]), cell((res[i]?.status ?? "untested").toUpperCase(), cols[4], { status: res[i]?.status ?? "untested" }),
           ] })),
         ],
       }),
@@ -88,7 +88,7 @@ export async function exportUatDocx(args: {
       ["Recovery Point (RPO)", drill.rpo],
       ["Recovery Time (RTO)", drill.rto],
       ["Query Results", drill.queryResults],
-      ["Drill Outcome", (() => { const r = results["UAT-OWN-06"]; return r.every((s) => s.status === "pass") ? "PASS" : r.some((s) => s.status === "fail") ? "FAIL" : "INCOMPLETE"; })()],
+      ["Drill Outcome", (() => { const r = results["UAT-OWN-06"] ?? []; return r.every((s) => s.status === "pass") ? "PASS" : r.some((s) => s.status === "fail") ? "FAIL" : "INCOMPLETE"; })()],
     ]),
     new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 240 }, children: [new TextRun({ text: "Sign-off", bold: true, size: 28 })] }),
   );
