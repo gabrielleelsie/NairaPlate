@@ -10,6 +10,7 @@ declare
   biz constant text := 'demo-kitchen'; other constant text := 'mama-t';
   eba constant text := 'f830cd82-7953-4439-8a2c-98d90605967d';
   garri constant text := '77f449f4-87b7-436b-a623-aa29798057a2'; egusi constant text := '5d2b3f1f-ec0b-473b-9dee-3aa948937e85'; rice constant text := '44ba2690-f4ee-420b-9f6e-413552c500da';
+  rec2 constant text := 'e6721229-a4f7-4659-8501-cd7249118959';
   supplier constant text := '6c4dfc9f-2891-4045-86b6-59e0b3a16c6a';
   credit_open constant text := 'ba8f5112-4638-48ac-bb16-4333ec983e85'; cat_open constant text := '2d025e15-25e9-4c7b-82d2-39bdf31d0798';
   items text := '[{"recipe_id":"f830cd82-7953-4439-8a2c-98d90605967d","quantity":1}]';
@@ -140,7 +141,8 @@ begin
 
   -- ===== 6. WASTAGE, BATCHES, STOCK TAKE =====
   v := pg_temp.t('Wastage','Cook logs wastage (open by design; the database adjusts stock)','cook', pg_temp.dml(format($q$insert into public.wastage_logs (business_id, ingredient_id, qty, unit, cost_kobo, reason, logged_by) values ('demo-kitchen', %L, 0.1, 'kg', 8500, 'spoiled', %L)$q$, garri, pg_temp.u('cook'))), 'ALLOWED');
-  v := pg_temp.t('Batches','Cook logs a batch (real batch function)','cook', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, eba, format('[{"ingredient_id":"%s","base_qty":0.2},{"ingredient_id":"%s","base_qty":0.1}]', garri, egusi)), 'ALLOWED');
+  v := pg_temp.t('Batches','Cook logs a batch of a dish that is not made to order (real batch function)','cook', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, rec2, (select coalesce(jsonb_agg(jsonb_build_object('ingredient_id', ingredient_id, 'base_qty', 0.01)), '[]'::jsonb)::text from public.recipe_items where recipe_id = rec2::uuid)), 'ALLOWED');
+  v := pg_temp.t('Batches','A batch of a made-to-order dish is refused by design','cook', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, eba, format('[{"ingredient_id":"%s","base_qty":0.2},{"ingredient_id":"%s","base_qty":0.1}]', garri, egusi)), 'BLOCKED');
   v := pg_temp.t('Batches','Cashier cannot log a batch','cashier', format($q$select public.log_batch(%L, 1, 10, 0, 0, 0, %L::jsonb)::text$q$, eba, format('[{"ingredient_id":"%s","base_qty":0.2},{"ingredient_id":"%s","base_qty":0.1}]', garri, egusi)), 'BLOCKED');
   v := pg_temp.t('Stock take','Purchaser submits a count (waits for an owner)','purchaser', format($q$select public.submit_stock_count('rehearsal count', false, %L::jsonb)::text$q$, format('[{"ingredient_id":"%s","counted_base":1,"note":"counted again"}]', rice)), 'ALLOWED');
   pcount := (v::jsonb ->> 'id');
@@ -176,7 +178,10 @@ begin
   v := pg_temp.t('Audit trail','Nobody can delete an audit entry','owner', pg_temp.dml($q$delete from public.audit_logs where business_id = 'demo-kitchen'$q$), 'BLOCKED');
   v := pg_temp.t('Payouts (A3)','Owner cannot write a channel payout directly','owner', pg_temp.dml($q$insert into public.channel_payouts (business_id, channel, gross_sales_kobo, commission_kobo, net_payout_kobo) values ('demo-kitchen','Chowdeck',1,1,1)$q$), 'BLOCKED');
   v := pg_temp.t('Payouts (A3)','Owner cannot edit a channel payout directly','owner', pg_temp.dml($q$update public.channel_payouts set net_payout_kobo = 1 where business_id = 'demo-kitchen'$q$), 'BLOCKED');
-  v := pg_temp.t('Price decisions (A4)','Owner cannot write a price decision directly','owner', pg_temp.dml(format($q$insert into public.price_decisions (business_id, recipe_id, decision) values ('demo-kitchen', %L, 'accepted')$q$, eba)), 'BLOCKED');
+  v := pg_temp.t('Price decisions (A4)','Owner cannot write a price decision directly','owner', pg_temp.dml(format($q$insert into public.price_decisions (business_id, recipe_id, decision) values ('demo-kitchen', %L, 'publish')$q$, eba)), 'BLOCKED');
+  v := pg_temp.t('Price decisions (A4)','Owner cannot edit a price decision directly','owner', pg_temp.dml($q$update public.price_decisions set decision = 'defer' where business_id = 'demo-kitchen'$q$), 'BLOCKED');
+  v := pg_temp.t('Price decisions (A4)','Owner cannot delete a price decision directly','owner', pg_temp.dml($q$delete from public.price_decisions where business_id = 'demo-kitchen'$q$), 'BLOCKED');
+  v := pg_temp.t('Price decisions (A4)','Owner records a decision through the real function','owner', format($q$select public.decide_price(%L::uuid, 'publish', 150000, %L::uuid)::text$q$, eba, pg_temp.u('owner')), 'ALLOWED');
   v := pg_temp.t('Batches (A4)','Owner cannot write a batch directly','owner', pg_temp.dml(format($q$insert into public.batches (business_id, recipe_id) values ('demo-kitchen', %L)$q$, eba)), 'BLOCKED');
   v := pg_temp.t('Batches (A4)','Owner cannot delete a batch directly','owner', pg_temp.dml($q$delete from public.batches where business_id = 'demo-kitchen'$q$), 'BLOCKED');
   v := pg_temp.t('Staff','Owner cannot change a staff role directly','owner', pg_temp.dml($q$update public.staff_users set role = 'platform_admin' where business_id = 'demo-kitchen'$q$), 'BLOCKED');
