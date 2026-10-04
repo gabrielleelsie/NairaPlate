@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heartbeatDelayMs, initialConnState, nextConnState } from "./connectivity";
+import { heartbeatDelayMs, initialConnState, nextConnState, type ConnState } from "./connectivity";
 import { businessCode, isDraftExpired, paperReference, sanitizeDraft, tillCode, type PosDraft } from "./pos-draft";
 
 const T = "2026-10-04T10:00:00.000Z";
