@@ -404,7 +404,7 @@ This is evidence, not a new business rule.
 
 **Tests.** Device-side rules (connection states, draft privacy, paper reference, draft expiry) pass automated checks. [L] Module D (UAT-OFF-01 to 15) in the Owner UAT script has not yet been run by a person on a real phone. [S] No live rehearsal of Phase 0 has been done.
 
-**Known difference.** UAT-OFF-15 expects an expired draft to be shown as "Expired — not saved". The Till currently removes an expired, unsent draft without showing it, so UAT-OFF-15 will fail until that is changed. [C]
+**Expired drafts.** A never-sent draft over 24 hours old is kept on the device, shown as "Expired — not saved" and can never be charged; there is no "submit anyway". Allowed: print the paper form, ask the owner to review (prints a review form; nothing is sent to the server), or discard with a reason and confirmation, which removes items and any customer details. If left alone, it is purged 7 days after expiry, keeping only a tombstone (sale code, created and expiry times) with no items or customer details. The owner cannot turn an expired draft into a sale in Phase 0; only the future late-entry flow can record an outage-period sale. [C]
 
 Phase 0 must not be described as proven on the live site until Module D results exist.
 
