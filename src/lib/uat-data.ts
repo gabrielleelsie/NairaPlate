@@ -175,6 +175,7 @@ export const UAT_CASES: UatCase[] = [
       { action: "Record Recovery Point (data-loss window) and Recovery Time (minutes to restore).", expected: "RPO and RTO are documented in the test log." },
     ],
   },
+  ...OFFLINE_CASES,
 ];
 
 export type StepResult = { actual: string; status: StepStatus };
