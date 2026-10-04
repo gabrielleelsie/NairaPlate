@@ -12,7 +12,7 @@ import { TransferWaiting, type WaitingRequest } from "@/components/TransferWaiti
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useConnectivity, watTime } from "@/lib/connectivity";
 import { deleteDraft, draftKey, getTillLabel, loadDraft, logOutage, nextPaperSequence, saveDraft, setTillLabel } from "@/lib/offline-store";
-import { isDraftEmpty, isDraftExpired, newClientSaleId, paperReference, sanitizeDraft, type PosDraft } from "@/lib/pos-draft";
+import { expiredAtMs, isDraftEmpty, isDraftExpired, isExpiredPurgeDue, newClientSaleId, paperReference, sanitizeDraft, type PosDraft } from "@/lib/pos-draft";
 import { printPaperForm } from "@/lib/paper-fallback";
 import { lagosDateKey } from "@/lib/lagos-time";
 
@@ -72,6 +72,9 @@ function PosScreen() {
   const [draftReady, setDraftReady] = useState(false);
   const [priorDraft, setPriorDraft] = useState<PosDraft | null>(null);
   const [discardReason, setDiscardReason] = useState("");
+  const [draftCreatedAt, setDraftCreatedAt] = useState(() => new Date().toISOString());
+  const [expiredDraft, setExpiredDraft] = useState<PosDraft | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [checking, setChecking] = useState(false);
   const [tillLabel, setTillLabelState] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -114,14 +117,32 @@ function PosScreen() {
   const applyDraft = (d: PosDraft) => {
     setLines(d.lines); setChannel(d.channel); setAggName(d.aggName); setTier(d.tier); setPay(d.pay);
     setCashN(d.cashN); setTrN(d.trN); setCustName(d.custName ?? ""); setCustPhone(d.custPhone ?? "");
-    setClientSaleId(d.clientSaleId); setDraftState(d.state);
+    setClientSaleId(d.clientSaleId); setDraftState(d.state === "uncertain" ? "uncertain" : "editing");
+    setDraftCreatedAt(d.createdAtUtc ?? d.updatedAtUtc);
   };
 
   // On opening: offer any unfinished draft from before. An unconfirmed sale is restored straight away and must be resolved.
   useEffect(() => {
     if (!key) return;
     void loadDraft(key).then(async (d) => {
-      if (d && isDraftExpired(d, Date.now()) && d.state === "editing") { await deleteDraft(key); d = null; }
+      // Expired, never-sent drafts are kept visible but can never be charged. After a 7-day grace they are
+      // purged to a tombstone with no items or customer details. Uncertain drafts are never expired here:
+      // they must be checked with the server first.
+      const now = Date.now();
+      if (d && d.state !== "uncertain" && (d.state === "expired_pending_review" || (isDraftExpired(d, now) && !isDraftEmpty(d)))) {
+        if (isExpiredPurgeDue(d, now)) {
+          await logOutage({ kind: "draft_auto_purged", atUtc: new Date().toISOString(), clientSaleId: d.clientSaleId,
+            createdAtUtc: d.createdAtUtc ?? null, expiredAtUtc: new Date(expiredAtMs(d)).toISOString() });
+          await deleteDraft(key);
+        } else {
+          const ex: PosDraft = { ...d, state: "expired_pending_review" };
+          if (d.state !== "expired_pending_review") await saveDraft(ex);
+          setExpiredDraft(ex);
+        }
+        setDraftReady(true);
+        return;
+      }
+      if (d && isDraftExpired(d, now) && isDraftEmpty(d)) { await deleteDraft(key); d = null; }
       if (d && d.state === "uncertain") applyDraft(d);
       else if (d && !isDraftEmpty(d)) setPriorDraft(d);
       setDraftReady(true);
@@ -129,20 +150,20 @@ function PosScreen() {
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentDraft = (): PosDraft | null => key ? sanitizeDraft({
-    key, clientSaleId, lines, channel, aggName, tier, pay, cashN, trN, custName, custPhone, state: draftState, updatedAtUtc: new Date().toISOString(),
+    key, clientSaleId, lines, channel, aggName, tier, pay, cashN, trN, custName, custPhone, state: draftState, updatedAtUtc: new Date().toISOString(), createdAtUtc: draftCreatedAt,
   }) : null;
 
   // Keep the draft on the device as it changes. Never cleared just because the connection came back.
   useEffect(() => {
-    if (!draftReady || priorDraft) return;
+    if (!draftReady || priorDraft || expiredDraft) return;
     const d = currentDraft();
     if (!d) return;
     if (isDraftEmpty(d)) void deleteDraft(d.key); else void saveDraft(d);
-  }, [draftReady, priorDraft, lines, channel, aggName, tier, pay, cashN, trN, custName, custPhone, draftState, clientSaleId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [draftReady, priorDraft, lines, channel, aggName, tier, pay, cashN, trN, custName, custPhone, draftState, clientSaleId, expiredDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetSale = async () => {
     setLines([]); setCashN(""); setTrN(""); setCustName(""); setCustPhone("");
-    setDraftState("editing"); setClientSaleId(newClientSaleId());
+    setDraftState("editing"); setClientSaleId(newClientSaleId()); setDraftCreatedAt(new Date().toISOString());
     if (key) await deleteDraft(key);
   };
 
@@ -155,7 +176,7 @@ function PosScreen() {
   const finalChannel = channel === "Aggregator" ? aggName.trim() : channel;
   const creditOk = pay !== "credit" || (custName.trim().length > 0 && custPhone.trim().length > 0);
   const locked = draftState === "uncertain";
-  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy && !locked && conn.isOnline && !priorDraft;
+  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy && !locked && conn.isOnline && !priorDraft && !expiredDraft;
 
   function addLine() {
     const q = Math.floor(Number(qty));
@@ -259,7 +280,7 @@ function PosScreen() {
     }
   }
 
-  function printPaper() {
+  function printPaper(expired?: { draft: PosDraft; ownerReview: boolean }) {
     if (!session) return;
     const label = tillLabel.trim();
     if (label) setTillLabel(label);
@@ -268,8 +289,10 @@ function PosScreen() {
     const opened = printPaperForm({
       reference: ref, businessName, tillLabel: label, cashierName: session.name,
       shiftOpenedWat: shiftOpenedAt ? watTime(shiftOpenedAt) : null, printedAtWat: watTime(new Date().toISOString()),
-      draftLines: lines.map((l) => ({ name: byId.get(l.recipe_id)?.name ?? "Dish", quantity: l.quantity, priceKobo: byId.get(l.recipe_id)?.selling_price_kobo ?? 0 })),
-      menuStale: menuStale || !conn.isOnline,
+      draftLines: (expired ? expired.draft.lines : lines).map((l) => ({ name: byId.get(l.recipe_id)?.name ?? "Dish", quantity: l.quantity, priceKobo: byId.get(l.recipe_id)?.selling_price_kobo ?? 0 })),
+      menuStale: menuStale || !conn.isOnline || !!expired,
+      ...(expired ? { expired: { ownerReview: expired.ownerReview, lastEditedWat: watTime(expired.draft.updatedAtUtc),
+        createdWat: expired.draft.createdAtUtc ? watTime(expired.draft.createdAtUtc) : null } } : {}),
     });
     if (!opened) setMsg({ ok: false, text: "The print window was blocked. Allow pop-ups for NairaPlate and try again." });
   }
@@ -279,6 +302,24 @@ function PosScreen() {
     await logOutage({ kind: "draft_discarded", atUtc: new Date().toISOString(), reason: discardReason.trim(), clientSaleId: priorDraft.clientSaleId });
     await deleteDraft(key);
     setPriorDraft(null); setDiscardReason("");
+  }
+
+  async function askOwnerReview() {
+    if (!expiredDraft || !key) return;
+    const atUtc = new Date().toISOString();
+    const d: PosDraft = { ...expiredDraft, reviewRequestedAtUtc: atUtc };
+    await saveDraft(d);
+    await logOutage({ kind: "draft_review_requested", atUtc, clientSaleId: d.clientSaleId });
+    setExpiredDraft(d);
+    printPaper({ draft: d, ownerReview: true });
+  }
+
+  async function discardExpired() {
+    if (!expiredDraft || !key || discardReason.trim().length < 3) return;
+    await logOutage({ kind: "draft_discarded", atUtc: new Date().toISOString(), reason: discardReason.trim(), clientSaleId: expiredDraft.clientSaleId, expired: true });
+    await deleteDraft(key); // removes items and any credit customer name/phone
+    setExpiredDraft(null); setDiscardReason(""); setConfirmDiscard(false);
+    setMsg({ ok: true, text: "Expired draft discarded. Nothing had been saved from it." });
   }
 
   if (loading) return <p className="p-6">Loading…</p>;
@@ -294,13 +335,47 @@ function PosScreen() {
       <OfflineBanner status={conn.status} outageStartedAtUtc={conn.outageStartedAtUtc} menuSyncedAtUtc={menuSyncedAt}
         menuStale={menuStale} onPrintPaper={printPaper} />
 
+      {expiredDraft && (() => {
+        const ex = expiredDraft;
+        const total = ex.lines.reduce((s, l) => s + (byId.get(l.recipe_id)?.selling_price_kobo ?? 0) * l.quantity, 0);
+        const payLabel: Record<string, string> = { cash: "Cash", transfer: "Transfer", split: "Split", credit: "Credit", auto_transfer: "Automatic transfer" };
+        return (
+        <section className="rounded-md border-2 border-destructive p-3 space-y-2" role="alert">
+          <p className="font-semibold">Expired draft — not saved</p>
+          <p className="text-sm">This sale draft is more than 24 hours old and was never confirmed by NairaPlate. It cannot be submitted as a normal sale.</p>
+          <dl className="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <dt>Created</dt><dd>{ex.createdAtUtc ? watTime(ex.createdAtUtc) : "Unknown"}</dd>
+            <dt>Last edited</dt><dd>{watTime(ex.updatedAtUtc)}</dd>
+            <dt>Payment chosen</dt><dd>{payLabel[ex.pay] ?? ex.pay}</dd>
+            <dt>Total</dt><dd>{formatNaira(total)} <span className="text-muted-foreground">(unconfirmed, at today's menu prices)</span></dd>
+            <dt>Customer details</dt><dd>{ex.pay === "credit" && (ex.custName || ex.custPhone) ? `Yes: ${ex.custName ?? ""} ${ex.custPhone ?? ""}` : "None"}</dd>
+            {ex.reviewRequestedAtUtc && (<><dt>Owner review</dt><dd>Asked {watTime(ex.reviewRequestedAtUtc)}</dd></>)}
+          </dl>
+          <ul className="text-sm list-disc pl-5">
+            {ex.lines.map((l) => <li key={l.recipe_id}>{l.quantity} × {byId.get(l.recipe_id)?.name ?? "Dish no longer on menu"}</li>)}
+          </ul>
+          <p className="text-sm font-medium">No order, payment, stock movement or cash-drawer entry was created from this draft.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => printPaper({ draft: ex, ownerReview: false })}>Print paper fallback</Button>
+            <Button size="sm" variant="outline" onClick={askOwnerReview}>Ask owner to review</Button>
+          </div>
+          <div className="flex gap-2">
+            <Input aria-label="Reason for discarding" placeholder="Reason for discarding" value={discardReason} onChange={(e) => { setDiscardReason(e.target.value); setConfirmDiscard(false); }} />
+            {!confirmDiscard
+              ? <Button size="sm" variant="destructive" disabled={discardReason.trim().length < 3} onClick={() => setConfirmDiscard(true)}>Discard draft</Button>
+              : <Button size="sm" variant="destructive" onClick={discardExpired}>Confirm discard</Button>}
+          </div>
+          <p className="text-xs text-muted-foreground">If nothing is done, this draft and any customer details are removed from this device 7 days after it expired.</p>
+        </section>);
+      })()}
+
       {priorDraft && (
         <section className="rounded-md border-2 border-accent p-3 space-y-2">
           <p className="font-semibold">Unfinished order from {watTime(priorDraft.updatedAtUtc)}</p>
           <p className="text-sm">{priorDraft.lines.reduce((s, l) => s + l.quantity, 0)} item(s). It has not been saved to NairaPlate.</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => { applyDraft(priorDraft); setPriorDraft(null); }}>Resume</Button>
-            <Button size="sm" variant="outline" onClick={() => { applyDraft(priorDraft); setPriorDraft(null); setTimeout(printPaper, 0); }}>Resume and print paper form</Button>
+            <Button size="sm" variant="outline" onClick={() => { applyDraft(priorDraft); setPriorDraft(null); setTimeout(() => printPaper(), 0); }}>Resume and print paper form</Button>
           </div>
           <div className="flex gap-2">
             <Input aria-label="Reason for discarding" placeholder="Reason for discarding" value={discardReason} onChange={(e) => setDiscardReason(e.target.value)} />
@@ -315,7 +390,7 @@ function PosScreen() {
           <p className="text-sm">Do not create another sale yet. Reference: <span className="font-mono">{clientSaleId.slice(0, 8)}</span></p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={checking} onClick={checkAgain}>{checking ? "Checking sale status…" : "Check again"}</Button>
-            <Button size="sm" variant="outline" onClick={printPaper}>Use paper fallback</Button>
+            <Button size="sm" variant="outline" onClick={() => printPaper()}>Use paper fallback</Button>
           </div>
         </section>
       )}
@@ -324,7 +399,7 @@ function PosScreen() {
         <TransferWaiting key={w.id} initial={w} onFinished={(text, ok) => { setMsg({ ok, text }); void loadWaiting(); }} />
       ))}
 
-      <fieldset disabled={locked || !!priorDraft} className="space-y-5 disabled:opacity-60">
+      <fieldset disabled={locked || !!priorDraft || !!expiredDraft} className="space-y-5 disabled:opacity-60">
       <section className="space-y-2">
         <Label>Add item</Label>
         <div className="flex gap-2">
