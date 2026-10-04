@@ -84,6 +84,7 @@ function PosScreen() {
   const key = session ? draftKey(session.businessId, session.userId) : null;
 
   const loadMenu = async () => {
+    await supabase.rpc("refresh_dish_prices" as never); // show a scheduled price once it has started; failure is harmless
     const { data, error } = await supabase.from("recipes").select("id,name,selling_price_kobo").eq("is_current", true).order("name");
     if (error) { conn.reportRequestFailure(); return setMsg({ ok: false, text: "Could not load menu." }); }
     setRecipes((data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) })));
