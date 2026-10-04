@@ -182,6 +182,22 @@ export const UAT_CASES: UatCase[] = [
       { action: "Record Recovery Point (data-loss window) and Recovery Time (minutes to restore).", expected: "RPO and RTO are documented in the test log." },
     ],
   },
+  {
+    id: "UAT-OWN-07",
+    title: "Dish selling-price history (set now, schedule, cancel)",
+    module: "B",
+    area: "Costing",
+    preconditions: ["Signed in to Demo Kitchen as the Owner.", "A dish with at least one past sale exists."],
+    steps: [
+      { action: "Open the dish on Recipes and read Price history.", expected: "A starting price row shows with its start date and \"In use\"." },
+      { action: "Set a new price with Start now, then make a sale on the Till.", expected: "The old row shows an end time; the sale charges the new price; past sales keep their old price." },
+      { action: "Schedule a price 10 minutes ahead.", expected: "Row shows \"Starts …\" and Scheduled; the Till still charges the current price." },
+      { action: "After the start time, reopen the Till and make a sale.", expected: "The scheduled price is charged and now shows In use." },
+      { action: "Schedule another price, then press Cancel before it starts.", expected: "The row disappears from history; the price in use is unchanged." },
+      { action: "Sign in as a cashier and open Recipes.", expected: "No price-history controls are shown; the cashier cannot set a price." },
+      { action: "Open the Audit screen.", expected: "Entries show for price started, scheduled and cancelled, with who and when." },
+    ],
+  },
   ...OFFLINE_CASES,
 ];
 

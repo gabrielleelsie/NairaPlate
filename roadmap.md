@@ -22,7 +22,8 @@
 - Decided: customer name/phone kept in drafts for credit sales only; removed on save, discard or expiry.
 
 ## Next: Dish price history, then Phase 1 late entry (requested 4 Oct 2026)
-- [ ] Step 2: effective-dated dish selling-price history (questions asked)
-- [ ] Step 3: closed-shift late-cash policy approved by owner
+- [x] Step 2 code: dish price history panel, Till/Recipes refresh, UAT-OWN-07
+- [ ] Step 2 SQL 20261031_dish_prices_a run + check by owner (blocker: owner runs it), then release
+- [x] Step 3: closed-shift late-cash policy approved as written (4 Oct 2026)
 - [ ] Steps 4-9: late_entries schema/functions, screens, tests + Module E UAT, rehearsal, pilot flag
 - Blocked for Phase 1 start: Phase 0 real-device UAT (owner/tester)
