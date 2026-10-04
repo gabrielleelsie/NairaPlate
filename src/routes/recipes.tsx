@@ -4,6 +4,7 @@ import { supabase } from "@/lib/external-supabase";
 import { GRADES } from "@/lib/grade";
 import { HoldPricePanel } from "@/components/HoldPricePanel";
 import { VariantsPanel } from "@/components/VariantsPanel";
+import { DishPricePanel } from "@/components/DishPricePanel";
 import { STOCK_MODE_HELP, STOCK_MODE_LABEL, type StockMode } from "@/lib/stock";
 import type { RecipeVariant } from "@/lib/variants";
 import { useStaffSession, BASE_UNITS, MARKET_UNITS, marketUnitLabel } from "@/lib/staff-session";
@@ -54,6 +55,7 @@ function RecipesScreen() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
+    await supabase.rpc("refresh_dish_prices" as never); // a scheduled price that has started shows here; failure is harmless
     const [ing, conv, rec, ri, biz, gp, vr] = await Promise.all([
       supabase.from("ingredients").select("id,name,base_unit,current_cost_kobo").order("name"),
       supabase.from("unit_conversions").select("ingredient_id,market_unit,base_qty"),
@@ -547,6 +549,10 @@ function RecipeForm({
           onChanged={() => onVariantsChanged?.()} onSwitched={(t) => onSwitchedVariant?.(t)} onError={onError}
           resetDraft={() => setItems(existingItems ? existingItems.map((i, n) => ({ key: n + 1, existingId: i.id, ingredient_id: i.ingredient_id, quantity: String(i.quantity), unit: i.unit, min: i.min_quantity === null || i.min_quantity === undefined ? "" : String(i.min_quantity), neverCut: !!i.never_cut })) : [])}
         />
+      )}
+
+      {isEdit && !!canDeleteItems && existing && (
+        <DishPricePanel dishId={existing.dish_id} onChanged={() => onVariantsChanged?.()} />
       )}
 
       {showHoldPrice && (
