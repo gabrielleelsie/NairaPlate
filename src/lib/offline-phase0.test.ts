@@ -64,3 +64,13 @@ describe("paper reference", () => {
     expect(paperReference("demo-kitchen", "2026-10-04", "Till 1 — Counter", 7)).toBe("DK-20261004-T1-007");
   });
 });
+
+import { isExpiredPurgeDue } from "./pos-draft";
+describe("expired drafts", () => {
+  const T0 = "2026-10-01T10:00:00.000Z";
+  it("are kept for 7 days after expiry, then purge is due", () => {
+    const d = { updatedAtUtc: T0 };
+    expect(isExpiredPurgeDue(d, Date.parse(T0) + (24 + 24 * 6) * 3600_000)).toBe(false);
+    expect(isExpiredPurgeDue(d, Date.parse(T0) + (24 + 24 * 7) * 3600_000 + 1)).toBe(true);
+  });
+});

@@ -333,7 +333,7 @@ function PosScreen() {
       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><Link className="underline" to="/app">Home</Link></div>
 
       <OfflineBanner status={conn.status} outageStartedAtUtc={conn.outageStartedAtUtc} menuSyncedAtUtc={menuSyncedAt}
-        menuStale={menuStale} onPrintPaper={printPaper} />
+        menuStale={menuStale} onPrintPaper={() => printPaper()} />
 
       {expiredDraft && (() => {
         const ex = expiredDraft;
