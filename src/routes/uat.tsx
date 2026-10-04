@@ -54,7 +54,7 @@ function summaryOf(list: StepResult[]): StepStatus {
 function UatPage() {
   const [tester, setTester] = useState("");
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" }));
-  const [filter, setFilter] = useState<"all" | "A" | "B" | "C">("all");
+  const [filter, setFilter] = useState<"all" | "A" | "B" | "C" | "D">("all");
   const [exporting, setExporting] = useState(false);
   const [drill, setDrill] = useState<DrillMetrics>({ rpo: "", rto: "", queryResults: "" });
   const [results, setResults] = useState<Record<string, StepResult[]>>(() =>
@@ -136,6 +136,7 @@ function UatPage() {
             <TabsTrigger value="A">A · Operations</TabsTrigger>
             <TabsTrigger value="B">B · Costing</TabsTrigger>
             <TabsTrigger value="C">C · Disaster recovery</TabsTrigger>
+            <TabsTrigger value="D">D · Offline (Phase 0)</TabsTrigger>
           </TabsList>
         </Tabs>
 

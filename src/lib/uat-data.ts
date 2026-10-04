@@ -4,7 +4,7 @@ export type UatStep = { action: string; expected: string };
 export type UatCase = {
   id: string;
   title: string;
-  module: "A" | "B" | "C";
+  module: "A" | "B" | "C" | "D";
   area: string;
   preconditions: string[];
   steps: UatStep[];
@@ -14,7 +14,79 @@ export const MODULES: Record<UatCase["module"], string> = {
   A: "Daily Owner Operations & Financial Control",
   B: "Price History, Costing & Exceptions",
   C: "Infrastructure, Backup & Disaster Recovery",
+  D: "Offline Resilience — Safe Degraded Mode (Phase 0)",
 };
+
+const TILL = "Signed in to Demo Kitchen on the Till (cashier or owner), drawer open, menu loaded.";
+const off = (n: number, title: string, area: string, preconditions: string[], steps: UatStep[]): UatCase => ({
+  id: `UAT-OFF-${String(n).padStart(2, "0")}`, title, module: "D", area, preconditions, steps,
+});
+
+export const OFFLINE_CASES: UatCase[] = [
+  off(1, "Normal online cash sale", "Save once", [TILL], [
+    { action: "Add two dishes, choose Cash, enter cash received and press Charge.", expected: "Sale saves once and carries a sale code." },
+    { action: "Check Orders for this sale.", expected: "Exactly one order; the Till draft clears only after the save is confirmed." },
+  ]),
+  off(2, "Double-tap Charge", "Save once", [TILL], [
+    { action: "Build a sale and tap Charge twice quickly.", expected: "Only one order is created." },
+    { action: "Check Orders.", expected: "The second tap returns the original sale; no duplicate." },
+  ]),
+  off(3, "Connection drops before submit", "Offline lockout", [TILL], [
+    { action: "Build a sale, then turn on airplane mode.", expected: "Red offline warning shows; Charge is disabled." },
+    { action: "Check the Till and Orders after reconnecting.", expected: "Draft is still there; no sale was created." },
+  ]),
+  off(4, "Connection drops during submit", "Uncertain save", [TILL], [
+    { action: "Press Charge and cut the connection immediately.", expected: "\"Checking sale status…\" appears; the draft is locked." },
+    { action: "Try to start or charge another sale.", expected: "Blocked until the first sale's status is confirmed." },
+  ]),
+  off(5, "Server saved sale but browser timed out", "Uncertain save", ["As UAT-OFF-04, where the sale reached the server."], [
+    { action: "Reconnect and press Check again.", expected: "The original sale is found; no duplicate order." },
+    { action: "Check the Till.", expected: "Draft clears only after the sale is confirmed." },
+  ]),
+  off(6, "Server did not save sale", "Uncertain save", ["As UAT-OFF-04, where the sale did not reach the server."], [
+    { action: "Reconnect and press Check again.", expected: "Sale reported as not saved; cashier may retry." },
+    { action: "Retry Charge, then check Orders.", expected: "Exactly one sale is created." },
+  ]),
+  off(7, "Browser refresh during an unsaved draft", "Drafts", [TILL], [
+    { action: "Build a split sale with several items and quantities, then refresh.", expected: "Items, quantities, payment method and split amounts restore correctly." },
+  ]),
+  off(8, "Credit-sale draft refresh", "Drafts & privacy", [TILL], [
+    { action: "Build a credit sale with customer name and phone, then refresh.", expected: "Name and phone restore." },
+    { action: "Discard the draft (and separately, let one expire).", expected: "Customer name and phone are removed from the device." },
+  ]),
+  off(9, "Cash / transfer / split draft refresh", "Drafts & privacy", [TILL], [
+    { action: "Build cash, transfer and split drafts and refresh each.", expected: "No customer personal details are kept on the device." },
+  ]),
+  off(10, "Browser restart during outage", "Drafts", [TILL], [
+    { action: "Build a sale offline, close the browser fully, reopen the Till.", expected: "Recoverable draft is offered and clearly marked as not a saved sale." },
+  ]),
+  off(11, "Paper fallback", "Paper form", [TILL], [
+    { action: "While offline, print the paper fallback form.", expected: "All fields print, including the paper reference." },
+    { action: "Read the printed form.", expected: "It visibly says it is not a saved NairaPlate sale." },
+  ]),
+  off(12, "Connection returns", "Connection status", [TILL], [
+    { action: "Go offline, then turn the connection back on.", expected: "Banner moves offline → checking → online." },
+    { action: "Watch when Charge re-enables.", expected: "Only after a successful server check, not just the phone saying it is online." },
+  ]),
+  off(13, "Existing sale code reused", "Save once", ["Tester can resend a sale with a code already used by this business."], [
+    { action: "Resend the same sale code for the same business.", expected: "The original order is returned; no new sale." },
+  ]),
+  off(14, "Another business tries the same code", "Business separation", ["A second test business and a sale code used by Demo Kitchen."], [
+    { action: "From the second business, check and submit the same code.", expected: "It cannot see or affect Demo Kitchen's sale." },
+  ]),
+  off(15, "Expired draft", "Drafts", ["A Till draft older than 24 hours."], [
+    { action: "Open the Till.", expected: "Draft is not submitted on its own." },
+    { action: "Choose an action.", expected: "Cashier can discard it (with reason) or hand it to the owner." },
+  ]),
+];
+
+export const OFFLINE_RELEASE_RULES = [
+  "No duplicate sale is created.",
+  "No draft is falsely shown as saved.",
+  "A cashier understands what to do during an uncertain submission.",
+  "No customer data is unnecessarily retained.",
+  "The health check and full rehearsal remain clean afterwards.",
+];
 
 export const UAT_CASES: UatCase[] = [
   {
