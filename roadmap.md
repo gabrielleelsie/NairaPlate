@@ -20,3 +20,9 @@
 - [x] Module D + release gate added to Owner UAT script, master spec (8.4) and system checklist
 - [x] Till keeps expired drafts as "Expired — not saved" (print, owner review form, discard; 7-day purge)
 - Decided: customer name/phone kept in drafts for credit sales only; removed on save, discard or expiry.
+
+## Next: Dish price history, then Phase 1 late entry (requested 4 Oct 2026)
+- [ ] Step 2: effective-dated dish selling-price history (questions asked)
+- [ ] Step 3: closed-shift late-cash policy approved by owner
+- [ ] Steps 4-9: late_entries schema/functions, screens, tests + Module E UAT, rehearsal, pilot flag
+- Blocked for Phase 1 start: Phase 0 real-device UAT (owner/tester)
