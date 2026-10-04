@@ -26,7 +26,7 @@ export const Route = createFileRoute("/orders")({
 
 const ROLES = new Set(["cashier", "owner", "supa_admin"]);
 type Adj = { id: string; order_id: string; type: string; original_amount_kobo: number; adjustment_amount_kobo: number; reason: string; actor_id: string; created_at: string };
-type Order = { id: string; total_kobo: number; status: string; payment_method: string; channel: string | null; created_by: string | null; created_at: string; order_adjustments: Adj[] };
+type Order = { id: string; total_kobo: number; status: string; payment_method: string; channel: string | null; created_by: string | null; created_at: string; is_late_entry?: boolean; actual_sold_at?: string | null; paper_reference?: string | null; late_delay_seconds?: number | null; late_approved_by?: string | null; order_adjustments: Adj[] };
 type Kind = "void" | "full_refund" | "partial_refund";
 const TYPE_LABEL: Record<string, string> = { void: "Void", full_refund: "Full refund", partial_refund: "Part refund" };
 const STATUS_LABEL: Record<string, string> = { paid: "Paid", cancelled: "Voided", refunded: "Refunded", partially_refunded: "Part refunded", draft: "Draft" };
@@ -47,7 +47,7 @@ function OrdersScreen() {
   const load = useCallback(async () => {
     if (!session) return;
     const [o, a, s] = await Promise.all([
-      supabase.from("orders").select("id,total_kobo,status,payment_method,channel,created_by,created_at")
+      supabase.from("orders").select("id,total_kobo,status,payment_method,channel,created_by,created_at,is_late_entry,actual_sold_at,paper_reference,late_delay_seconds,late_approved_by")
         .eq("business_id", session.businessId).order("created_at", { ascending: false }).limit(100),
       supabase.from("order_adjustments").select("*").eq("business_id", session.businessId).order("created_at", { ascending: false }),
       supabase.from("staff_users").select("id,display_name").eq("business_id", session.businessId),
@@ -86,6 +86,7 @@ function OrdersScreen() {
                       {refunded > 0 && <span className="text-muted-foreground"> (−{formatNaira(refunded)} refunded)</span>}
                     </div>
                     <div className="text-sm text-muted-foreground">{when(o.created_at)} · {o.payment_method} · {o.channel ?? "Walk-in"} · by {who(o.created_by)}</div>
+                    {o.is_late_entry && <div className="text-sm"><span className="rounded bg-accent px-2 py-0.5 text-xs font-semibold">Late entry</span> Sold {o.actual_sold_at ? when(o.actual_sold_at) : "?"} · entered {when(o.created_at)} · {Math.round(Number(o.late_delay_seconds ?? 0) / 60)} min late · paper ref {o.paper_reference} · entered by {who(o.created_by)} · approved by {who(o.late_approved_by ?? null)}</div>}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-muted px-2 py-0.5 text-xs">{STATUS_LABEL[o.status] ?? o.status}</span>

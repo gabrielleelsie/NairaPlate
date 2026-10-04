@@ -331,7 +331,7 @@ function PosScreen() {
   const sel = "w-full h-10 rounded-md border border-input bg-background px-3";
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
-      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><Link className="underline" to="/app">Home</Link></div>
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><div className="flex gap-3"><Link className="underline" to="/late-entries">Enter paper sale</Link><Link className="underline" to="/app">Home</Link></div></div>
 
       <OfflineBanner status={conn.status} outageStartedAtUtc={conn.outageStartedAtUtc} menuSyncedAtUtc={menuSyncedAt}
         menuStale={menuStale} onPrintPaper={() => printPaper()} />
