@@ -185,7 +185,7 @@ function NewEntry({ onDone }: { onDone: () => void }) {
     if (!iso) return;
     const ids = [...new Set(lines.map((l) => l.recipe_id).filter(Boolean))];
     Promise.all(ids.map(async (id) => {
-      const { data } = await supabase.rpc("dish_price_at", { p_recipe_id: id, p_at: iso });
+      const { data } = await supabase.rpc("dish_price_at", { p_dish: id, p_at: iso });
       const row = Array.isArray(data) ? data[0] : data;
       return [id, row?.price_kobo != null ? Number(row.price_kobo) : null] as const;
     })).then((r) => setPrices(Object.fromEntries(r)));
