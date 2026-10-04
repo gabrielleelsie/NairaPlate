@@ -49,6 +49,17 @@ Also check: after a reversal, the Reverse button is gone from that entry. An old
 1. Cloudflare: Workers and Pages, then nairaplate, then Deployments. The newest deployment from `main` should be green.
 2. Supabase: Database, then Backups. Confirm backups or point-in-time recovery are on.
 
+## Phase 0 release gate
+
+Offline Phase 0 cannot be released until all 15 Module D tests in the Owner UAT script have a recorded result and all six conditions hold:
+
+1. No duplicate order is created in double-submit, retry and timeout-recovery paths.
+2. No unsaved draft is shown as a saved sale.
+3. Cashier instructions are understood during offline and uncertain-submission states.
+4. No unnecessary customer data stays in non-credit drafts, or after a draft is discarded or expires.
+5. Health check, regression tests and full rehearsal remain clean after the Phase 0 changes.
+6. The deployed preview is tested on at least one real Android phone using airplane mode, not only desktop tools or unit tests.
+
 ## What to send me
 
 For each failed row: the screen, what you did, what you saw, and the exact wording of any message. I will check the database side before changing anything.

@@ -388,6 +388,26 @@ A script acted as each role in the Demo Kitchen business, using the real databas
 - **Monnify automatic transfer confirmation** has not been tested end to end with real keys. [S]
 - **The real stock-take, wastage and sale functions** were exercised by the live rehearsal for the sale, void, refund, wastage and stock-count paths. The batch path now works for a dish that is not set to "made to order". [R]
 
+## 8.4 Phase 0 offline resilience evidence
+
+This is evidence, not a new business rule.
+
+**Scope.** Phase 0 is safe degraded operation, not offline selling.
+- No sale is saved, paid, taken from stock or treated as final until the server confirms it. [C]
+- When the Till is confirmed offline, final sale submission is disabled. [C]
+- Half-entered drafts may be kept on the device, under the retention and privacy rules below. [C]
+- Customer name and phone are kept on the device only for active credit-sale drafts; non-credit drafts keep none. [C]
+- A sale whose save is uncertain stays locked until the server outcome is confirmed. [C]
+- A paper fallback form is available and says it is not a saved NairaPlate sale. [C]
+- Sale codes made by the device are used only through the server's save-once functions; a code is unique within one business, not across businesses. [C] Database script `20261030_sale_once_a.sql` applied on the live database on 4 October 2026; check returned 1, 1, 6, false, false, 0. [C]
+- Not allowed offline in Phase 0: refunds, voids, credit collection, supplier payments, purchases, stock counts, price changes, drawer adjustments, reversals and staff actions.
+
+**Tests.** Device-side rules (connection states, draft privacy, paper reference, draft expiry) pass automated checks. [L] Module D (UAT-OFF-01 to 15) in the Owner UAT script has not yet been run by a person on a real phone. [S] No live rehearsal of Phase 0 has been done.
+
+**Known difference.** UAT-OFF-15 expects an expired draft to be shown as "Expired — not saved". The Till currently removes an expired, unsent draft without showing it, so UAT-OFF-15 will fail until that is changed. [C]
+
+Phase 0 must not be described as proven on the live site until Module D results exist.
+
 ---
 
 # Part 9. Known gaps and open items

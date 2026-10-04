@@ -17,4 +17,6 @@
 - [x] Owner ran SQL + check (1,1,6,false,false,0) on 4 Oct 2026
 - [x] Phase 0 UAT cases UAT-OFF-01..15 added to /uat and Word export
 - [ ] Run UAT-OFF-01..07 in preview with real network cuts (blocker: owner/tester on a phone)
+- [x] Module D + release gate added to Owner UAT script, master spec (8.4) and system checklist
+- [ ] UAT-OFF-15 will fail: Till silently removes expired drafts; plan wants "Expired — not saved" (blocker: owner decision)
 - Decided: customer name/phone kept in drafts for credit sales only; removed on save, discard or expiry.
