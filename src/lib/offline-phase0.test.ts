@@ -15,7 +15,7 @@ describe("connection states", () => {
     expect(s.outageStartedAtUtc).toBe(T);
   });
   it("browser coming back online is not enough; only a good check makes it online", () => {
-    let s = { ...initialConnState(T), status: "offline" as const, consecutiveFails: 3 };
+    let s: ConnState = { ...initialConnState(T), status: "offline", consecutiveFails: 3 };
     s = nextConnState(s, "browser_online", T);
     expect(s.status).toBe("checking");
     s = nextConnState(s, "ping_ok", T);

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { MODULES, UAT_CASES, type DrillMetrics, type StepResult, type StepStatus } from "@/lib/uat-data";
+import { MODULES, OFFLINE_RELEASE_RULES, UAT_CASES, type DrillMetrics, type StepResult, type StepStatus } from "@/lib/uat-data";
 
 export const Route = createFileRoute("/uat")({
   head: () => ({
@@ -139,6 +139,20 @@ function UatPage() {
             <TabsTrigger value="D">D · Offline (Phase 0)</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {(filter === "all" || filter === "D") && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Offline Phase 0 — release only if all are true</CardTitle>
+              <CardDescription>Run at least UAT-OFF-01 to 07 in preview with real airplane mode or a real network cut.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                {OFFLINE_RELEASE_RULES.map((r) => <li key={r}>{r}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {visible.map((tc) => {
           const res = results[tc.id] ?? [];
