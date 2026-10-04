@@ -71,12 +71,15 @@ export const OFFLINE_CASES: UatCase[] = [
   off(13, "Existing sale code reused", "Save once", ["Tester can resend a sale with a code already used by this business."], [
     { action: "Resend the same sale code for the same business.", expected: "The original order is returned; no new sale." },
   ]),
-  off(14, "Another business tries the same code", "Business separation", ["A second test business and a sale code used by Demo Kitchen."], [
-    { action: "From the second business, check and submit the same code.", expected: "It cannot see or affect Demo Kitchen's sale." },
+  off(14, "Multi-tenant isolation (cross-business client sale code isolation)", "Business separation", ["A second test business and a sale code used by Demo Kitchen."], [
+    { action: "From the second business, press Check again for Demo Kitchen's sale code.", expected: "Demo Kitchen's sale is not returned." },
+    { action: "From the second business, submit a sale with that same code.", expected: "It becomes the second business's own order only; Demo Kitchen's order is unchanged. Save-once works within each business." },
   ]),
   off(15, "Expired draft", "Drafts", ["A Till draft older than 24 hours."], [
-    { action: "Open the Till.", expected: "Draft is not submitted on its own." },
-    { action: "Choose an action.", expected: "Cashier can discard it (with reason) or hand it to the owner." },
+    { action: "Open the Till.", expected: "Draft is shown, labelled \"Expired — not saved\"; it is not deleted silently and not submitted on its own." },
+    { action: "Try to charge it directly.", expected: "Charging the expired draft directly is not possible." },
+    { action: "Choose an action.", expected: "Cashier can discard it (with reason), use the paper form, or ask the owner to review it." },
+    { action: "Discard a credit draft.", expected: "Customer name and phone are removed from the device." },
   ]),
 ];
 
