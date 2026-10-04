@@ -10,6 +10,8 @@ export type PaperInput = {
   printedAtWat: string;
   draftLines: { name: string; quantity: number; priceKobo: number }[];
   menuStale: boolean;
+  /** Set for an expired draft: heading and extra warning. */
+  expired?: { ownerReview: boolean; createdWat: string | null; lastEditedWat: string };
 };
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -28,8 +30,10 @@ export function paperFormHtml(p: PaperInput): string {
   table{width:100%;border-collapse:collapse;margin:6px 0}th,td{border:1px solid #000;padding:4px;text-align:left}th{background:#eee}
   .cb{margin-right:14px;white-space:nowrap}.sec{margin-top:10px;font-weight:bold}.note{font-size:10px}
   </style></head><body>
-  <h1>NairaPlate paper fallback form</h1>
+  <h1>${p.expired?.ownerReview ? "NairaPlate owner review request: expired draft" : "NairaPlate paper fallback form"}</h1>
   <div class="warn">This form is not a saved NairaPlate sale.</div>
+  ${p.expired ? `<div class="warn">EXPIRED — NOT SAVED. Unconfirmed draft. No order, payment, stock movement or cash-drawer entry was created from it.</div>
+  ${line("Draft created", p.expired.createdWat ?? "unknown")}${line("Draft last edited", p.expired.lastEditedWat)}` : ""}
   ${line("13. Paper reference", p.reference)}
   ${line("1. Outlet / business", p.businessName)}
   ${line("2. Till", p.tillLabel)}

@@ -56,7 +56,10 @@ export async function deleteDraft(key: string): Promise<void> {
 export type OutageEntry =
   | { kind: "start"; atUtc: string }
   | { kind: "end"; atUtc: string; startedAtUtc: string | null }
-  | { kind: "draft_discarded"; atUtc: string; reason: string; clientSaleId: string };
+  | { kind: "draft_discarded"; atUtc: string; reason: string; clientSaleId: string; expired?: boolean }
+  /** Minimal tombstone: no items, no customer details. */
+  | { kind: "draft_auto_purged"; atUtc: string; clientSaleId: string; createdAtUtc: string | null; expiredAtUtc: string }
+  | { kind: "draft_review_requested"; atUtc: string; clientSaleId: string };
 
 export async function logOutage(e: OutageEntry): Promise<void> {
   await tx("outages", "readwrite", (s) => s.add(e));

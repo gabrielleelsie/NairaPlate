@@ -18,9 +18,12 @@ export type PosDraft = {
   /** Only present when pay === "credit". */
   custName?: string;
   custPhone?: string;
-  /** "editing" or "uncertain" (sent, but we could not confirm it saved). */
-  state: "editing" | "uncertain";
+  /** "editing", "uncertain" (sent, but we could not confirm it saved), or
+   *  "expired_pending_review" (older than 24h, never sent; can never be charged). */
+  state: "editing" | "uncertain" | "expired_pending_review";
   updatedAtUtc: string;
+  createdAtUtc?: string;
+  reviewRequestedAtUtc?: string;
 };
 
 /** Removes customer details unless this is a credit sale. Agreed privacy rule. */
@@ -36,6 +39,18 @@ export function isDraftEmpty(d: Pick<PosDraft, "lines" | "state">): boolean {
 
 export function isDraftExpired(d: Pick<PosDraft, "updatedAtUtc">, nowMs: number): boolean {
   return nowMs - Date.parse(d.updatedAtUtc) > DRAFT_TTL_MS;
+}
+
+/** After expiry, an unresolved draft is kept 7 more days, then purged to a tombstone. */
+export const EXPIRED_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function expiredAtMs(d: Pick<PosDraft, "updatedAtUtc">): number {
+  return Date.parse(d.updatedAtUtc) + DRAFT_TTL_MS;
+}
+
+/** True once an expired draft has passed its 7-day grace and must be purged. */
+export function isExpiredPurgeDue(d: Pick<PosDraft, "updatedAtUtc">, nowMs: number): boolean {
+  return nowMs > expiredAtMs(d) + EXPIRED_GRACE_MS;
 }
 
 /** "Demo Kitchen" business id "demo-kitchen" -> "DK". */
