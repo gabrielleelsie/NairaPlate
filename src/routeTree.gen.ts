@@ -56,6 +56,7 @@ import { Route as ApiPublicPaymentConnectRouteImport } from './routes/api/public
 import { Route as ApiPublicPaymentStartRouteImport } from './routes/api/public/payment-start'
 import { Route as ApiPublicPaymentTestRouteImport } from './routes/api/public/payment-test'
 import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
+import { Route as ApiPublicPingRouteImport } from './routes/api/public/ping'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -300,6 +301,11 @@ const ApiPublicPaymentWebhookRoute = ApiPublicPaymentWebhookRouteImport.update({
   path: '/api/public/payment-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPingRoute = ApiPublicPingRouteImport.update({
+  id: '/api/public/ping',
+  path: '/api/public/ping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -370,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
+  '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -423,6 +430,7 @@ export interface FileRoutesByTo {
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
+  '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -477,6 +485,7 @@ export interface FileRoutesById {
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
+  '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -532,6 +541,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-start'
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
+    | '/api/public/ping'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -585,6 +595,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-start'
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
+    | '/api/public/ping'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -638,6 +649,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-start'
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
+    | '/api/public/ping'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -692,6 +704,7 @@ export interface RootRouteChildren {
   ApiPublicPaymentStartRoute: typeof ApiPublicPaymentStartRoute
   ApiPublicPaymentTestRoute: typeof ApiPublicPaymentTestRoute
   ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
+  ApiPublicPingRoute: typeof ApiPublicPingRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -1029,6 +1042,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/ping': {
+      id: '/api/public/ping'
+      path: '/api/public/ping'
+      fullPath: '/api/public/ping'
+      preLoaderRoute: typeof ApiPublicPingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -1108,6 +1128,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentStartRoute: ApiPublicPaymentStartRoute,
   ApiPublicPaymentTestRoute: ApiPublicPaymentTestRoute,
   ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
+  ApiPublicPingRoute: ApiPublicPingRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,

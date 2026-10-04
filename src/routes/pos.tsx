@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
@@ -9,6 +9,12 @@ import { Label } from "@/components/ui/label";
 import { PAY_CHOICE_LABEL, payChoicesFor, type PayChoice } from "@/lib/payment-ui";
 import type { PaymentMode } from "@/lib/payments";
 import { TransferWaiting, type WaitingRequest } from "@/components/TransferWaiting";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { useConnectivity, watTime } from "@/lib/connectivity";
+import { deleteDraft, draftKey, getTillLabel, loadDraft, logOutage, nextPaperSequence, saveDraft, setTillLabel } from "@/lib/offline-store";
+import { isDraftEmpty, isDraftExpired, newClientSaleId, paperReference, sanitizeDraft, type PosDraft } from "@/lib/pos-draft";
+import { printPaperForm } from "@/lib/paper-fallback";
+import { lagosDateKey } from "@/lib/lagos-time";
 
 export const Route = createFileRoute("/pos")({
   ssr: false,
@@ -31,10 +37,20 @@ type Pay = PayChoice;
 const PAY_LABEL = PAY_CHOICE_LABEL;
 const POS_ROLES = new Set(["cashier", "owner", "supa_admin"]);
 const TIERS = ["Standard", "Wholesale", "Event"];
+const MENU_STALE_MS = 2 * 60 * 60 * 1000;
+
+/** A failure where we cannot know whether the database saved the sale (the request or reply was lost). */
+function isUncertain(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code && error.code.length > 0) return false; // the database answered with a clear refusal
+  return /fetch|network|timeout|abort|load failed/i.test(error.message ?? "") || !error.code;
+}
 
 function PosScreen() {
   const { loading, session } = useStaffSession();
+  const conn = useConnectivity(true);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [menuSyncedAt, setMenuSyncedAt] = useState<string | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [pick, setPick] = useState("");
   const [qty, setQty] = useState("1");
@@ -50,13 +66,31 @@ function PosScreen() {
   const [mode, setMode] = useState<PaymentMode | null>(null);
   const [waiting, setWaiting] = useState<WaitingRequest[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Offline Phase 0
+  const [clientSaleId, setClientSaleId] = useState(() => newClientSaleId());
+  const [draftState, setDraftState] = useState<PosDraft["state"]>("editing");
+  const [draftReady, setDraftReady] = useState(false);
+  const [priorDraft, setPriorDraft] = useState<PosDraft | null>(null);
+  const [discardReason, setDiscardReason] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [tillLabel, setTillLabelState] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [shiftOpenedAt, setShiftOpenedAt] = useState<string | null>(null);
+  const sending = useRef(false);
 
-  useEffect(() => {
-    supabase.from("recipes").select("id,name,selling_price_kobo").eq("is_current", true).order("name").then(({ data, error }) => {
-      if (error) return setMsg({ ok: false, text: "Could not load menu." });
-      setRecipes((data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) })));
-    });
-  }, []);
+  const key = session ? draftKey(session.businessId, session.userId) : null;
+
+  const loadMenu = async () => {
+    const { data, error } = await supabase.from("recipes").select("id,name,selling_price_kobo").eq("is_current", true).order("name");
+    if (error) { conn.reportRequestFailure(); return setMsg({ ok: false, text: "Could not load menu." }); }
+    setRecipes((data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) })));
+    setMenuSyncedAt(new Date().toISOString());
+  };
+  useEffect(() => { void loadMenu(); setTillLabelState(getTillLabel()); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const menuStale = !menuSyncedAt || Date.now() - Date.parse(menuSyncedAt) > MENU_STALE_MS;
+  // Online with an old menu: refresh it. The database still sets every price on save.
+  useEffect(() => { if (conn.isOnline && menuStale && menuSyncedAt) void loadMenu(); }, [conn.isOnline, conn.lastSuccessfulHeartbeatAtUtc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadWaiting = async () => {
     const { data } = await supabase.from("payment_requests").select("id,order_id,reference,status,amount_kobo,paid_amount_kobo,created_at,account_number,bank_name,account_name")
@@ -69,6 +103,49 @@ function PosScreen() {
   }, []);
   useEffect(() => { if (mode && !payChoicesFor(mode).includes(pay)) setPay("cash"); }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Details for the paper form (best effort; blank lines if unavailable).
+  useEffect(() => {
+    if (!session) return;
+    supabase.from("businesses").select("name").eq("id", session.businessId).maybeSingle().then(({ data }) => setBusinessName(data?.name ?? session.businessId));
+    supabase.from("cash_drawers").select("opened_at").eq("business_id", session.businessId).eq("status", "open").limit(1).maybeSingle()
+      .then(({ data }) => setShiftOpenedAt(data?.opened_at ?? null));
+  }, [session?.businessId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyDraft = (d: PosDraft) => {
+    setLines(d.lines); setChannel(d.channel); setAggName(d.aggName); setTier(d.tier); setPay(d.pay);
+    setCashN(d.cashN); setTrN(d.trN); setCustName(d.custName ?? ""); setCustPhone(d.custPhone ?? "");
+    setClientSaleId(d.clientSaleId); setDraftState(d.state);
+  };
+
+  // On opening: offer any unfinished draft from before. An unconfirmed sale is restored straight away and must be resolved.
+  useEffect(() => {
+    if (!key) return;
+    void loadDraft(key).then(async (d) => {
+      if (d && isDraftExpired(d, Date.now()) && d.state === "editing") { await deleteDraft(key); d = null; }
+      if (d && d.state === "uncertain") applyDraft(d);
+      else if (d && !isDraftEmpty(d)) setPriorDraft(d);
+      setDraftReady(true);
+    });
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentDraft = (): PosDraft | null => key ? sanitizeDraft({
+    key, clientSaleId, lines, channel, aggName, tier, pay, cashN, trN, custName, custPhone, state: draftState, updatedAtUtc: new Date().toISOString(),
+  }) : null;
+
+  // Keep the draft on the device as it changes. Never cleared just because the connection came back.
+  useEffect(() => {
+    if (!draftReady || priorDraft) return;
+    const d = currentDraft();
+    if (!d) return;
+    if (isDraftEmpty(d)) void deleteDraft(d.key); else void saveDraft(d);
+  }, [draftReady, priorDraft, lines, channel, aggName, tier, pay, cashN, trN, custName, custPhone, draftState, clientSaleId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resetSale = async () => {
+    setLines([]); setCashN(""); setTrN(""); setCustName(""); setCustPhone("");
+    setDraftState("editing"); setClientSaleId(newClientSaleId());
+    if (key) await deleteDraft(key);
+  };
+
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const subtotal = lines.reduce((s, l) => s + (byId.get(l.recipe_id)?.selling_price_kobo ?? 0) * l.quantity, 0);
   const cashK = pay === "split" ? nairaToKobo(cashN) : pay === "cash" ? subtotal : 0;
@@ -77,7 +154,8 @@ function PosScreen() {
   const splitOk = pay !== "split" || (cashK > 0 && trK > 0 && splitSum === subtotal);
   const finalChannel = channel === "Aggregator" ? aggName.trim() : channel;
   const creditOk = pay !== "credit" || (custName.trim().length > 0 && custPhone.trim().length > 0);
-  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy;
+  const locked = draftState === "uncertain";
+  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy && !locked && conn.isOnline && !priorDraft;
 
   function addLine() {
     const q = Math.floor(Number(qty));
@@ -89,59 +167,118 @@ function PosScreen() {
     setQty("1");
   }
 
+  /** Marks the sale as sent-but-unconfirmed on the device BEFORE sending, so a crash mid-send cannot lead to a second sale. */
+  async function markSending() {
+    setDraftState("uncertain");
+    const d = currentDraft();
+    if (d) await saveDraft({ ...d, state: "uncertain" });
+  }
+
+  async function afterError(error: { message?: string; code?: string }) {
+    if (isUncertain(error)) {
+      conn.reportRequestFailure();
+      setMsg({ ok: false, text: "We could not confirm whether this sale saved." });
+      return; // stays "uncertain" until checked
+    }
+    setDraftState("editing"); // the database clearly refused; nothing was saved
+    setMsg({ ok: false, text: "Order not saved: " + (error.message ?? "unknown error") });
+  }
+
   async function submit() {
-    if (!session) return;
-    // Automatic transfer: the order waits for the bank. Only the bank's message can mark it paid.
-    if (pay === "auto_transfer") {
-      setBusy(true); setMsg(null);
-      const { data, error } = await supabase.rpc("create_transfer_order" as never, {
-        p_channel: finalChannel, p_price_tier: tier, p_items: lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity })),
-      } as never);
-      if (error) { setBusy(false); return setMsg({ ok: false, text: "Order not saved: " + error.message }); }
-      const created = data as { request_id: string; amount_kobo: number };
-      const { data: sess } = await supabase.auth.getSession();
-      const res = await fetch("/api/public/payment-start", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
-        body: JSON.stringify({ request_id: created.request_id }),
-      }).catch(() => null);
-      setBusy(false);
-      if (!res || !res.ok) {
-        const j = res ? ((await res.json().catch(() => ({}))) as { error?: string }) : {};
-        setMsg({ ok: false, text: `Order saved and waiting, but no account number yet: ${j.error ?? "could not reach the bank service"}. Cancel it below or try again.` });
-      } else setMsg(null);
-      setLines([]);
-      await loadWaiting();
-      return;
-    }
-    // Credit sale: order + items + customer_credits row saved together in one database step.
-    if (pay === "credit") {
-      setBusy(true); setMsg(null);
-      const { data, error } = await supabase.rpc("create_credit_order" as never, {
-        p_channel: finalChannel, p_price_tier: tier, p_customer_name: custName.trim(), p_phone: custPhone.trim(),
-        p_items: lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity })),
-      } as never);
-      setBusy(false);
-      if (error) return setMsg({ ok: false, text: "Order not saved: " + error.message });
-      const total = Number((data as { total_kobo: number }).total_kobo);
-      setMsg({ ok: true, text: `Order saved — ${custName.trim()} owes ${formatNaira(total)}.` });
-      setLines([]); setCustName(""); setCustPhone("");
-      return;
-    }
-    // Validate payment split before any insert.
-    if (cashK + trK !== subtotal || (pay === "split" && (cashK <= 0 || trK <= 0))) {
+    if (!session || sending.current || !conn.isOnline) return;
+    if (pay !== "auto_transfer" && pay !== "credit" && (cashK + trK !== subtotal || (pay === "split" && (cashK <= 0 || trK <= 0)))) {
       return setMsg({ ok: false, text: "Cash and transfer must add up exactly to the total." });
     }
-    setBusy(true); setMsg(null);
-    // The database reads every price from the menu and works out the total itself. Only the dishes, quantities and the payment split are sent.
-    const { data, error } = await supabase.rpc("create_cash_order" as never, {
-      p_channel: finalChannel, p_price_tier: tier, p_payment_method: pay, p_cash_kobo: cashK, p_transfer_kobo: trK,
-      p_items: lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity })),
-    } as never);
-    setBusy(false);
-    if (error) return setMsg({ ok: false, text: "Order not saved: " + error.message });
-    const saved = data as { total_kobo: number };
-    setMsg({ ok: true, text: `Order saved — ${formatNaira(Number(saved.total_kobo))} (${pay}).` });
-    setLines([]); setCashN(""); setTrN("");
+    sending.current = true; setBusy(true); setMsg(null);
+    await markSending();
+    const items = lines.map((l) => ({ recipe_id: l.recipe_id, quantity: l.quantity }));
+    try {
+      // Automatic transfer: the order waits for the bank. Only the bank's message can mark it paid.
+      if (pay === "auto_transfer") {
+        const { data, error } = await supabase.rpc("create_transfer_order_once" as never, {
+          p_client_sale_id: clientSaleId, p_channel: finalChannel, p_price_tier: tier, p_items: items,
+        } as never);
+        if (error) return await afterError(error);
+        const created = data as { request_id: string; amount_kobo: number };
+        await resetSale();
+        const { data: sess } = await supabase.auth.getSession();
+        const res = await fetch("/api/public/payment-start", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
+          body: JSON.stringify({ request_id: created.request_id }),
+        }).catch(() => null);
+        if (!res || !res.ok) {
+          const j = res ? ((await res.json().catch(() => ({}))) as { error?: string }) : {};
+          setMsg({ ok: false, text: `Order saved and waiting, but no account number yet: ${j.error ?? "could not reach the bank service"}. Cancel it below or try again.` });
+        }
+        await loadWaiting();
+        return;
+      }
+      // Credit sale: order + items + customer_credits row saved together in one database step.
+      if (pay === "credit") {
+        const name = custName.trim();
+        const { data, error } = await supabase.rpc("create_credit_order_once" as never, {
+          p_client_sale_id: clientSaleId, p_channel: finalChannel, p_price_tier: tier, p_customer_name: name, p_phone: custPhone.trim(), p_items: items,
+        } as never);
+        if (error) return await afterError(error);
+        const total = Number((data as { total_kobo: number }).total_kobo);
+        await resetSale();
+        setMsg({ ok: true, text: `Order saved — ${name} owes ${formatNaira(total)}.` });
+        return;
+      }
+      // The database reads every price from the menu and works out the total itself.
+      const { data, error } = await supabase.rpc("create_cash_order_once" as never, {
+        p_client_sale_id: clientSaleId, p_channel: finalChannel, p_price_tier: tier, p_payment_method: pay, p_cash_kobo: cashK, p_transfer_kobo: trK, p_items: items,
+      } as never);
+      if (error) return await afterError(error);
+      const saved = data as { total_kobo: number };
+      await resetSale();
+      setMsg({ ok: true, text: `Order saved — ${formatNaira(Number(saved.total_kobo))} (${pay}).` });
+    } catch (e) {
+      await afterError({ message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      sending.current = false; setBusy(false);
+    }
+  }
+
+  /** "Check again": asks the database whether a sale with this reference was saved. */
+  async function checkAgain() {
+    setChecking(true);
+    const ok = await conn.checkNow();
+    if (!ok) { setChecking(false); return setMsg({ ok: false, text: "Still no connection. Keep this order as it is, or use the paper form." }); }
+    const { data, error } = await supabase.rpc("find_sale_by_client_id" as never, { p_client_sale_id: clientSaleId } as never);
+    setChecking(false);
+    if (error) return setMsg({ ok: false, text: "Could not check yet: " + error.message });
+    const r = data as { found: boolean; total_kobo?: number; status?: string };
+    if (r.found) {
+      await resetSale();
+      await loadWaiting();
+      setMsg({ ok: true, text: `Sale found — it was saved (${formatNaira(Number(r.total_kobo ?? 0))}). Nothing was charged twice.` });
+    } else {
+      setDraftState("editing");
+      setMsg({ ok: false, text: "Sale not found — it was not saved. You can charge it again." });
+    }
+  }
+
+  function printPaper() {
+    if (!session) return;
+    const label = tillLabel.trim();
+    if (label) setTillLabel(label);
+    const dateKey = lagosDateKey(new Date());
+    const ref = paperReference(session.businessId, dateKey, label, nextPaperSequence(session.businessId, dateKey));
+    const opened = printPaperForm({
+      reference: ref, businessName, tillLabel: label, cashierName: session.name,
+      shiftOpenedWat: shiftOpenedAt ? watTime(shiftOpenedAt) : null, printedAtWat: watTime(new Date().toISOString()),
+      draftLines: lines.map((l) => ({ name: byId.get(l.recipe_id)?.name ?? "Dish", quantity: l.quantity, priceKobo: byId.get(l.recipe_id)?.selling_price_kobo ?? 0 })),
+      menuStale: menuStale || !conn.isOnline,
+    });
+    if (!opened) setMsg({ ok: false, text: "The print window was blocked. Allow pop-ups for NairaPlate and try again." });
+  }
+
+  async function discardPrior() {
+    if (!priorDraft || !key || discardReason.trim().length < 3) return;
+    await logOutage({ kind: "draft_discarded", atUtc: new Date().toISOString(), reason: discardReason.trim(), clientSaleId: priorDraft.clientSaleId });
+    await deleteDraft(key);
+    setPriorDraft(null); setDiscardReason("");
   }
 
   if (loading) return <p className="p-6">Loading…</p>;
@@ -154,10 +291,40 @@ function PosScreen() {
     <main className="mx-auto max-w-xl p-4 space-y-5">
       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><Link className="underline" to="/app">Home</Link></div>
 
+      <OfflineBanner status={conn.status} outageStartedAtUtc={conn.outageStartedAtUtc} menuSyncedAtUtc={menuSyncedAt}
+        menuStale={menuStale} onPrintPaper={printPaper} />
+
+      {priorDraft && (
+        <section className="rounded-md border-2 border-accent p-3 space-y-2">
+          <p className="font-semibold">Unfinished order from {watTime(priorDraft.updatedAtUtc)}</p>
+          <p className="text-sm">{priorDraft.lines.reduce((s, l) => s + l.quantity, 0)} item(s). It has not been saved to NairaPlate.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => { applyDraft(priorDraft); setPriorDraft(null); }}>Resume</Button>
+            <Button size="sm" variant="outline" onClick={() => { applyDraft(priorDraft); setPriorDraft(null); setTimeout(printPaper, 0); }}>Resume and print paper form</Button>
+          </div>
+          <div className="flex gap-2">
+            <Input aria-label="Reason for discarding" placeholder="Reason for discarding" value={discardReason} onChange={(e) => setDiscardReason(e.target.value)} />
+            <Button size="sm" variant="destructive" disabled={discardReason.trim().length < 3} onClick={discardPrior}>Discard</Button>
+          </div>
+        </section>
+      )}
+
+      {locked && (
+        <section className="rounded-md border-2 border-destructive p-3 space-y-2" role="alert">
+          <p className="font-semibold">We could not confirm whether this sale saved.</p>
+          <p className="text-sm">Do not create another sale yet. Reference: <span className="font-mono">{clientSaleId.slice(0, 8)}</span></p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={checking} onClick={checkAgain}>{checking ? "Checking sale status…" : "Check again"}</Button>
+            <Button size="sm" variant="outline" onClick={printPaper}>Use paper fallback</Button>
+          </div>
+        </section>
+      )}
+
       {waiting.map((w) => (
         <TransferWaiting key={w.id} initial={w} onFinished={(text, ok) => { setMsg({ ok, text }); void loadWaiting(); }} />
       ))}
 
+      <fieldset disabled={locked || !!priorDraft} className="space-y-5 disabled:opacity-60">
       <section className="space-y-2">
         <Label>Add item</Label>
         <div className="flex gap-2">
@@ -168,10 +335,10 @@ function PosScreen() {
           <Input aria-label="Quantity" className="w-20" type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} />
           <Button onClick={addLine}>Add</Button>
         </div>
-        {lines.map((l) => { const r = byId.get(l.recipe_id)!; return (
+        {lines.map((l) => { const r = byId.get(l.recipe_id); return (
           <div key={l.recipe_id} className="flex justify-between text-sm border-b py-1">
-            <span>{l.quantity} × {r.name}</span>
-            <span className="flex gap-3">{formatNaira(r.selling_price_kobo * l.quantity)}
+            <span>{l.quantity} × {r?.name ?? "Dish no longer on menu"}</span>
+            <span className="flex gap-3">{formatNaira((r?.selling_price_kobo ?? 0) * l.quantity)}
               <button className="text-destructive" onClick={() => setLines((ls) => ls.filter((x) => x !== l))}>Remove</button></span>
           </div>); })}
         <p className="text-lg font-semibold">Subtotal: {formatNaira(subtotal)}</p>
@@ -215,9 +382,17 @@ function PosScreen() {
             {splitSum === subtotal && (cashK <= 0 || trK <= 0) && <p className="text-sm text-destructive">Both amounts must be more than ₦0 for a split.</p>}
           </div>)}
       </section>
+      </fieldset>
 
       <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : pay === "credit" ? `Put ${formatNaira(subtotal)} on credit` : pay === "auto_transfer" ? `Ask for ${formatNaira(subtotal)} by transfer` : `Charge ${formatNaira(subtotal)}`}</Button>
+      {!conn.isOnline && !locked && <p className="text-sm text-destructive">Cannot save while the connection is not confirmed. Use the paper fallback form.</p>}
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
+
+      <section className="space-y-1 border-t pt-3">
+        <Label htmlFor="till-label">This till's name (printed on paper forms)</Label>
+        <Input id="till-label" placeholder="e.g. Till 1 — Counter" value={tillLabel}
+          onChange={(e) => setTillLabelState(e.target.value)} onBlur={() => setTillLabel(tillLabel.trim())} />
+      </section>
     </main>
   );
 }
