@@ -24,6 +24,7 @@ import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
+import { Route as LateEntriesRouteImport } from './routes/late-entries'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OurStoryRouteImport } from './routes/our-story'
 import { Route as PaymentsRouteImport } from './routes/payments'
@@ -135,6 +136,11 @@ const FlagsRoute = FlagsRouteImport.update({
 const IngredientsRoute = IngredientsRouteImport.update({
   id: '/ingredients',
   path: '/ingredients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LateEntriesRoute = LateEntriesRouteImport.update({
+  id: '/late-entries',
+  path: '/late-entries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -344,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/late-entries': typeof LateEntriesRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/late-entries': typeof LateEntriesRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -453,6 +461,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/late-entries': typeof LateEntriesRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -509,6 +518,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/flags'
     | '/ingredients'
+    | '/late-entries'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -563,6 +573,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/flags'
     | '/ingredients'
+    | '/late-entries'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -617,6 +628,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/flags'
     | '/ingredients'
+    | '/late-entries'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -672,6 +684,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
+  LateEntriesRoute: typeof LateEntriesRoute
   OrdersRoute: typeof OrdersRoute
   OurStoryRoute: typeof OurStoryRoute
   PaymentsRoute: typeof PaymentsRoute
@@ -816,6 +829,13 @@ declare module '@tanstack/react-router' {
       path: '/ingredients'
       fullPath: '/ingredients'
       preLoaderRoute: typeof IngredientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/late-entries': {
+      id: '/late-entries'
+      path: '/late-entries'
+      fullPath: '/late-entries'
+      preLoaderRoute: typeof LateEntriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -1096,6 +1116,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,
+  LateEntriesRoute: LateEntriesRoute,
   OrdersRoute: OrdersRoute,
   OurStoryRoute: OurStoryRoute,
   PaymentsRoute: PaymentsRoute,

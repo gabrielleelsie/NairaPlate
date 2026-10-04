@@ -25,5 +25,7 @@
 - [x] Step 2 code: dish price history panel, Till/Recipes refresh, UAT-OWN-07
 - [ ] Step 2 SQL 20261031_dish_prices_a run + check by owner (blocker: owner runs it), then release
 - [x] Step 3: closed-shift late-cash policy approved as written (4 Oct 2026)
-- [ ] Steps 4-9: late_entries schema/functions, screens, tests + Module E UAT, rehearsal, pilot flag
+- [x] Step 4: late_entries SQL run + check confirmed by owner (4 Oct 2026)
+- [x] Step 5: Paper sales screen (cashier entry, owner approve/reject/shift review), Late entry label on Orders
+- [ ] Steps 6-9: UAT-LATE-01..10 run, rehearsal, pilot (blocker: owner/tester)
 - Blocked for Phase 1 start: Phase 0 real-device UAT (owner/tester)
