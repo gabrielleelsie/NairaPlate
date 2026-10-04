@@ -13,6 +13,8 @@
 
 ## Offline Phase 0 (approved with amendments, 4 Oct 2026)
 - [x] Build Phase 0 code (connection bar, drafts, save-once, paper form)
-- [ ] Owner runs supabase/external/20261030_sale_once_a.sql + check BEFORE release (blocker: owner action)
-- [ ] Real-device tests (Android, airplane mode, weak network); add Phase 0 to UAT scripts and spec
+
+- [x] Owner ran SQL + check (1,1,6,false,false,0) on 4 Oct 2026
+- [x] Phase 0 UAT cases UAT-OFF-01..15 added to /uat and Word export
+- [ ] Run UAT-OFF-01..07 in preview with real network cuts (blocker: owner/tester on a phone)
 - Decided: customer name/phone kept in drafts for credit sales only; removed on save, discard or expiry.

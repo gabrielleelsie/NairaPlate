@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { MODULES, UAT_CASES, type DrillMetrics, type StepResult, type StepStatus } from "@/lib/uat-data";
+import { MODULES, OFFLINE_RELEASE_RULES, UAT_CASES, type DrillMetrics, type StepResult, type StepStatus } from "@/lib/uat-data";
 
 export const Route = createFileRoute("/uat")({
   head: () => ({
@@ -54,7 +54,7 @@ function summaryOf(list: StepResult[]): StepStatus {
 function UatPage() {
   const [tester, setTester] = useState("");
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" }));
-  const [filter, setFilter] = useState<"all" | "A" | "B" | "C">("all");
+  const [filter, setFilter] = useState<"all" | "A" | "B" | "C" | "D">("all");
   const [exporting, setExporting] = useState(false);
   const [drill, setDrill] = useState<DrillMetrics>({ rpo: "", rto: "", queryResults: "" });
   const [results, setResults] = useState<Record<string, StepResult[]>>(() =>
@@ -136,8 +136,23 @@ function UatPage() {
             <TabsTrigger value="A">A · Operations</TabsTrigger>
             <TabsTrigger value="B">B · Costing</TabsTrigger>
             <TabsTrigger value="C">C · Disaster recovery</TabsTrigger>
+            <TabsTrigger value="D">D · Offline (Phase 0)</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {(filter === "all" || filter === "D") && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Offline Phase 0 — release only if all are true</CardTitle>
+              <CardDescription>Run at least UAT-OFF-01 to 07 in preview with real airplane mode or a real network cut.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                {OFFLINE_RELEASE_RULES.map((r) => <li key={r}>{r}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {visible.map((tc) => {
           const res = results[tc.id] ?? [];

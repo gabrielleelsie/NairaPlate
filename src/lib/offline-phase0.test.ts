@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heartbeatDelayMs, initialConnState, nextConnState } from "./connectivity";
+import { heartbeatDelayMs, initialConnState, nextConnState, type ConnState } from "./connectivity";
 import { businessCode, isDraftExpired, paperReference, sanitizeDraft, tillCode, type PosDraft } from "./pos-draft";
 
 const T = "2026-10-04T10:00:00.000Z";
@@ -15,7 +15,7 @@ describe("connection states", () => {
     expect(s.outageStartedAtUtc).toBe(T);
   });
   it("browser coming back online is not enough; only a good check makes it online", () => {
-    let s = { ...initialConnState(T), status: "offline" as const, consecutiveFails: 3 };
+    let s: ConnState = { ...initialConnState(T), status: "offline", consecutiveFails: 3 };
     s = nextConnState(s, "browser_online", T);
     expect(s.status).toBe("checking");
     s = nextConnState(s, "ping_ok", T);
