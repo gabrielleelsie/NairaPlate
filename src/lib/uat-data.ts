@@ -75,11 +75,15 @@ export const OFFLINE_CASES: UatCase[] = [
     { action: "From the second business, press Check again for Demo Kitchen's sale code.", expected: "Demo Kitchen's sale is not returned." },
     { action: "From the second business, submit a sale with that same code.", expected: "It becomes the second business's own order only; Demo Kitchen's order is unchanged. Save-once works within each business." },
   ]),
-  off(15, "Expired draft", "Drafts", ["A Till draft older than 24 hours."], [
-    { action: "Open the Till.", expected: "Draft is shown, labelled \"Expired — not saved\"; it is not deleted silently and not submitted on its own." },
-    { action: "Try to charge it directly.", expected: "Charging the expired draft directly is not possible." },
-    { action: "Choose an action.", expected: "Cashier can discard it (with reason), use the paper form, or ask the owner to review it." },
-    { action: "Discard a credit draft.", expected: "Customer name and phone are removed from the device." },
+  off(15, "Expired draft guard", "Drafts", ["An unsaved draft whose last-edited time has been set to more than 24 hours ago with a safe test method (one cash draft, one credit draft)."], [
+    { action: "Open the Till.", expected: "The expired-draft card appears." },
+    { action: "Read the card.", expected: "Labelled \"Expired — not saved\"; shows created and last-edited times, items, payment chosen, unconfirmed total and whether customer details are present." },
+    { action: "Look for Charge or any way to submit the draft.", expected: "Not available; the sale area is disabled." },
+    { action: "Read the statement on the card.", expected: "Says no order, payment, stock movement or cash-drawer entry was created." },
+    { action: "Press Ask owner to review.", expected: "An owner review form prints, marked expired and not saved; the card shows when review was asked; the draft still cannot be charged." },
+    { action: "Type a reason, press Discard draft, then Confirm discard.", expected: "The draft is removed from the Till." },
+    { action: "For the credit draft, check the device's stored drafts after discarding.", expected: "Customer name and phone are gone." },
+    { action: "Check Orders, payments, stock, the cash drawer and Credit.", expected: "Nothing was created or changed by the draft." },
   ]),
 ];
 
