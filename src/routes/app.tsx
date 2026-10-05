@@ -8,7 +8,7 @@ import { CostCheckCard } from "@/components/CostCheckCard";
 import { OrdersTodayCard } from "@/components/OrdersTodayCard";
 import { useCateringEnabled } from "@/lib/features";
 import {
-  AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
+  AlertCircle, AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
   CreditCard, FileSpreadsheet, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
   Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
 } from "lucide-react";
@@ -294,6 +294,7 @@ const KITCHEN: AppLink[] = [
   { to: "/stock-take", label: "Stock take", icon: ClipboardList },
 ];
 const OVERSIGHT: AppLink[] = [
+  { to: "/inbox", label: "Attention inbox", icon: AlertCircle },
   { to: "/dashboard", label: "P&L", icon: BarChart3 },
   { to: "/cashflow", label: "7-day cashflow", icon: Landmark },
   { to: "/cost-check", label: "Today's cost check", icon: Scale },
