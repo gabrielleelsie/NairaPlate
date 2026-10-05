@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { FeatureGate } from "@/components/FeatureGate";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/cost-check")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: CostCheckScreen,
+  component: () => <FeatureGate feature="cost_check"><CostCheckScreen /></FeatureGate>,
 });
 
 const OWNER_ROLES = new Set(["owner", "supa_admin"]);

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { FeatureGate } from "@/components/FeatureGate";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/credit")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: CreditScreen,
+  component: () => <FeatureGate feature="customer_credit"><CreditScreen /></FeatureGate>,
 });
 
 type Action = { id: string; kind: "pay" | "writeoff" | "history" };

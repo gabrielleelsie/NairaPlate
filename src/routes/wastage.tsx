@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { FeatureGate } from "@/components/FeatureGate";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession, MARKET_UNIT_OPTIONS, marketUnitLabel } from "@/lib/staff-session";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/wastage")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: WastageScreen,
+  component: () => <FeatureGate feature="wastage"><WastageScreen /></FeatureGate>,
 });
 
 const ROLES = new Set(["cook", "purchaser", "owner", "supa_admin"]);
