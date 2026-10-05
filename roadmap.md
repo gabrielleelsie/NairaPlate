@@ -36,3 +36,4 @@
 - [ ] Owner runs script 1, check, rehearsal on live (blocker: owner)
 - [x] Owner screen (cost status, hold, estimate with reason), Orders label, UAT-OWN-08
 - [ ] Release to main after live check + rehearsal are clean (blocker: owner)
+- [x] Accountant CSV exports (/exports) — built; check totals against Report/Drawer pages on live data after release
