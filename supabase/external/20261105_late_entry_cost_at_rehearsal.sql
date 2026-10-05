@@ -16,8 +16,6 @@ declare
   e_exact uuid; e_back uuid; e_miss uuid; e_forge uuid; o1 uuid; o2 uuid; o_till uuid; r jsonb;
   ok boolean; res text := ''; fails int := 0; msg text;
 
-  -- a submitted paper entry with one line of the test dish, inserted directly (as the app's submit would)
-  function_unused int;
 begin
   if not exists (select 1 from public.businesses where id = biz) then raise exception 'Wrong project: no demo-kitchen business. Nothing was done.'; end if;
   if to_regprocedure('public.late_entry_cost_preview(uuid)') is null then raise exception 'Run 20261105_late_entry_cost_at.sql first. Nothing was done.'; end if;
@@ -225,6 +223,26 @@ begin
   begin perform public.recipe_plate_cost_at(v_ver, biz, now()); ok := false; exception when insufficient_privilege then ok := true; end;
   reset role;
   res := res || E'\nT13 app cannot call the internal costing function: ' || case when ok then 'PASS' else 'FAIL' end; fails := fails + (not ok)::int;
+
+  -- T14 an ended plan cannot preview or approve
+  perform set_config('request.jwt.claims', '', true);
+  begin
+    update public.businesses set access_ends_at = now() - interval '1 minute' where id = biz;
+    msg := null;
+  exception when others then msg := sqlerrm; end;
+  perform set_config('request.jwt.claims', json_build_object('sub', owner, 'role', 'authenticated',
+    'app_metadata', json_build_object('business_id', biz, 'role', 'owner', 'staff_id', owner))::text, true);
+  if msg is not null then
+    res := res || E'\nT14 ended plan refused: SKIPPED (could not end the plan for the test: ' || msg || ')';
+  else
+    set local role authenticated;
+    n := 0;
+    begin perform public.late_entry_cost_preview(e_forge); exception when others then n := n + (sqlerrm like 'Your plan has ended%')::int; end;
+    begin perform public.approve_and_post_late_entry(e_forge, 'closed_shift_included', null, 'estimate_current_price', 'plan ended'); exception when others then n := n + (sqlerrm like 'Your plan has ended%')::int; end;
+    reset role;
+    ok := n = 2;
+    res := res || E'\nT14 ended plan cannot preview or approve: ' || case when ok then 'PASS' else 'FAIL' end; fails := fails + (not ok)::int;
+  end if;
 
   raise exception 'REHEARSAL DONE. NOTHING WAS SAVED. %  (% failed)%',
     case when fails = 0 then 'ALL CLEAR' else 'ATTENTION' end, fails, res;
