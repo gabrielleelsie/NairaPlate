@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageBalance, buildSalesDayBook, buildSupplierLedger, buildCustomerLedger, buildBatchProduction, buildRefundRegister, costConfidence, type Range } from "./accountant-reports";
+import { ageBalance, buildSalesDayBook, buildPayoutRegister, buildSupplierLedger, buildCustomerLedger, buildBatchProduction, buildRefundRegister, costConfidence, type Range } from "./accountant-reports";
 import { REPORT_SCHEMAS } from "./csv-export";
 
 const range: Range = { fromKey: "2026-10-01", toKey: "2026-10-05", fromIso: "2026-09-30T23:00:00.000Z", toIso: "2026-10-05T23:00:00.000Z" };
@@ -26,6 +26,22 @@ describe("accountant reports", () => {
     expect(rows[1]!["net_sales_kobo"]).toBe("250000");
     expect(rows[1]!["cashier_name"]).toBe("Ada");
     expect(Object.keys(rows[1]!).sort()).toEqual([...REPORT_SCHEMAS.sales_day_book.columns].sort());
+  });
+  it("receipt columns: late entries counted, till sales FALSE/0, unknown stays blank", () => {
+    const o = (id: string, late: boolean, t: string) => ({ id, subtotal_kobo: 1000, total_kobo: 1000, status: "completed", payment_method: "cash", channel: null, created_by: null, created_at: t, is_late_entry: late });
+    const orders = [o("till", false, "2026-10-02T08:00:00Z"), o("le0", true, "2026-10-02T09:00:00Z"), o("le1", true, "2026-10-02T10:00:00Z"), o("le2", true, "2026-10-02T11:00:00Z")];
+    const rows = buildSalesDayBook(orders, [], new Map(), new Map(), new Map([["le1", 1], ["le2", 2]]));
+    expect(rows.map((r) => [r["receipt_attached"], r["receipt_count"]])).toEqual([[false, 0], [false, 0], [true, 1], [true, 2]]);
+    const unknown = buildSalesDayBook(orders, [], new Map(), new Map(), null);
+    expect(unknown.map((r) => r["receipt_count"])).toEqual([0, "", "", ""]);
+    expect(Object.keys(rows[0]!)).toEqual([...REPORT_SCHEMAS.sales_day_book.columns]);
+  });
+  it("payout register receipt columns", () => {
+    const p = (id: string, t: string) => ({ id, drawer_id: "d", kind: "payout" as const, amount_kobo: 500, category: "gas", note: "", reverses_id: null, approves_id: null, purchase_id: null, supplier_txn_id: null, recorded_by: null, recorded_by_role: null, recorded_by_name: null, created_at: t });
+    const rows = buildPayoutRegister([p("a", "2026-10-02T08:00:00Z"), p("b", "2026-10-02T09:00:00Z")], new Map([["b", 1]]));
+    expect(rows.map((r) => [r["receipt_attached"], r["receipt_count"]])).toEqual([[false, 0], [true, 1]]);
+    expect(buildPayoutRegister([p("a", "2026-10-02T08:00:00Z")], null)[0]!["receipt_attached"]).toBe("");
+    expect(Object.keys(rows[0]!)).toEqual([...REPORT_SCHEMAS.cash_paid_out_register.columns]);
   });
   it("supplier ledger opening + window = closing", () => {
     const rows = buildSupplierLedger([{ id: "s1", name: "Iya Basira", phone: null }], [
