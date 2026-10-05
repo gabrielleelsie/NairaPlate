@@ -47,7 +47,16 @@ export function refundedKobo(o: Pick<SaleOrder, "status" | "total_kobo">, adjs: 
 }
 
 const STATUS_OUT: Record<string, string> = { cancelled: "voided" };
-export function buildSalesDayBook(orders: SaleOrder[], adjs: OrderAdj[], bases: Map<string, (string | null)[]>, names: Map<string, string>): CsvRow[] {
+/** Receipt columns. counts === null means the photo counts could not be read: cells stay blank (unknown), never a false 0. */
+export function receiptCols(counts: Map<string, number> | null, id: string | null, eligible = true) {
+  if (!eligible) return { receipt_attached: false, receipt_count: 0 };
+  if (counts === null || id === null) return { receipt_attached: "", receipt_count: "" };
+  const c = counts.get(id) ?? 0;
+  return { receipt_attached: c > 0, receipt_count: c };
+}
+
+/** receiptCounts is keyed by ORDER id (the fetcher maps late_entries.id -> posted_order_id). */
+export function buildSalesDayBook(orders: SaleOrder[], adjs: OrderAdj[], bases: Map<string, (string | null)[]>, names: Map<string, string>, receiptCounts: Map<string, number> | null = new Map()): CsvRow[] {
   const byOrder = new Map<string, OrderAdj[]>();
   for (const a of adjs) byOrder.set(a.order_id, [...(byOrder.get(a.order_id) ?? []), a]);
   return [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((o) => {
@@ -59,6 +68,7 @@ export function buildSalesDayBook(orders: SaleOrder[], adjs: OrderAdj[], bases: 
       net_sales_naira: koboToNaira(net), net_sales_kobo: koboInt(net),
       cost_confidence: costConfidence(!!o.is_late_entry, bases.get(o.id) ?? []), is_late_entry: !!o.is_late_entry,
       actual_sold_at_lagos: o.is_late_entry ? lagosDateTime(o.actual_sold_at) : "", paper_reference: o.paper_reference ?? "",
+      ...receiptCols(receiptCounts, o.id, !!o.is_late_entry),
       cashier_name: (o.created_by && names.get(o.created_by)) || "", created_at_utc: o.created_at,
     };
   });
@@ -85,14 +95,14 @@ export function buildDrawerSummary(shifts: ShiftRow[], adj: ShiftAdjustment[]): 
 }
 
 // ---------- 3. Cash Paid-Out Register ----------
-export function buildPayoutRegister(rows: PayoutRow[]): CsvRow[] {
+export function buildPayoutRegister(rows: PayoutRow[], receiptCounts: Map<string, number> | null = new Map()): CsvRow[] {
   const views = new Map(payoutViews(rows).map((v) => [v.id, v]));
   return [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((r) => {
     const v = views.get(r.id);
     return {
       payout_id: r.id, lagos_date: lagosDate(r.created_at), lagos_time: lagosTime(r.created_at), shift_id: r.drawer_id,
       category: categoryLabel(r.category), amount_naira: koboToNaira(r.amount_kobo), amount_kobo: koboInt(r.amount_kobo),
-      kind: r.approves_id ? "payout (approval)" : r.kind, status: v?.status ?? "", reason_note: r.note ?? "", paid_by: r.recorded_by_name ?? "",
+      kind: r.approves_id ? "payout (approval)" : r.kind, status: v?.status ?? "", reason_note: r.note ?? "", ...receiptCols(receiptCounts, r.id), paid_by: r.recorded_by_name ?? "",
       approved_by: v?.status === "approved" ? v.settledBy ?? "" : "", reversal_reason: v?.status === "reversed" ? v.settledNote ?? "" : "",
       created_at_utc: r.created_at,
     };
@@ -235,6 +245,22 @@ export type Ctx = { supabase: SupabaseClient; businessId: string; range: Range }
 const within = (ctx: Ctx, table: string, cols: string, col = "created_at") =>
   () => ctx.supabase.from(table).select(cols).eq("business_id", ctx.businessId).gte(col, ctx.range.fromIso).lt(col, ctx.range.toIso).order(col) as unknown as Q;
 
+/** Active photo counts per record (owner/Supa Admin only, voided photos excluded). null = could not be read. */
+async function receiptCountMap(ctx: Ctx, type: "late_entry" | "payout", ids: string[]): Promise<Map<string, number> | null> {
+  const out = new Map<string, number>();
+  try {
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data, error } = await ctx.supabase.rpc("receipt_counts", { p_record_type: type, p_record_ids: ids.slice(i, i + 150) });
+      if (error) throw error;
+      for (const r of (data ?? []) as { record_id: string; receipt_count: number }[]) out.set(r.record_id, Number(r.receipt_count) || 0);
+    }
+    return out;
+  } catch (e) {
+    console.error("[exports] receipt_counts failed; receipt columns left blank", e);
+    return null;
+  }
+}
+
 async function staffNames(ctx: Ctx) {
   const rows = await all<{ id: string; display_name: string }>(() => ctx.supabase.from("staff_users").select("id,display_name").eq("business_id", ctx.businessId) as unknown as Q);
   return new Map(rows.map((r) => [r.id, r.display_name]));
@@ -251,7 +277,15 @@ const FETCHERS: Record<ReportId, (ctx: Ctx) => Promise<CsvRow[]>> = {
     ]);
     const bases = new Map<string, (string | null)[]>();
     for (const it of items) bases.set(it.order_id, [...(bases.get(it.order_id) ?? []), it.cost_basis]);
-    return buildSalesDayBook(orders.filter((o) => o.status !== "draft"), adjs, bases, names);
+    // Photos are attached to the paper record (late_entries.id), not the order: join via posted_order_id.
+    let receipts: Map<string, number> | null = new Map();
+    try {
+      const les = await inChunks<{ id: string; posted_order_id: string | null }>(lateIds, (c) => ctx.supabase.from("late_entries").select("id,posted_order_id").eq("business_id", ctx.businessId).in("posted_order_id", c) as unknown as Q);
+      const byLe = await receiptCountMap(ctx, "late_entry", les.map((l) => l.id));
+      if (byLe === null) receipts = null;
+      else for (const l of les) if (l.posted_order_id) receipts.set(l.posted_order_id, (receipts.get(l.posted_order_id) ?? 0) + (byLe.get(l.id) ?? 0));
+    } catch (e) { console.error("[exports] late_entries lookup failed; receipt columns left blank", e); receipts = null; }
+    return buildSalesDayBook(orders.filter((o) => o.status !== "draft"), adjs, bases, names, receipts);
   },
   async cash_drawer_summary(ctx) {
     const shifts = normaliseShifts(await all(within(ctx, "cash_drawers", SHIFT_COLUMNS, "opened_at")));
@@ -259,7 +293,8 @@ const FETCHERS: Record<ReportId, (ctx: Ctx) => Promise<CsvRow[]>> = {
     return buildDrawerSummary(shifts, adj);
   },
   async cash_paid_out_register(ctx) {
-    return buildPayoutRegister(normalisePayouts(await all(within(ctx, "cash_drawer_payouts", PAYOUT_COLUMNS))));
+    const rows = normalisePayouts(await all(within(ctx, "cash_drawer_payouts", PAYOUT_COLUMNS)));
+    return buildPayoutRegister(rows, await receiptCountMap(ctx, "payout", rows.map((r) => r.id)));
   },
   async supplier_ledger(ctx) {
     const [sup, txns] = await Promise.all([

@@ -46,18 +46,18 @@ export type ReportId =
   | "customer_ledger" | "refund_reversal_register" | "wastage_log" | "batch_production";
 
 export const REPORT_SCHEMAS: Record<ReportId, { version: string; columns: readonly string[] }> = {
-  sales_day_book: { version: "sales_day_book_v1", columns: [
+  sales_day_book: { version: "sales_day_book_v2", columns: [
     "lagos_date", "lagos_time", "order_ref", "order_id", "status", "channel", "payment_method",
     "subtotal_naira", "gross_sales_naira", "refunded_naira", "net_sales_naira", "net_sales_kobo",
-    "cost_confidence", "is_late_entry", "actual_sold_at_lagos", "paper_reference", "cashier_name", "created_at_utc"] },
+    "cost_confidence", "is_late_entry", "actual_sold_at_lagos", "paper_reference", "receipt_attached", "receipt_count", "cashier_name", "created_at_utc"] },
   cash_drawer_summary: { version: "cash_drawer_summary_v1", columns: [
     "shift_id", "lagos_date", "shift_number", "opened_at_lagos", "closed_at_lagos", "opened_by", "closed_by", "status",
     "opening_float_naira", "opening_float_kobo", "cash_sales_naira", "catering_cash_naira", "debt_cash_naira", "payouts_naira",
     "expected_cash_naira", "closing_counted_naira", "discrepancy_naira", "owner_adjustments_naira", "final_adjusted_cash_naira",
     "final_discrepancy_naira", "is_owner_closed", "forced", "discrepancy_explanation"] },
-  cash_paid_out_register: { version: "cash_paid_out_register_v1", columns: [
+  cash_paid_out_register: { version: "cash_paid_out_register_v2", columns: [
     "payout_id", "lagos_date", "lagos_time", "shift_id", "category", "amount_naira", "amount_kobo", "kind", "status",
-    "reason_note", "paid_by", "approved_by", "reversal_reason", "created_at_utc"] },
+    "reason_note", "receipt_attached", "receipt_count", "paid_by", "approved_by", "reversal_reason", "created_at_utc"] },
   supplier_ledger: { version: "supplier_ledger_v1", columns: [
     "supplier_id", "supplier_name", "phone", "opening_balance_naira", "purchases_on_credit_naira", "payments_made_naira",
     "reversals_naira", "closing_balance_naira", "closing_balance_kobo", "balance_0_30_days_naira", "balance_31_60_days_naira",
