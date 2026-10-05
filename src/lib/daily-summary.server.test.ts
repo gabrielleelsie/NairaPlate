@@ -3,7 +3,7 @@ import { summaryHtml } from "./daily-summary.server";
 import type { CostCheck, DayStats } from "./cost-check";
 
 const day: DayStats = { date_key: "2026-09-30", label: "Wed, 30 Sep", orders: 0, plates: 0, sales_kobo: 0, profit_kobo: 0, dishes: [] };
-const pnl = { gross_sales_kobo: 0, recipe_cost_of_goods_kobo: 0, wastage_cost_kobo: 0, cost_of_goods_kobo: 0, gross_margin_kobo: 0, food_cost_percentage: null, paid_orders: 1, daily: [], warnings: [], limitations: [] };
+const pnl = { gross_sales_kobo: 0, recipe_cost_of_goods_kobo: 0, wastage_cost_kobo: 0, cost_of_goods_kobo: 0, gross_margin_kobo: 0, food_cost_percentage: null, paid_orders: 1, daily: [], warnings: [], limitations: [], by_dish: [], by_channel: [] };
 const cc = (over: Partial<CostCheck>): CostCheck => ({ yesterday: day, last_month: day, most_ordered: null, most_profitable: null, attention: [], attention_total: 0, stale: [], stale_total: 0, scarce: [], estimated_lines: 0, uncosted_lines: 0, ...over });
 const base = { businessName: "Mama Put", dateLabel: "1 Oct", sentAtLabel: "20:00", pnl, dashboardUrl: "https://x/dashboard", unsubscribeUrl: "https://x/u" };
 
