@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useBusinessProfile } from "@/lib/features";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
@@ -28,6 +29,8 @@ const fmt = (iso: string) => new Date(iso).toLocaleString("en-NG", { timeZone: "
 const DOT = { high: "bg-destructive", medium: "bg-brand-blue", low: "bg-muted-foreground" };
 
 function Inbox() {
+  const profile = useBusinessProfile();
+  const cats = profile.mode === "buka" ? CATS.filter((c) => c === "approval" || c === "cash") : CATS;
   const { loading, session } = useStaffSession();
   const [items, setItems] = useState<InboxItem[] | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -48,8 +51,8 @@ function Inbox() {
     const now = new Date();
     const from = range === "today" ? lagosDayStart(now).getTime() : range === "week" ? lagosDayStart(now).getTime() - 6 * DAY_MS : 0;
     // Approvals and undated (live) items always stay visible until handled at their source.
-    return items.filter((i) => i.category === "approval" || !i.at || Date.parse(i.at) >= from);
-  }, [items, range]);
+    return items.filter((i) => cats.includes(i.category)).filter((i) => i.category === "approval" || !i.at || Date.parse(i.at) >= from);
+  }, [items, range, cats]);
   const summary = summarise(shown);
 
   async function seen(id: string) {
@@ -68,7 +71,7 @@ function Inbox() {
         <Link className="underline" to="/app">Home</Link>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {CATS.map((c) => (
+        {cats.map((c) => (
           <button key={c} type="button" aria-pressed={only === c} onClick={() => setOnly(only === c ? null : c)}
             className={`rounded-lg border p-3 text-left ${only === c ? "border-brand-blue bg-accent" : "bg-card"}`}>
             <div className="text-2xl font-semibold">{summary[c]}</div>
