@@ -62,7 +62,7 @@ function SupplierPayment() {
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
     const after = Number((data as { balance_kobo: number }).balance_kobo);
     const name = suppliers.find((s) => s.id === supplierId)?.name;
-    setMsg({ ok: true, text: `Paid ${formatNaira(amount_kobo)} to ${name}. ${balanceWords(after, formatNaira)} now.` });
+    setMsg({ ok: true, text: `Paid ${formatNaira(amount_kobo)} to ${name}. ${balanceWords(after, formatNaira)} now. To add a photo of the receipt, open this supplier and tap Add photo on the payment.` });
     setAmount(""); setNote(""); setMethod(""); load();
   }
 

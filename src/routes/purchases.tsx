@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 import { supabase } from "@/lib/external-supabase";
+import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 import { useStaffSession, MARKET_UNIT_OPTIONS, marketUnitLabel } from "@/lib/staff-session";
 import {
   convertAndCostIngredient, formatNaira, nairaToKobo,
@@ -292,6 +293,7 @@ function PurchaseScreen() {
                 </div>
                 {h.reversed && <div className="text-xs font-semibold text-destructive">Reversed: {h.reversedByReason}</div>}
                 {h.isReversal && h.reason && <div className="text-xs text-muted-foreground">Reason: {h.reason}{h.recorded_by_name ? ` · ${h.recorded_by_name}` : ""}</div>}
+                {!h.isReversal && <ReceiptPhotos type="purchase" recordId={h.id} businessId={session.businessId} role={session.role} />}
                 {!h.isReversal && !h.reversed && blocked && isOwnerRole(session.role) && <div className="text-xs text-muted-foreground">{blocked}</div>}
                 {canRev && reverseFor !== h.id && <Button size="sm" variant="outline" onClick={() => openReverse(h)}>Reverse</Button>}
                 {canRev && reverseFor === h.id && (
