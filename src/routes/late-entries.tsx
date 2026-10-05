@@ -113,7 +113,7 @@ function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | n
   async function approve() {
     setBusy(true); setMsg("");
     const args: Record<string, unknown> = { p_id: e.id, p_shift_resolution: needsShift ? res : null };
-    if (unknown && useEstimate) { args.p_cost_decision = "estimate_current_price"; args.p_estimate_reason = estReason.trim(); }
+    if (unknown && useEstimate) { args["p_cost_decision"] = "estimate_current_price"; args["p_estimate_reason"] = estReason.trim(); }
     const { error } = await supabase.rpc("approve_and_post_late_entry", args as never);
     setBusy(false);
     if (error) setMsg(error.message); else onDone();
