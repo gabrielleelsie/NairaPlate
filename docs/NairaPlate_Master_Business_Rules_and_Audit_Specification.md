@@ -1,13 +1,13 @@
 ---
 title: "NairaPlate: Master Business Rules and Audit Specification"
-version: "1.3"
-date: "4 October 2026"
-status: "Reference manual. Describes the system as it stands on 4 October 2026. Cash paid out of the drawer, catering deposit methods and supplier payment methods are live. Save-once sales, dish price history and paper (late) entries are applied on the database but their screens are not yet released."
+version: "1.4"
+date: "5 October 2026"
+status: "Reference manual. Describes the system as it stands on 5 October 2026. Cash paid out of the drawer, catering deposit methods and supplier payment methods are live. Save-once sales, dish price history and paper (late) entries are applied on the database but their screens are not yet released."
 ---
 
 # NairaPlate: Master Business Rules and Audit Specification
 
-**Version 1.3, 4 October 2026**
+**Version 1.4, 5 October 2026**
 
 **What is new in version 1.3.**
 
@@ -310,6 +310,17 @@ A **paper (late) entry** recovers a sale that was written on paper during an out
 
 ---
 
+## 3.12 Ingredient price history and paper-sale food cost
+
+Added in version 1.4. Applied on the database (`20261103_ingredient_prices_a.sql` and `20261105_late_entry_cost_at.sql`, both read live on 5 October 2026). The screens are in the source branch and are **not on the live site**. Not rehearsed, not used by a person. [C]
+
+- **What is kept.** Every ingredient price is added to an add-only list with the time it started, who or what set it (a purchase, a purchase reversal, a manual price change, or a labelled backfill) and the grade track it belongs to (current, A, B or C). Rows cannot be edited or deleted. No signed-in person can read the table directly; they read it through two checked functions open to owners, Supa Admins and purchasers of the same business. [C]
+- **Writers.** A rule on purchases and the re-created `set_ingredient_price`. A rule refuses, at the end of the save, any price change from the app that left no history row. [C]
+- **Price at time T.** The latest row on or before T, on the exact track. A price of zero means "no price then". If there is no row yet the answer is "unavailable before history". No other grade's price and no later price is ever used. [C]
+- **Food cost of a paper sale.** The database works out each plate's cost from the ingredient prices in force at the real sale time. A cost sent by an app is never trusted. If any one ingredient has no price at that time, the whole plate is "unknown": the owner holds the entry, or approves it at today's cost with a reason of at least 5 letters, and that line is stored labelled "estimated (today's prices)" with who decided, when, why and which ingredients were missing. Till sales are unchanged. [C]
+- **What the live database showed on 5 October (read only).** Both check scripts returned exactly their expected values. The history table holds 11 rows, all labelled backfill (one per priced ingredient; 8 are "known from the migration only"; 3 are dated from the ingredient's last price change; the earliest is 25 September 2026). 11 older purchases were skipped because they had no base quantity. For all 8 current dishes the cost at "now" equals today's cost, and for 1 September 2026 every dish is "unknown", never guessed. [C]
+- **Limits.** Sales before 25 September 2026 cannot be costed at their sale time and will need the owner's estimate. No grade prices exist yet (0 rows). Batch and wastage costs are still worked out in the browser and sent to the database (read in `src/routes/batches.tsx`) (see Part 9, S4). [C]
+
 # Part 4. How the key numbers are worked out
 
 ## 4.1 Expected cash in a drawer
@@ -582,11 +593,12 @@ Ranked by what matters most. Each says what it is, what could go wrong, and the 
 | **D2** | **A paper entry paid by transfer cannot be approved.** Approval writes the order status `transfer_pending`, but the orders table allows only draft, paid, cancelled, refunded, partially refunded and awaiting payment. The entry screen says "transfer stays pending until confirmed", but a split entry is posted as fully paid. | The approval of a pure-transfer entry fails with a database error. A split entry posts as paid even though its transfer part is unconfirmed. | **Open. Fix before release.** Owner decision: post transfers as paid, as manual transfers are today, or as "awaiting payment" with a payment request so something can confirm them. |
 | **D3** | **A paper entry's cash can be counted in the wrong shift, or twice.** Expected cash counts an order by the moment it was recorded; a posted paper entry is recorded at approval. With "closed shift, already included" the cash also counts in whichever shift is open at approval; with "closed shift, late cash" it is added to the old shift as an adjustment **and** counts in the open shift. | The open shift can close short by the paper cash, or an old shift can show the cash twice. The screen tells the owner that cash is never moved to another shift, which is not what the database does. | **Open. Fix before release.** Needs a rule that excludes late entries from the open shift, or counts them by the real sale time. Owner decision needed. |
 | **D4** | **The order line records today's price row, not the price row of the sale time.** The line's unit price is right (frozen on the entry), but the link to the price history is set by a rule that looks up the price at the moment the line is written. | The audit link points at the wrong price row when the price changed since the sale. | **Open.** Set the link from the entry's frozen price row. |
-| **D5** | **Cost of goods on a paper sale uses today's ingredient prices.** The cost frozen on the line is taken at approval; ingredient prices have no history. | Profit on late sales is estimated. Same limit as 4.5. | **Open, accepted until ingredient price history exists.** The report should show these lines as estimated. |
+| **D5** | **Cost of goods on a paper sale used today's ingredient prices.** | Profit on late sales was estimated. | **Closed on the database in version 1.4** (3.12): costed at the sale time, unknown prices held or labelled as estimates. Screens not released. [C] |
 | **D6** | **The late-cash adjustment ignores the rules of the count adjustment function.** A shift closed without a count cannot be adjusted, and an adjusted count cannot go below zero; the paper-entry approval inserts the adjustment directly and checks neither. | An adjustment can be added to a shift that has no count. | **Open. Fix before release.** |
 | **S1** | **The save-once functions return an existing sale before checking the caller's role.** A signed-in cook or purchaser of the same business who already knows a sale code gets the sale's total, method, status and identifiers back. | Low: the code is a random identifier and there is no way to list codes. Out of line with every other function. | **Open.** Move the role check first. Confirm with a rehearsal. |
 | **S2** | **An approved cash payout cannot be undone from the screen.** The database allows reversing it; the screen shows Reverse only on payouts recorded directly. | The owner must use "Correct the count" after the shift closes, or fix the screen. | **Open, design choice.** |
 | **S3** | **Supplier payments before 3 October 2026 have no method, and Part B is not applied.** | Old payments show "method not recorded". A screen left open from before can still save a payment marked legacy. | **Open.** Apply Part B after the new screen is used once more. |
+| **S4** | **Batch and wastage costs are worked out in the browser.** The batch screen sends the ingredient cost it calculated; the database stores it. Price history is not used to check it. | A tampered or stale screen could store a cost that differs from the price list. Batches are made now, so today's price is the right one; the gap is trust, not timing. | **Open. Proposed:** the database works the cost out and refuses a differing figure. Not built; needs the owner's go-ahead. |
 | **B4** | `business_has_access`, `catering_enabled`, `payment_mode_of` and `trial_limits_apply` accept a business id from the caller. A signed-in person who guesses another business's id can learn whether it is active, has catering on, its payment mode, or is on a trial. | Low. No money or customer data. | Accepted and documented. These functions are needed by the access rules. |
 
 ## Cash-drawer accounting gaps
@@ -944,6 +956,8 @@ All files are in `supabase/external/`. Each step has the change, a check query a
 | 20261101_late_entries_a | Paper (late) entries. Applied 4 Oct. **Has defects D1 to D4 and D6, and caused R1** |
 | 20261102_hygiene_after_late_entries | **Proposed, not applied.** Fixes R1 (an optional line for R2) |
 | system_health_check.sql | Read-only health check of the locks and permissions. Run 4 Oct: fails 3 of the first 8 values (R1) |
+| 20261103_ingredient_prices_a | Ingredient price history. Applied; check read live 5 Oct, matches |
+| 20261105_late_entry_cost_at | Paper-sale food cost at the sale time. Applied; check read live 5 Oct, matches (not rehearsed) |
 | rehearsal_phase0_prices.sql | Self-undoing rehearsal for save-once sales and dish price history. Written, **not run** |
 | rehearsal_demo_kitchen.sql | The self-undoing rehearsal used in Part 8 (200 steps on 3 Oct) |
 
