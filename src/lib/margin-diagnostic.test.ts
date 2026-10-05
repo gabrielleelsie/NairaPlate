@@ -26,10 +26,10 @@ const base = (over: Partial<MarginDiagnosticInput>): MarginDiagnosticInput => ({
 
 describe("margin diagnostic", () => {
   it("finds an injected oil price rise", () => {
-    const dishes = [{ name: "Jollof", plates: 200, sales: 40_000_000, cost: 16_000_000 }];
+    const dishes: { name: string; plates: number; sales: number; cost: number }[] = [{ name: "Jollof", plates: 200, sales: 40_000_000, cost: 16_000_000 }];
     const r = diagnoseMarginChange(base({
       previous: pnl(dishes),
-      current: pnl([{ ...dishes[0], cost: 18_000_000 }]),
+      current: pnl([{ ...dishes[0]!, cost: 18_000_000 }]),
       usagePerPlate: new Map([["Jollof", [{ ingredient_id: "oil", base_qty: 0.1 }]]]), // 0.1 L per plate → 20 L
       purchases: [{ ingredient_id: "oil", at: inPrev, per_base_kobo: 200_000 }, { ingredient_id: "oil", at: inCur, per_base_kobo: 300_000 }],
       purchaseSpend: [{ ingredient_id: "oil", at: inCur, total_kobo: 6_000_000 }],
@@ -40,7 +40,7 @@ describe("margin diagnostic", () => {
     expect(ing.amount_kobo).toBe(2_000_000); // 20 L × ₦1,000 rise
     expect(ing.points).toBeCloseTo(-5, 5);
     expect(r.other_points).toBeCloseTo(0, 5);
-    expect(ing.items[0].label).toContain("Vegetable oil (+50%)");
+    expect(ing.items[0]!.label).toContain("Vegetable oil (+50%)");
   });
 
   it("explains a mix shift toward a low-margin dish", () => {

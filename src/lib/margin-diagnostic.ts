@@ -55,7 +55,7 @@ export type MarginDiagnosticResult = {
 };
 
 const inRange = (at: string, r: DateRange) => { const t = Date.parse(at); return t >= r.from.getTime() && t < r.to.getTime(); };
-const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const median = (xs: number[]): number => { const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2; };
 export const round1 = (x: number) => Math.round(x * 10) / 10;
 const naira = (kobo: number) => `₦${Math.round(Math.abs(kobo) / 100).toLocaleString("en-NG")}`;
 const pts = (p: number) => `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(round1(p)).toFixed(1)} points`;
