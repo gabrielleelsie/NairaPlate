@@ -11,6 +11,7 @@ import {
   AlertCircle, AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
   CreditCard, FileSpreadsheet, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
   Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
+  TrendingDown,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app")({
