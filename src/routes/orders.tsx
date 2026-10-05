@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
+import { costBasisLabel, overallCostBasis } from "@/lib/late-entry-cost";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,7 @@ function OrdersScreen() {
   const [names, setNames] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [costBasis, setCostBasis] = useState<Record<string, string | null>>({});
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -54,6 +56,16 @@ function OrdersScreen() {
     ]);
     if (o.error) setErr(o.error.message);
     setOrders(((o.data ?? []) as Omit<Order, "order_adjustments">[]).map((r) => ({ ...r, order_adjustments: ((a.data ?? []) as Adj[]).filter((x) => x.order_id === r.id) })));
+    // Food-cost label for paper sales (silently skipped if the database doesn't have the label yet).
+    const lateIds = ((o.data ?? []) as { id: string; is_late_entry?: boolean }[]).filter((r) => r.is_late_entry).map((r) => r.id);
+    if (lateIds.length) {
+      const { data: li, error: le } = await supabase.from("order_items").select("order_id,cost_basis").in("order_id", lateIds);
+      if (!le) {
+        const by: Record<string, (string | null)[]> = {};
+        for (const x of (li ?? []) as { order_id: string; cost_basis: string | null }[]) (by[x.order_id] ??= []).push(x.cost_basis);
+        setCostBasis(Object.fromEntries(Object.entries(by).map(([k, v]) => [k, overallCostBasis(v)])));
+      }
+    }
     setAdjs((a.data ?? []) as Adj[]);
     // staff_users is owner-only under the access rules; cashiers see "Me" / "Staff".
     setNames(Object.fromEntries((s.data ?? []).map((r) => [r.id, r.display_name])));
@@ -86,7 +98,9 @@ function OrdersScreen() {
                       {refunded > 0 && <span className="text-muted-foreground"> (−{formatNaira(refunded)} refunded)</span>}
                     </div>
                     <div className="text-sm text-muted-foreground">{when(o.created_at)} · {o.payment_method} · {o.channel ?? "Walk-in"} · by {who(o.created_by)}</div>
-                    {o.is_late_entry && <div className="text-sm"><span className="rounded bg-accent px-2 py-0.5 text-xs font-semibold">Late entry</span> Sold {o.actual_sold_at ? when(o.actual_sold_at) : "?"} · entered {when(o.created_at)} · {Math.round(Number(o.late_delay_seconds ?? 0) / 60)} min late · paper ref {o.paper_reference} · entered by {who(o.created_by)} · approved by {who(o.late_approved_by ?? null)}</div>}
+                    {o.is_late_entry && <div className="text-sm"><span className="rounded bg-accent px-2 py-0.5 text-xs font-semibold">Late entry</span> Sold {o.actual_sold_at ? when(o.actual_sold_at) : "?"} · entered {when(o.created_at)} · {Math.round(Number(o.late_delay_seconds ?? 0) / 60)} min late · paper ref {o.paper_reference} · entered by {who(o.created_by)} · approved by {who(o.late_approved_by ?? null)}
+                      {costBasisLabel(costBasis[o.id]) && <span className={`ml-1 rounded px-2 py-0.5 text-xs ${costBasis[o.id] === "estimated_current_price" ? "bg-destructive/15 text-destructive" : "bg-muted"}`}>Food cost: {costBasisLabel(costBasis[o.id])}</span>}
+                    </div>}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-muted px-2 py-0.5 text-xs">{STATUS_LABEL[o.status] ?? o.status}</span>
