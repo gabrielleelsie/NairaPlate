@@ -9,11 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 
 const sel = "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm";
 
 /** Cash taken out of the open shift: record it, ask the owner when it is over the limit, and (owners) approve, decline, reverse and set the limit. */
-export function CashPayouts({ drawerId, role, canRecord, onPending }: { drawerId: string; role: string; canRecord: boolean; onPending: (n: number) => void }) {
+export function CashPayouts({ drawerId, role, canRecord, onPending, businessId }: { drawerId: string; role: string; businessId: string; canRecord: boolean; onPending: (n: number) => void }) {
   const [rows, setRows] = useState<PayoutRow[]>([]);
   const [limit, setLimit] = useState(DEFAULT_PAYOUT_LIMIT_KOBO);
   const [amount, setAmount] = useState("");
@@ -129,6 +130,7 @@ export function CashPayouts({ drawerId, role, canRecord, onPending }: { drawerId
             </div>
             <div className={`text-muted-foreground ${v.status === "reversed" ? "line-through" : ""}`}>{v.note} · {v.recorded_by_name ?? "staff"} · {entryWhen(v.created_at)}</div>
             {(v.status === "reversed" || v.status === "declined") && <div className="text-xs text-muted-foreground">{v.status === "reversed" ? "Reversed" : "Declined"}{v.settledBy ? ` by ${v.settledBy}` : ""}{v.settledNote ? `: ${v.settledNote}` : ""}. It does not count.</div>}
+            {(v.status === "paid" || v.status === "approved") && <ReceiptPhotos type="payout" recordId={v.id} businessId={businessId} role={role} />}
             {canReversePayout(role, v) && (reverseFor === v.id ? (
               <div className="space-y-2 rounded-md bg-muted p-2">
                 <Label htmlFor={`rev-${v.id}`}>Reason (at least 5 characters)</Label>

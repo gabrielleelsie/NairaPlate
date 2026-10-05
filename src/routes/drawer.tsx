@@ -182,7 +182,7 @@ function DrawerScreen() {
         </section>
       )}
       {(open || (owner && bizOpen)) && (
-        <CashPayouts drawerId={(open?.id ?? bizOpen!.id)} role={session.role} canRecord={!!open || owner} onPending={setPending} />
+        <CashPayouts drawerId={(open?.id ?? bizOpen!.id)} role={session.role} businessId={session.businessId} canRecord={!!open || owner} onPending={setPending} />
       )}
       {msg && <p className="text-primary">{msg}</p>}
       {err && <p className="text-destructive">{err}</p>}

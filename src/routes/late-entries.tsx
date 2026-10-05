@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
+import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { lagosLocalToIso } from "@/lib/dish-prices";
 import { reasonLabel, type CostPreview } from "@/lib/late-entry-cost";
@@ -79,18 +80,18 @@ function LateEntriesScreen() {
         <TabsContent value="review" className="space-y-2">
           {by(["submitted", "needs_shift_review"]).length === 0 && <p className="text-muted-foreground">Nothing waiting.</p>}
           {by(["needs_shift_review", "submitted"]).sort((a, b) => (a.status === "needs_shift_review" ? -1 : 1) - (b.status === "needs_shift_review" ? -1 : 1))
-            .map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={isOwner} onDone={load} />)}
+            .map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={isOwner} onDone={load} biz={session.businessId} role={session.role} />)}
         </TabsContent>
         <TabsContent value="done" className="space-y-2">
           {by(["posted", "rejected", "approved"]).length === 0 && <p className="text-muted-foreground">None yet.</p>}
-          {by(["posted", "rejected", "approved"]).map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={false} onDone={load} />)}
+          {by(["posted", "rejected", "approved"]).map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={false} onDone={load} biz={session.businessId} role={session.role} />)}
         </TabsContent>
       </Tabs>
     </main>
   );
 }
 
-function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | null) => string; isOwner: boolean; onDone: () => void }) {
+function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id: string | null) => string; isOwner: boolean; onDone: () => void; biz: string; role: string }) {
   const [open, setOpen] = useState(false);
   const [res, setRes] = useState("");
   const [reason, setReason] = useState("");
@@ -150,6 +151,7 @@ function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | n
           <p>Cash {formatNaira(Number(e.cash_kobo))} · Transfer {formatNaira(Number(e.transfer_kobo))}{Number(e.transfer_kobo) > 0 && e.status !== "rejected" ? " (stays pending until confirmed — never marked paid from paper)" : ""}</p>
           {e.status === "posted" && <p>Approved by {who(e.approved_by)} · order #{e.posted_order_id?.slice(0, 8)} · {e.shift_resolution === "open_shift_direct" ? "posted into the open shift" : e.shift_resolution === "closed_shift_included" ? "cash was already in the closed shift's count" : "late cash recorded against the closed shift"}</p>}
           {e.status === "rejected" && <p className="text-destructive">Rejected by {who(e.rejected_by)}: "{e.rejection_reason}". No sale, stock or cash change was made.</p>}
+          <ReceiptPhotos type="late_entry" recordId={e.id} businessId={biz} role={role} />
           {pending && (
             <div className="space-y-3">
               {preview && preview.is_complete && (
