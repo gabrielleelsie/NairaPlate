@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useBusinessProfile } from "@/lib/features";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { GRADES } from "@/lib/grade";
@@ -45,6 +46,7 @@ const DELETE_ROLES = new Set(["owner", "supa_admin"]);
 
 function RecipesScreen() {
   const { loading, session } = useStaffSession();
+  const profile = useBusinessProfile();
   const [ingredients, setIngredients] = useState<CostIngredient[]>([]);
   const [conversions, setConversions] = useState<CostConversion[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -175,7 +177,7 @@ function RecipesScreen() {
         );
       })()}
 
-      {canDelete && marginBps !== null && session.userId && (
+      {canDelete && marginBps !== null && session.userId && profile.has("pricing_review") && (
         <PricingReview
           businessId={session.businessId}
           userId={session.userId}

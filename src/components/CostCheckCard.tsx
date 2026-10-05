@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useBusinessProfile } from "@/lib/features";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
@@ -10,6 +11,7 @@ import { TOPIC_LABEL } from "@/lib/news";
 // A short morning card on the home screen. Owners get the cost check, purchasers just the old-price count.
 export function CostCheckCard() {
   const { session } = useStaffSession();
+  const profile = useBusinessProfile();
   const [lines, setLines] = useState<string[] | null>(null);
   const role = session?.role;
   const news = useNews(role === "owner" || role === "supa_admin" || role === "purchaser");
@@ -34,7 +36,7 @@ export function CostCheckCard() {
 
   const rising = news.on ? news.items?.filter((n) => n.rising) ?? [] : [];
   const newsLine = rising.length > 0 ? `In the news: ${rising.length} price rise headline${rising.length === 1 ? "" : "s"} (${[...new Set(rising.flatMap((n) => n.topics))].map((t) => TOPIC_LABEL[t] ?? t).join(", ")}).` : null;
-  if (!lines || lines.length === 0) return null;
+  if (profile.loading || !profile.has("cost_check") || !lines || lines.length === 0) return null;
   return (
     <section aria-label="Today's cost check" className="rounded-xl border border-border bg-card p-4 shadow-xs">
       <h2 className="text-sm font-semibold uppercase text-brand-navy/70">Today's cost check</h2>

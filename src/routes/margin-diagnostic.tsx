@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { MARGIN_DRIVER_LIMIT, useBusinessProfile } from "@/lib/features";
 import { FeatureGate } from "@/components/FeatureGate";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -30,6 +31,7 @@ const fmtPts = (p: number) => `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(rou
 
 function MarginDiagnosticScreen() {
   const { loading, session } = useStaffSession();
+  const profile = useBusinessProfile();
   const [mode, setMode] = useState<Mode>("week");
   const [res, setRes] = useState<MarginDiagnosticResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +84,7 @@ function MarginDiagnosticScreen() {
             <p className="text-sm text-muted-foreground">No single big reason stood out. Small changes in prices, sales and wastage added up.</p>
           )}
 
-          {res.drivers.map((d, i) => (
+          {res.drivers.slice(0, MARGIN_DRIVER_LIMIT[profile.mode]).map((d, i) => (
             <section key={d.key} className="rounded-lg border border-border p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="font-semibold text-foreground">{i + 1}. {d.title}</h2>

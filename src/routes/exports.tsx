@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CORE_EXPORTS, useBusinessProfile } from "@/lib/features";
 import { FeatureGate } from "@/components/FeatureGate";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -62,6 +63,8 @@ type Result = { rows: CsvRow[] } | { error: string };
 
 function ExportsScreen() {
   const { loading, session } = useStaffSession();
+  const profile = useBusinessProfile();
+  const reports = profile.mode === "advanced" ? REPORTS : REPORTS.filter((r) => CORE_EXPORTS.includes(r.id));
   const [preset, setPreset] = useState<Preset>("this_month");
   const [[fromKey, toKey], setKeys] = useState<[string, string]>(() => presetKeys("this_month"));
   const [results, setResults] = useState<Partial<Record<ReportId, Result>>>({});
@@ -74,7 +77,7 @@ function ExportsScreen() {
     setBusy(true); setResults({}); setNote("");
     const ctx = { supabase, businessId: session.businessId, range: toRange(fromKey, toKey) };
     const out: Partial<Record<ReportId, Result>> = {};
-    await Promise.all(REPORTS.map(async (r) => {
+    await Promise.all(reports.map(async (r) => {
       try { out[r.id] = { rows: await fetchReport(r.id, ctx) }; }
       catch (e) { console.error(`Export ${r.id} failed`, e); out[r.id] = { error: "Could not load data for this report. Please try a narrower date range or contact support." }; }
     }));
@@ -98,7 +101,7 @@ function ExportsScreen() {
   async function downloadOne(id: ReportId) { const f = fileFor(id); if (f) await downloadCsv(f.name, f.text); }
   async function downloadAll() {
     const at = lagosDateTime(new Date().toISOString()); const manifest: CsvRow[] = [];
-    for (const r of REPORTS) {
+    for (const r of reports) {
       const f = fileFor(r.id); if (!f) continue;
       await downloadCsv(f.name, f.text); manifest.push(manifestRow(r.id, f, at));
       await new Promise((res) => setTimeout(res, 400));
@@ -137,7 +140,7 @@ function ExportsScreen() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {REPORTS.map((r) => {
+          {reports.map((r) => {
             const res = results[r.id];
             return (
               <article key={r.id} className="flex flex-col gap-2 rounded-lg border p-4">
