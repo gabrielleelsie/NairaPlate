@@ -130,7 +130,7 @@ export function CashPayouts({ drawerId, role, canRecord, onPending, businessId }
             </div>
             <div className={`text-muted-foreground ${v.status === "reversed" ? "line-through" : ""}`}>{v.note} · {v.recorded_by_name ?? "staff"} · {entryWhen(v.created_at)}</div>
             {(v.status === "reversed" || v.status === "declined") && <div className="text-xs text-muted-foreground">{v.status === "reversed" ? "Reversed" : "Declined"}{v.settledBy ? ` by ${v.settledBy}` : ""}{v.settledNote ? `: ${v.settledNote}` : ""}. It does not count.</div>}
-            {(v.status === "paid" || v.status === "approved") && <ReceiptPhotos type="payout" recordId={v.id} businessId={businessId} role={role} />}
+            {(v.status !== "reversed" && v.status !== "declined") && <ReceiptPhotos type="payout" recordId={v.id} businessId={businessId} role={role} />}
             {canReversePayout(role, v) && (reverseFor === v.id ? (
               <div className="space-y-2 rounded-md bg-muted p-2">
                 <Label htmlFor={`rev-${v.id}`}>Reason (at least 5 characters)</Label>
