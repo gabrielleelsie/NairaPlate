@@ -1,6 +1,6 @@
 # NairaPlate UAT script: for the Owner
 
-**Version 1.3, 4 October 2026.** Matches Master Specification version 1.3.
+**Version 1.4, 5 October 2026.** Matches Master Specification version 1.4.
 
 **Who this is for:** you, signed in as the Owner of the Demo Kitchen test business.
 **How long:** about 90 minutes for Parts 0 to 7b, which run on the live site today. Modules D, E and F take longer and can only be run after the offline, paper-entry and price-history screens are released (see the box below). You can stop after any part and carry on later.
@@ -8,7 +8,7 @@
 
 **How to use it:** do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick **Pass** or **Fail**. If a step fails, write what you saw (the exact words of any message) in the margin next to the step and move on.
 
-**Which parts can you run today?** Parts 0 to 7b and Part 8 work on the live site now. **Modules D, E and F are not runnable yet.** Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix `20261102_hygiene_after_late_entries.sql` must be applied (Master Specification R1); (2) the paper-entry defects D1 to D4 and D6 must be fixed (Part 9 of the specification); (3) the rehearsal `rehearsal_phase0_prices.sql` must be run and clean. Tests marked **Known defect** in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.
+**Which parts can you run today?** Parts 0 to 7b and Part 8 work on the live site now. **Modules D, E, F and G are not runnable yet.** Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix `20261102_hygiene_after_late_entries.sql` must be applied (Master Specification R1); (2) the paper-entry defects D1 to D4 and D6 must be fixed (Part 9 of the specification); (3) the rehearsal `rehearsal_phase0_prices.sql` must be run and clean. Tests marked **Known defect** in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.
 
 Menu names below are the ones on the app's home screen. The home screen groups them as **Sell**, **Buy & Stock**, **Kitchen** and **Oversight**. The "Home" link at the top of every screen takes you back.
 
@@ -208,7 +208,7 @@ Do **not** run this module until the permission fix is applied, D1 to D4 and D6 
 | UAT-LATE-01 | Cashier | Home, then **Sell**, then **Paper sales** | Look at the tabs and buttons | The tab **Enter paper sale** is open. There is no **Approve & post** and no **Reject** button anywhere | | ☐ | ☐ | ☐ |
 | UAT-LATE-02 | Cashier | **Paper sales**, **Enter paper sale** | Type **Paper form reference** `PS-001`, **Actual sale time** two hours ago, **Why it was on paper** `network down`. Pick **Jollof Rice** quantity `2`, payment Cash. Press **Send to owner for approval** | The entry is sent. The screen says it is a request that is not yet a saved sale and does not change cash, stock or reports. The price shown for the dish is the price in force at that time | | ☐ | ☐ | ☐ |
 | UAT-LATE-03 | Owner | **Orders**, **Cash drawer**, **Ingredients**, **Stock trail** | Look for the paper sale | Nothing: no new order, no change in expected cash, no stock movement | | ☐ | ☐ | ☐ |
-| UAT-LATE-04 | Cashier | **Enter paper sale** | Enter a paper sale for **Eba & Egusi** with a sale time two hours ago | The dish shows its price at that time and the entry is sent | **D1.** Today the screen shows "no price then" and the database refuses | ☐ | ☐ | ☐ |
+| UAT-LATE-04 | Cashier | **Enter paper sale** | Enter a paper sale for **Eba & Egusi** with a sale time two hours ago | The dish shows its price at that time and the entry is sent | **D1.** The database was fixed and read live on 5 October (the lookup now accepts the menu row). Not yet proved on the screen. If it still shows "no price then", D1 is not fixed | ☐ | ☐ | ☐ |
 | UAT-LATE-05 | Cashier | **Enter paper sale** | Try a sale time 4 days ago, then a time tomorrow | Both are refused: older than 72 hours, and not in the future | | ☐ | ☐ | ☐ |
 | UAT-LATE-06 | Cashier | **Enter paper sale** | Fill a valid entry (reference `PS-002`) and press **Send to owner for approval** twice quickly | Only one entry exists in the owner's **Waiting** tab | | ☐ | ☐ | ☐ |
 | UAT-LATE-07 | Owner | **Paper sales**, **Waiting** | Open an entry with **Details**. Type `no` as the reject reason: **Reject** stays greyed out. Type `duplicate of a till sale` and press **Reject** | The entry moves to **Posted & rejected** as rejected, with your reason. Orders, cash and stock are unchanged | | ☐ | ☐ | ☐ |
@@ -220,9 +220,12 @@ Do **not** run this module until the permission fix is applied, D1 to D4 and D6 
 | UAT-LATE-13 | Owner | Same, then **Cash drawer** | Do the same with a second entry and choose "No, record it as late cash against that closed shift" | The closed shift shows one adjustment for that cash amount. The cash is counted once only | **D3, D6.** Today it counts in the open shift too | ☐ | ☐ | ☐ |
 | UAT-LATE-14 | Owner | **Orders** | On a posted paper sale press the usual refund or void | It works like any other sale. Write down whether a void is allowed: a void is normally only on the day of the sale, and for a paper sale it is not clear which day counts | | ☐ | ☐ | ☐ |
 | UAT-LATE-15 | Cook or Purchaser | The address bar | Type `/late-entries` after the web address | No entries and no approve or reject buttons. Nothing can be sent | | ☐ | ☐ | ☐ |
+| UAT-LATE-17 | Owner | **Waiting** | Open an entry for a dish with a sale time earlier than 25 September 2026 (before any ingredient price was known) | The card says **Food cost unknown at sale time** and lists the missing prices. **Approve & post** is replaced by a box **Use today's cost as an estimate** and a reason box. With a reason under 5 letters the button stays grey | | ☐ | ☐ | ☐ |
+| UAT-LATE-18 | Owner | Same, then **Orders** | Tick the estimate box, type a reason of 5 or more letters and press **Approve with estimated cost**. Then open **Orders** | The sale posts. **Orders** shows the label **Food cost: Estimated — today's prices** in red. A sale whose prices were all known shows **Costed at sale time** instead | | ☐ | ☐ | ☐ |
+| UAT-LATE-19 | Owner | Same | Approve (or try to approve) a closed-shift entry and choose "record it as late cash" for a shift that was closed **without a count** | Refused with "That shift was closed without a count…". Choose the other answer instead | **D6 fix** (script `20261106`). Not proved on the screen | ☐ | ☐ | ☐ |
 | UAT-LATE-16 | Owner | **Oversight**, then **Audit trail** | Look for the lines for the entries above | "Late entry submitted", "Late entry rejected" and "Late entry posted" lines with the paper reference and amounts | | ☐ | ☐ | ☐ |
 
-**Owner sign-off (Module E):** I (name) ______________ ran Module E on (date) ____________. Passed ____ of 16. Failed ____. Blocked ____. Defects D1 to D4 and D6 fixed and re-tested: yes / no.
+**Owner sign-off (Module E):** I (name) ______________ ran Module E on (date) ____________. Passed ____ of 19. Failed ____. Blocked ____. Defects D1 to D4 and D6 fixed and re-tested: yes / no.
 
 ## Module F. Dish price history (after release)
 
@@ -241,6 +244,23 @@ Do not run this module until the price-history screen is released. Owner only, e
 | UAT-PRICE-09 | Owner | **Oversight**, **Audit trail** | "Dish price started", "Dish price scheduled" and "Dish price cancelled" lines with the dish, the price and the time (Lagos) | ☐ | ☐ | ☐ |
 
 **Owner sign-off (Module F):** I (name) ______________ ran Module F on (date) ____________. Passed ____ of 9. Failed ____. Blocked ____.
+
+## Module G. Ingredient price history (after release)
+
+Do not run this module until the ingredient screens are released. Run it as the Owner, except UAT-ING-07. Use one test ingredient (for example Rice) and write down its price before you start.
+
+| ID | Sign in as | Go to | Do | You should see | Pass | Fail | Blocked |
+|---|---|---|---|---|---|---|---|
+| UAT-ING-01 | Owner | **Ingredients** | Press **Price timeline** on your test ingredient | A list, newest first. Rows from before today carry the grey tag **from earlier records**. The line "Before the oldest row, the price is not known" is shown. No Edit or Delete on any row | ☐ | ☐ | ☐ |
+| UAT-ING-02 | Owner | **Ingredients** | Change the price of the ingredient by hand (new price, grade, season) and save. Reopen **Price timeline** | A new top row **Price changed by hand** with the new price, grade and today's time. The older row is still there | ☐ | ☐ | ☐ |
+| UAT-ING-03 | Purchaser | **Purchases** | Log a purchase of that ingredient that sets a new price. Reopen **Price timeline** | A row **Purchase** with the price worked out from the total and quantity | ☐ | ☐ | ☐ |
+| UAT-ING-04 | Owner | **Purchases** | Reverse that purchase with a reason. Reopen **Price timeline** | A row **Purchase reversed** showing the price going back to what it was. The two earlier rows are unchanged | ☐ | ☐ | ☐ |
+| UAT-ING-05 | Owner | The owner's profit and loss report | Pick a period that straddles your price change in UAT-ING-02 | Older sales without a saved cost use the price in force when they were sold, and later sales the new price. For a period before the first known price, the report falls back to today's prices and shows a warning that those sales are estimates. Write down the exact warning wording | ☐ | ☐ | ☐ |
+| UAT-ING-06 | Owner | **Ingredients** | Try to delete the test ingredient and to change its unit | Both are refused: an ingredient with price history keeps its unit and cannot be deleted | ☐ | ☐ | ☐ |
+| UAT-ING-07 | Cook, then Cashier | **Ingredients** | Look for **Price timeline** | The button is not shown to a cook or a cashier | ☐ | ☐ | ☐ |
+| UAT-ING-08 | Owner | **Oversight**, **Audit trail** | Look for the line about the hand price change in UAT-ING-02 | "… changed the price of … from … to … kobo per …" with who and when | ☐ | ☐ | ☐ |
+
+**Owner sign-off (Module G):** I (name) ______________ ran Module G on (date) ____________. Passed ____ of 8. Failed ____. Blocked ____.
 
 ## Part 8. Final tidy-up
 
