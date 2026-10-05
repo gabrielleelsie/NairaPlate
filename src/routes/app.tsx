@@ -296,6 +296,7 @@ const KITCHEN: AppLink[] = [
 const OVERSIGHT: AppLink[] = [
   { to: "/inbox", label: "Attention inbox", icon: AlertCircle },
   { to: "/dashboard", label: "P&L", icon: BarChart3 },
+  { to: "/margin-diagnostic", label: "Why did my margin change?", icon: TrendingDown },
   { to: "/cashflow", label: "7-day cashflow", icon: Landmark },
   { to: "/cost-check", label: "Today's cost check", icon: Scale },
   { to: "/flags", label: "Alerts", icon: AlertTriangle },
