@@ -14,7 +14,7 @@ export type PriceHistoryRow = {
   cost_per_base_unit_kobo: number;
   effective_from: string;
   source_type: string;
-  source_reference?: string;
+  source_reference?: string | null;
   is_backfilled: boolean;
   backfill_basis?: string | null;
 };
@@ -23,17 +23,20 @@ export type CostBasisStatus = "historical_exact" | "historical_backfilled" | "no
 
 export type ResolvedPrice = { status: CostBasisStatus; cost_kobo: number | null; row: PriceHistoryRow | null };
 
+type RawRow = {
+  id: unknown; seq: unknown; ingredient_id: unknown; price_track: unknown; grade?: string | null; season?: string | null;
+  cost_per_base_unit_kobo: unknown; effective_from: unknown; source_type: unknown; source_reference?: string | null;
+  is_backfilled?: unknown; backfill_basis?: string | null;
+};
+
 export function normaliseHistoryRows(data: unknown[] | null | undefined): PriceHistoryRow[] {
-  return (data ?? []).map((r) => {
-    const x = r as Record<string, unknown>;
-    return {
-      id: String(x.id), seq: Number(x.seq), ingredient_id: String(x.ingredient_id), price_track: String(x.price_track) as PriceTrack,
-      grade: (x.grade as string | null) ?? null, season: (x.season as string | null) ?? null,
-      cost_per_base_unit_kobo: Number(x.cost_per_base_unit_kobo), effective_from: String(x.effective_from),
-      source_type: String(x.source_type), source_reference: x.source_reference ? String(x.source_reference) : undefined,
-      is_backfilled: Boolean(x.is_backfilled), backfill_basis: (x.backfill_basis as string | null) ?? null,
-    };
-  });
+  return ((data ?? []) as RawRow[]).map((x) => ({
+    id: String(x.id), seq: Number(x.seq), ingredient_id: String(x.ingredient_id), price_track: String(x.price_track) as PriceTrack,
+    grade: x.grade ?? null, season: x.season ?? null,
+    cost_per_base_unit_kobo: Number(x.cost_per_base_unit_kobo), effective_from: String(x.effective_from),
+    source_type: String(x.source_type), source_reference: x.source_reference ?? null,
+    is_backfilled: Boolean(x.is_backfilled), backfill_basis: x.backfill_basis ?? null,
+  }));
 }
 
 /** Same ordering as the database: effective_from, then recording order (seq). */
