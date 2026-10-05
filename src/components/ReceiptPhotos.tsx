@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useBusinessProfile } from "@/lib/features";
 import { listReceipts, receiptRoleAllowed, signedReceiptUrl, uploadReceipt, voidReceipt, type ReceiptRecordType, type ReceiptRow } from "@/lib/receipt-capture";
 import { entryWhen } from "@/lib/catering-payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /** Optional photos for one saved record. Never blocks the record itself; hidden until photos are switched on. */
-export function ReceiptPhotos({ type, recordId, businessId, role, canAdd = true }: {
+function ReceiptPhotosInner({ type, recordId, businessId, role, canAdd = true }: {
   type: ReceiptRecordType; recordId: string; businessId: string; role: string; canAdd?: boolean;
 }) {
   const [rows, setRows] = useState<ReceiptRow[] | null>(null);
@@ -85,4 +86,11 @@ export function ReceiptPhotos({ type, recordId, businessId, role, canAdd = true 
       )}
     </div>
   );
+}
+
+/** Receipt photos appear only when the kitchen's profile includes them. */
+export function ReceiptPhotos(props: Parameters<typeof ReceiptPhotosInner>[0]) {
+  const p = useBusinessProfile();
+  if (p.loading || !p.has("receipt_capture")) return null;
+  return <ReceiptPhotosInner {...props} />;
 }
