@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
+import { costBasisLabel, overallCostBasis } from "@/lib/late-entry-cost";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
