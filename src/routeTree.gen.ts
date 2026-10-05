@@ -21,6 +21,7 @@ import { Route as CostCheckRouteImport } from './routes/cost-check'
 import { Route as CreditRouteImport } from './routes/credit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
+import { Route as ExportsRouteImport } from './routes/exports'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
@@ -121,6 +122,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const DrawerRoute = DrawerRouteImport.update({
   id: '/drawer',
   path: '/drawer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportsRoute = ExportsRouteImport.update({
+  id: '/exports',
+  path: '/exports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FaqRoute = FaqRouteImport.update({
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/exports': typeof ExportsRoute
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/exports': typeof ExportsRoute
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
@@ -458,6 +466,7 @@ export interface FileRoutesById {
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/exports': typeof ExportsRoute
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
@@ -515,6 +524,7 @@ export interface FileRouteTypes {
     | '/credit'
     | '/dashboard'
     | '/drawer'
+    | '/exports'
     | '/faq'
     | '/flags'
     | '/ingredients'
@@ -570,6 +580,7 @@ export interface FileRouteTypes {
     | '/credit'
     | '/dashboard'
     | '/drawer'
+    | '/exports'
     | '/faq'
     | '/flags'
     | '/ingredients'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/credit'
     | '/dashboard'
     | '/drawer'
+    | '/exports'
     | '/faq'
     | '/flags'
     | '/ingredients'
@@ -681,6 +693,7 @@ export interface RootRouteChildren {
   CreditRoute: typeof CreditRoute
   DashboardRoute: typeof DashboardRoute
   DrawerRoute: typeof DrawerRoute
+  ExportsRoute: typeof ExportsRoute
   FaqRoute: typeof FaqRoute
   FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
@@ -808,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/drawer'
       fullPath: '/drawer'
       preLoaderRoute: typeof DrawerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exports': {
+      id: '/exports'
+      path: '/exports'
+      fullPath: '/exports'
+      preLoaderRoute: typeof ExportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/faq': {
@@ -1113,6 +1133,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreditRoute: CreditRoute,
   DashboardRoute: DashboardRoute,
   DrawerRoute: DrawerRoute,
+  ExportsRoute: ExportsRoute,
   FaqRoute: FaqRoute,
   FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,

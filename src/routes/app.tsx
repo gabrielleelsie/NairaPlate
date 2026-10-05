@@ -9,7 +9,7 @@ import { OrdersTodayCard } from "@/components/OrdersTodayCard";
 import { useCateringEnabled } from "@/lib/features";
 import {
   AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
-  CreditCard, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
+  CreditCard, FileSpreadsheet, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
   Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
 } from "lucide-react";
 
@@ -304,6 +304,7 @@ const OVERSIGHT: AppLink[] = [
   { to: "/recipes", label: "Pricing review", icon: Scale },
   { to: "/staff", label: "Staff", icon: Users },
   { to: "/report", label: "Print report", icon: ClipboardList },
+  { to: "/exports", label: "Accountant exports", icon: FileSpreadsheet },
 ];
 
 function HomeScreen({ name, role, onSignOut }: { name: string; role: string | null; onSignOut: () => Promise<void> }) {
