@@ -27,6 +27,7 @@ import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as LateEntriesRouteImport } from './routes/late-entries'
+import { Route as MarginDiagnosticRouteImport } from './routes/margin-diagnostic'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OurStoryRouteImport } from './routes/our-story'
 import { Route as PaymentsRouteImport } from './routes/payments'
@@ -153,6 +154,11 @@ const IngredientsRoute = IngredientsRouteImport.update({
 const LateEntriesRoute = LateEntriesRouteImport.update({
   id: '/late-entries',
   path: '/late-entries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarginDiagnosticRoute = MarginDiagnosticRouteImport.update({
+  id: '/margin-diagnostic',
+  path: '/margin-diagnostic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -365,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof InboxRoute
   '/ingredients': typeof IngredientsRoute
   '/late-entries': typeof LateEntriesRoute
+  '/margin-diagnostic': typeof MarginDiagnosticRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -422,6 +429,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof InboxRoute
   '/ingredients': typeof IngredientsRoute
   '/late-entries': typeof LateEntriesRoute
+  '/margin-diagnostic': typeof MarginDiagnosticRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -480,6 +488,7 @@ export interface FileRoutesById {
   '/inbox': typeof InboxRoute
   '/ingredients': typeof IngredientsRoute
   '/late-entries': typeof LateEntriesRoute
+  '/margin-diagnostic': typeof MarginDiagnosticRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -539,6 +548,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/ingredients'
     | '/late-entries'
+    | '/margin-diagnostic'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -596,6 +606,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/ingredients'
     | '/late-entries'
+    | '/margin-diagnostic'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -653,6 +664,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/ingredients'
     | '/late-entries'
+    | '/margin-diagnostic'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -711,6 +723,7 @@ export interface RootRouteChildren {
   InboxRoute: typeof InboxRoute
   IngredientsRoute: typeof IngredientsRoute
   LateEntriesRoute: typeof LateEntriesRoute
+  MarginDiagnosticRoute: typeof MarginDiagnosticRoute
   OrdersRoute: typeof OrdersRoute
   OurStoryRoute: typeof OurStoryRoute
   PaymentsRoute: typeof PaymentsRoute
@@ -876,6 +889,13 @@ declare module '@tanstack/react-router' {
       path: '/late-entries'
       fullPath: '/late-entries'
       preLoaderRoute: typeof LateEntriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/margin-diagnostic': {
+      id: '/margin-diagnostic'
+      path: '/margin-diagnostic'
+      fullPath: '/margin-diagnostic'
+      preLoaderRoute: typeof MarginDiagnosticRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -1159,6 +1179,7 @@ const rootRouteChildren: RootRouteChildren = {
   InboxRoute: InboxRoute,
   IngredientsRoute: IngredientsRoute,
   LateEntriesRoute: LateEntriesRoute,
+  MarginDiagnosticRoute: MarginDiagnosticRoute,
   OrdersRoute: OrdersRoute,
   OurStoryRoute: OurStoryRoute,
   PaymentsRoute: PaymentsRoute,
