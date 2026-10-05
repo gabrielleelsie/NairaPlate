@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
+import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira } from "@/lib/costing";
 import { SUPPLIER_ROLES, TXN_COLUMNS, balanceWords, canReverse, methodLabel, normaliseTxns, reasonOk, reversalOf, supplierBalance, withRunningBalance, type SupplierTxn } from "@/lib/suppliers";
@@ -94,6 +95,7 @@ function SupplierDetail() {
                 </div>
               </div>
               {reversed && <div className="text-xs font-semibold text-destructive">Reversed: {reversed.reason}</div>}
+              {t.type === "payment" && <ReceiptPhotos type="supplier_payment" recordId={t.id} businessId={session.businessId} role={session.role} />}
               {(t.type === "reversal" || t.type === "purchase_reversal") && t.reason && <div className="text-xs text-muted-foreground">Reason: {t.reason}</div>}
               {canReverse(t, role, undone) && (reverseFor === t.id ? (
                 <div className="flex flex-wrap gap-2 pt-1">

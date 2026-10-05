@@ -37,3 +37,10 @@
 - [x] Owner screen (cost status, hold, estimate with reason), Orders label, UAT-OWN-08
 - [ ] Release to main after live check + rehearsal are clean (blocker: owner)
 - [x] Accountant CSV exports (/exports) — built; check totals against Report/Drawer pages on live data after release
+
+## Receipt and photo capture (approved 5 Oct 2026)
+- [x] SQL 20261106_receipts_a (+check, rollback) written and syntax-checked
+- [x] Photo helper, tests, photo button; on Paper sales, Cash taken out, Purchases, Supplier payments
+- [ ] Owner runs SQL + check (expected true,false,true,0,0,4,3,1) (blocker: owner)
+- [ ] Receipt columns in accountant exports with version bump (blocker: SQL live first)
+- [ ] Module F real-phone test (blocker: tester on a phone)
