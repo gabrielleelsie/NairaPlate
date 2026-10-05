@@ -4,6 +4,7 @@ import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { lagosLocalToIso } from "@/lib/dish-prices";
+import { reasonLabel, type CostPreview } from "@/lib/late-entry-cost";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -178,6 +179,17 @@ function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | n
                   )}
                 </div>
               )}
+              {needsShift && (
+                <fieldset className="space-y-1 rounded border-2 border-destructive/40 p-2">
+                  <legend className="px-1 font-medium">The shift at that time is closed (or none was open). Was this cash counted at close?</legend>
+                  <label className="flex gap-2"><input type="radio" name={`r-${e.id}`} checked={res === "closed_shift_included"} onChange={() => setRes("closed_shift_included")} />Yes — the cash was included in the count at close</label>
+                  <label className="flex gap-2"><input type="radio" name={`r-${e.id}`} checked={res === "closed_shift_late_cash"} onChange={() => setRes("closed_shift_late_cash")} />No — record it as late cash against that closed shift</label>
+                  <p className="text-xs text-muted-foreground">Not sure? Reject it instead. The closed shift's count is never changed and cash is never moved to another shift.</p>
+                </fieldset>
+              )}
+              <Button disabled={busy || (needsShift && !res) || !estimateOk} onClick={approve}>
+                {unknown && useEstimate ? "Approve with estimated cost" : "Approve & post"} {formatNaira(Number(e.total_kobo))}
+              </Button>
               <div className="space-y-1">
                 <Label htmlFor={`rej-${e.id}`}>Reject reason (at least 5 letters)</Label>
                 <Textarea id={`rej-${e.id}`} value={reason} onChange={(ev) => setReason(ev.target.value)} />
