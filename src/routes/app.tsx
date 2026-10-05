@@ -275,6 +275,7 @@ const SELL: AppLink[] = [
   { to: "/pos", label: "Till", icon: Store },
   { to: "/drawer", label: "Cash drawer", icon: WalletCards },
   { to: "/orders", label: "Orders", icon: ReceiptText },
+  { to: "/late-entries", label: "Paper sales", icon: ReceiptText },
   { to: "/credit", label: "Customer credit", icon: CreditCard },
   { to: "/catering", label: "Catering", icon: CalendarDays },
 ];

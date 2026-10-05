@@ -24,6 +24,7 @@ import { Route as DrawerRouteImport } from './routes/drawer'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as FlagsRouteImport } from './routes/flags'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
+import { Route as LateEntriesRouteImport } from './routes/late-entries'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OurStoryRouteImport } from './routes/our-story'
 import { Route as PaymentsRouteImport } from './routes/payments'
@@ -40,6 +41,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as StockTakeRouteImport } from './routes/stock-take'
 import { Route as SupplierPaymentRouteImport } from './routes/supplier-payment'
+import { Route as UatRouteImport } from './routes/uat'
 import { Route as WastageRouteImport } from './routes/wastage'
 import { Route as SuppliersIndexRouteImport } from './routes/suppliers.index'
 import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
@@ -55,6 +57,7 @@ import { Route as ApiPublicPaymentConnectRouteImport } from './routes/api/public
 import { Route as ApiPublicPaymentStartRouteImport } from './routes/api/public/payment-start'
 import { Route as ApiPublicPaymentTestRouteImport } from './routes/api/public/payment-test'
 import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
+import { Route as ApiPublicPingRouteImport } from './routes/api/public/ping'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
@@ -133,6 +136,11 @@ const FlagsRoute = FlagsRouteImport.update({
 const IngredientsRoute = IngredientsRouteImport.update({
   id: '/ingredients',
   path: '/ingredients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LateEntriesRoute = LateEntriesRouteImport.update({
+  id: '/late-entries',
+  path: '/late-entries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -215,6 +223,11 @@ const SupplierPaymentRoute = SupplierPaymentRouteImport.update({
   path: '/supplier-payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UatRoute = UatRouteImport.update({
+  id: '/uat',
+  path: '/uat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WastageRoute = WastageRouteImport.update({
   id: '/wastage',
   path: '/wastage',
@@ -294,6 +307,11 @@ const ApiPublicPaymentWebhookRoute = ApiPublicPaymentWebhookRouteImport.update({
   path: '/api/public/payment-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPingRoute = ApiPublicPingRouteImport.update({
+  id: '/api/public/ping',
+  path: '/api/public/ping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -332,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/late-entries': typeof LateEntriesRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -348,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof StaffRoute
   '/stock-take': typeof StockTakeRoute
   '/supplier-payment': typeof SupplierPaymentRoute
+  '/uat': typeof UatRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/suppliers/': typeof SuppliersIndexRoute
@@ -363,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
+  '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -384,6 +405,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/late-entries': typeof LateEntriesRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -400,6 +422,7 @@ export interface FileRoutesByTo {
   '/staff': typeof StaffRoute
   '/stock-take': typeof StockTakeRoute
   '/supplier-payment': typeof SupplierPaymentRoute
+  '/uat': typeof UatRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/suppliers': typeof SuppliersIndexRoute
@@ -415,6 +438,7 @@ export interface FileRoutesByTo {
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
+  '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -437,6 +461,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
   '/ingredients': typeof IngredientsRoute
+  '/late-entries': typeof LateEntriesRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -453,6 +478,7 @@ export interface FileRoutesById {
   '/staff': typeof StaffRoute
   '/stock-take': typeof StockTakeRoute
   '/supplier-payment': typeof SupplierPaymentRoute
+  '/uat': typeof UatRoute
   '/wastage': typeof WastageRoute
   '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/suppliers/': typeof SuppliersIndexRoute
@@ -468,6 +494,7 @@ export interface FileRoutesById {
   '/api/public/payment-start': typeof ApiPublicPaymentStartRoute
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
+  '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
@@ -491,6 +518,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/flags'
     | '/ingredients'
+    | '/late-entries'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -507,6 +535,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock-take'
     | '/supplier-payment'
+    | '/uat'
     | '/wastage'
     | '/suppliers/$supplierId'
     | '/suppliers/'
@@ -522,6 +551,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-start'
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
+    | '/api/public/ping'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -543,6 +573,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/flags'
     | '/ingredients'
+    | '/late-entries'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -559,6 +590,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock-take'
     | '/supplier-payment'
+    | '/uat'
     | '/wastage'
     | '/suppliers/$supplierId'
     | '/suppliers'
@@ -574,6 +606,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-start'
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
+    | '/api/public/ping'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -595,6 +628,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/flags'
     | '/ingredients'
+    | '/late-entries'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -611,6 +645,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/stock-take'
     | '/supplier-payment'
+    | '/uat'
     | '/wastage'
     | '/suppliers/$supplierId'
     | '/suppliers/'
@@ -626,6 +661,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-start'
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
+    | '/api/public/ping'
     | '/api/public/platform-admin'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
@@ -648,6 +684,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   FlagsRoute: typeof FlagsRoute
   IngredientsRoute: typeof IngredientsRoute
+  LateEntriesRoute: typeof LateEntriesRoute
   OrdersRoute: typeof OrdersRoute
   OurStoryRoute: typeof OurStoryRoute
   PaymentsRoute: typeof PaymentsRoute
@@ -664,6 +701,7 @@ export interface RootRouteChildren {
   StaffRoute: typeof StaffRoute
   StockTakeRoute: typeof StockTakeRoute
   SupplierPaymentRoute: typeof SupplierPaymentRoute
+  UatRoute: typeof UatRoute
   WastageRoute: typeof WastageRoute
   SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
   SuppliersIndexRoute: typeof SuppliersIndexRoute
@@ -679,6 +717,7 @@ export interface RootRouteChildren {
   ApiPublicPaymentStartRoute: typeof ApiPublicPaymentStartRoute
   ApiPublicPaymentTestRoute: typeof ApiPublicPaymentTestRoute
   ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
+  ApiPublicPingRoute: typeof ApiPublicPingRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
@@ -790,6 +829,13 @@ declare module '@tanstack/react-router' {
       path: '/ingredients'
       fullPath: '/ingredients'
       preLoaderRoute: typeof IngredientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/late-entries': {
+      id: '/late-entries'
+      path: '/late-entries'
+      fullPath: '/late-entries'
+      preLoaderRoute: typeof LateEntriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -904,6 +950,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SupplierPaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/uat': {
+      id: '/uat'
+      path: '/uat'
+      fullPath: '/uat'
+      preLoaderRoute: typeof UatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wastage': {
       id: '/wastage'
       path: '/wastage'
@@ -1009,6 +1062,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/ping': {
+      id: '/api/public/ping'
+      path: '/api/public/ping'
+      fullPath: '/api/public/ping'
+      preLoaderRoute: typeof ApiPublicPingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -1056,6 +1116,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   FlagsRoute: FlagsRoute,
   IngredientsRoute: IngredientsRoute,
+  LateEntriesRoute: LateEntriesRoute,
   OrdersRoute: OrdersRoute,
   OurStoryRoute: OurStoryRoute,
   PaymentsRoute: PaymentsRoute,
@@ -1072,6 +1133,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffRoute: StaffRoute,
   StockTakeRoute: StockTakeRoute,
   SupplierPaymentRoute: SupplierPaymentRoute,
+  UatRoute: UatRoute,
   WastageRoute: WastageRoute,
   SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
   SuppliersIndexRoute: SuppliersIndexRoute,
@@ -1087,6 +1149,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentStartRoute: ApiPublicPaymentStartRoute,
   ApiPublicPaymentTestRoute: ApiPublicPaymentTestRoute,
   ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
+  ApiPublicPingRoute: ApiPublicPingRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,

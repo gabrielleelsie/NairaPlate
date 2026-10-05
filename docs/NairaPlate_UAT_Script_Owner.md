@@ -140,6 +140,43 @@ Do this with a shift open. If you closed it earlier, open a new one first (Home,
 | 7b.18 | Owner or cashier: Home, then **Sell**, then **Catering** | Start a booking. Type a **Deposit paid (₦)** of `500`. Do not choose how it was paid yet | A new box **How was the deposit paid?** appears. The booking cannot be saved: the message says to choose cash or transfer | ☐ | ☐ |
 | 7b.19 | Same booking | Choose **Cash** and book it | Booked. With a shift open, the cash deposit is counted in that shift's expected cash | ☐ | ☐ |
 
+## Module D. Offline resilience, safe degraded mode (Phase 0)
+
+Run on a real Android phone. Do UAT-OFF-01 to 07 first, then 08 to 15.
+
+**Test data:** cashier account, owner account, a normal menu dish, a credit customer (name and phone), and one cash, one transfer and one split sale. UAT-OFF-14 also needs a second test business.
+
+**Record for this run:** Tester ______________ Device ______________ Browser and version ______________ Android version ______________ Start time ________ End time ________
+
+| ID | Test | Connection setup | Do | Expect | Actual | Pass | Fail | Blocked | Screenshot / recording ref (for any fail) |
+|---|---|---|---|---|---|---|---|---|---|
+| UAT-OFF-01 | Normal online cash sale | Online | Add two dishes, Cash, press Charge. Check Orders. | One order with a sale code; draft clears only after the save is confirmed. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-02 | Double-tap Charge | Online | Build a sale, tap Charge twice quickly. Check Orders. | One order only; the second tap returns the original sale. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-03 | Connection drops before submit | Airplane mode | Build a sale, turn on airplane mode, try Charge. Reconnect, check Orders. | Red offline warning; Charge disabled; draft kept; no sale created. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-04 | Connection drops during submit | Airplane mode straight after Charge | Press Charge, cut connection at once. Try another sale. | "Checking sale status…"; draft locked; no second sale possible. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-05 | Server saved, browser timed out | Airplane mode straight after Charge | Reconnect, press Check again. | Original sale found; no duplicate; draft clears only after confirmation. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-06 | Server did not save | Airplane mode before the request leaves | Reconnect, Check again, then Charge again. Check Orders. | Reported not saved; retry creates exactly one sale. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-07 | Refresh during unsaved draft | None | Build a split sale with several items, refresh. | Items, quantities, payment method and split amounts restore. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-08 | Credit draft refresh | None | Credit sale with name and phone, refresh. Then discard (and let one expire). | Name and phone restore; removed on discard or expiry. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-09 | Cash/transfer/split draft refresh | None | Build each, refresh. | No customer details kept on the device. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-10 | Browser restart during outage | Airplane mode | Build a sale offline, close browser fully, reopen Till. | Recoverable draft offered, clearly not a saved sale. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-11 | Paper fallback | Airplane mode | Print the paper form. | All fields print; it says it is not a saved NairaPlate sale. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-12 | Connection returns | Airplane mode off | Go offline, then reconnect; watch the bar and Charge. | Offline → checking → online; Charge back only after a successful server check. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-13 | Existing sale code reused | Controlled resend | Resend the same sale code for the same business. | Original order returned; no new sale. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-14 | Cross-business client sale code isolation | Second test business | From business B, Check again and submit with Demo Kitchen's code. | B cannot see Demo Kitchen's sale; B's submission becomes only B's order; Demo Kitchen's order unchanged. | | ☐ | ☐ | ☐ | |
+| UAT-OFF-15 | Expired draft guard | Draft (cash and credit) last edited over 24 hours ago, set by a safe test method | Open the Till; read the card; look for Charge; press Ask owner to review; discard with reason and confirm; check stored drafts and Orders, payments, stock, drawer, Credit | Card says "Expired — not saved" with times, items, payment, unconfirmed total, customer-details flag and "no order, payment, stock movement or cash-drawer entry was created"; cannot be charged; review form prints and draft stays uncharged; discard removes it and any customer name/phone; nothing created in money or stock records | | ☐ | ☐ | ☐ | |
+
+**Release gate.** Phase 0 is not released until all 15 tests have a recorded result and all of these hold:
+
+1. No duplicate order is created in double-submit, retry and timeout-recovery paths.
+2. No unsaved draft is shown as a saved sale.
+3. Cashier instructions are understood during offline and uncertain-submission states.
+4. No unnecessary customer data stays in non-credit drafts, or after a draft is discarded or expires.
+5. Health check, regression tests and full rehearsal remain clean after the Phase 0 changes.
+6. The deployed preview is tested on at least one real Android phone using airplane mode, not only desktop tools or unit tests.
+
+**Owner sign-off (Module D):** I (name) ______________ ran Module D on (date) ____________. Passed ____ of 15. Failed ____. Blocked ____.
+
 ## Part 8. Final tidy-up
 
 | # | Do | Pass | Fail |
