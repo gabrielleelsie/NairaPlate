@@ -23,3 +23,9 @@ When an owner approves a paper sale, its food cost is frozen using **today's** i
 - Delivered as `supabase/external/20261105_late_entry_cost_at.sql` + check + self-undoing rehearsal + rollback, all run first on the practice database against the real schema, syntax and live function signatures before being sent.
 - Prerequisite: `20261101_late_entries_a.sql` must be confirmed applied on the live database first (a check query will be included).
 - UI: `/late-entries` review card and Orders line labels; `pnl.ts` already respects frozen costs.
+
+## Approved refinements (5 Oct 2026)
+1. Stored statuses per order line: sale_time_exact, sale_time_backfilled, estimated_current_price, unknown_held, not_applicable.
+2. Any unresolved ingredient makes the whole plate unresolved: owner holds or explicitly estimates the whole plate at today's cost. No mixed estimates.
+3. Estimate evidence stored immutably: estimated at/by, reason (5+ letters), unavailable reason, unresolved ingredient snapshot, frozen cost.
+4. Cost bypass only inside the approval function: owner/Supa Admin of the same business, entry in posting state, cost recomputed server-side and matched, transaction-local flag; every other path refused.

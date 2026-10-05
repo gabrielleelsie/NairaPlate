@@ -29,3 +29,8 @@
 - [x] Step 5: Paper sales screen (cashier entry, owner approve/reject/shift review), Late entry label on Orders
 - [ ] Steps 6-9: UAT-LATE-01..10 run, rehearsal, pilot (blocker: owner/tester)
 - Blocked for Phase 1 start: Phase 0 real-device UAT (owner/tester)
+
+## Paper-sale food cost at the actual sale time (plan approved with 4 refinements, 5 Oct 2026)
+- [ ] Get live definitions of late-entry/costing functions (blocker: owner runs read-only query)
+- [ ] Rebuild practice database from live definitions; write 20261105_late_entry_cost_at (+check, rehearsal, rollback), all verified there
+- [ ] Owner screen: cost status, hold, estimate-with-reason; Orders/P&L labels; UAT Module E cases; docs
