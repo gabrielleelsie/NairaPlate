@@ -31,6 +31,8 @@
 - Blocked for Phase 1 start: Phase 0 real-device UAT (owner/tester)
 
 ## Paper-sale food cost at the actual sale time (plan approved with 4 refinements, 5 Oct 2026)
-- [ ] Get live definitions of late-entry/costing functions (blocker: owner runs read-only query)
-- [ ] Rebuild practice database from live definitions; write 20261105_late_entry_cost_at (+check, rehearsal, rollback), all verified there
-- [ ] Owner screen: cost status, hold, estimate-with-reason; Orders/P&L labels; UAT Module E cases; docs
+- [x] Live definitions received (5 Oct 2026)
+- [x] 20261105_late_entry_cost_at (+check, rehearsal 14/14, rollback) verified on practice copy
+- [ ] Owner runs script 1, check, rehearsal on live (blocker: owner)
+- [x] Owner screen (cost status, hold, estimate with reason), Orders label, UAT-OWN-08
+- [ ] Release to main after live check + rehearsal are clean (blocker: owner)
