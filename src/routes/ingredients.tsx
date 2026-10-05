@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession, MARKET_UNIT_OPTIONS, BASE_UNITS, marketUnitLabel } from "@/lib/staff-session";
 import { TRIAL_LIMITS, isTrialPlan, trialLimitMessage, trialUsage, useBusinessPlan } from "@/lib/trial-limits";
+import { normaliseHistoryRows, sourceLabel, type PriceHistoryRow } from "@/lib/ingredient-price-history";
 import { formatNaira, nairaToKobo, koboToNaira } from "@/lib/costing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ function IngredientsScreen() {
   const [unitsFor, setUnitsFor] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [trailFor, setTrailFor] = useState<string | null>(null);
+  const [timelineFor, setTimelineFor] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -137,6 +139,7 @@ function IngredientsScreen() {
                 <Button size="sm" variant="outline" onClick={() => setHistoryFor(historyFor === i.id ? null : i.id)}>
                   History
                 </Button>
+                {canEdit && <Button size="sm" variant="outline" onClick={() => setTimelineFor(timelineFor === i.id ? null : i.id)}>Price timeline</Button>}
                 {canEdit && <Button size="sm" variant="outline" onClick={() => setTrailFor(trailFor === i.id ? null : i.id)}>Stock trail</Button>}
                 {canEdit && <Button size="sm" variant="outline" onClick={() => setEditing(i)}>Edit</Button>}
               </div>
@@ -154,6 +157,7 @@ function IngredientsScreen() {
             )}
             {historyFor === i.id && <PriceHistoryPanel ingredient={i} />}
             {trailFor === i.id && <StockTrailPanel ingredient={i} />}
+            {timelineFor === i.id && <PriceTimelinePanel ingredient={i} />}
           </li>
         ))}
       </ul>
@@ -349,6 +353,44 @@ function ConversionsPanel({
           </div>
           <Button type="submit" size="sm" disabled={busy}>Save unit</Button>
         </form>
+      )}
+    </div>
+  );
+}
+
+function PriceTimelinePanel({ ingredient }: { ingredient: Ingredient }) {
+  const [rows, setRows] = useState<PriceHistoryRow[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    supabase.rpc("ingredient_price_history_for", { p_ingredient: ingredient.id, p_until: null }).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) { setErr(error.message); return; }
+      setRows(normaliseHistoryRows(data as unknown[]).sort((a, b) => Date.parse(b.effective_from) - Date.parse(a.effective_from) || b.seq - a.seq));
+    });
+    return () => { cancelled = true; };
+  }, [ingredient.id]);
+  return (
+    <div className="mt-3 rounded-md bg-muted p-3" data-testid="price-timeline">
+      <div className="text-sm font-medium text-foreground">Price timeline for {ingredient.name}</div>
+      <p className="text-xs text-muted-foreground">Every price this ingredient has had, newest first. Rows cannot be changed or deleted. Before the oldest row, the price is not known.</p>
+      {err ? <p className="mt-2 text-sm text-destructive">Price timeline is not available: {err}</p>
+        : rows === null ? <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+        : rows.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No price recorded yet.</p> : (
+        <ul className="mt-2 space-y-1 text-sm">
+          {rows.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-foreground">
+                {r.price_track === "current" ? "Everyday price" : `Grade ${r.price_track}`} · {sourceLabel(r)}
+                {r.is_backfilled && <span className="ml-1 rounded bg-background px-1 text-xs text-muted-foreground">from earlier records</span>}
+              </span>
+              <span className="text-foreground">
+                {r.cost_per_base_unit_kobo > 0 ? `${formatNaira(r.cost_per_base_unit_kobo)} per ${ingredient.base_unit}` : "No price from here"}
+                {r.season ? ` · ${seasonLabel(r.season)}` : ""} <span className="text-xs text-muted-foreground">{formatPriceDate(r.effective_from)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
