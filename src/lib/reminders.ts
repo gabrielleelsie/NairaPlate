@@ -41,7 +41,7 @@ export const DEFAULT_REMINDERS: ReminderSettings = {
     },
     trial_before: {
       subject: "Your NairaPlate free trial ends {when}",
-      body: "Hello,\n\nThe free trial for {business} ends on {date} at 11:59 pm. To keep using NairaPlate after that, choose a plan.\n\nMessage us on WhatsApp and tell us whether you want Monthly, Quarterly or Yearly.",
+      body: "Hello,\n\nThe free trial for {business} ends on {date} at 11:59 pm. To keep using NairaPlate after that, choose a plan.\n\nMessage us on WhatsApp and tell us which plan you want (Buka, Restaurant or Full Suite) and whether you want to pay monthly, every 3 months or every 12 months.",
     },
     trial_after: {
       subject: "Your NairaPlate free trial has ended",
