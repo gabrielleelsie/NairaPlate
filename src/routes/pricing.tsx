@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
+import { formatPrice, PLAN_NAME, savingPercent, setupText } from "@/lib/platform-settings";
+import { usePublicSettings } from "@/lib/use-public-settings";
+import type { OperatingMode } from "@/lib/features";
 import {
   C,
   cardStyle,
@@ -30,24 +33,16 @@ export const Route = createFileRoute("/pricing")({
 });
 
 type Plan = {
-  name: string;
+  mode: OperatingMode;
   bestFor: string;
-  monthly: string;
-  quarterly: string;
-  yearly: string;
-  setup: string;
   includes: string[];
   intro?: string;
 };
 
 const PLANS: Plan[] = [
   {
-    name: "Buka",
+    mode: "buka",
     bestFor: "A small kitchen that sells, buys and counts cash.",
-    monthly: "₦5,000",
-    quarterly: "₦13,500",
-    yearly: "₦48,000",
-    setup: "₦10,000",
     includes: [
       "Till for taking sales",
       "Cash drawer, opened and closed with counted cash",
@@ -62,12 +57,8 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    name: "Restaurant",
+    mode: "standard",
     bestFor: "A kitchen with staff, suppliers and a menu to cost.",
-    monthly: "₦10,000",
-    quarterly: "₦27,000",
-    yearly: "₦96,000",
-    setup: "₦15,000",
     intro: "Everything in Buka, plus:",
     includes: [
       "Customer credit",
@@ -83,12 +74,8 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    name: "Full Suite",
+    mode: "advanced",
     bestFor: "A kitchen that wants every tool and every report.",
-    monthly: "₦20,000",
-    quarterly: "₦54,000",
-    yearly: "₦192,000",
-    setup: "from ₦25,000",
     intro: "Everything in Restaurant, plus:",
     includes: [
       "Channel payouts",
@@ -106,6 +93,7 @@ const STEPS = [
 ];
 
 function PricingPage() {
+  const { prices } = usePublicSettings();
   return (
     <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
@@ -139,15 +127,20 @@ function PricingPage() {
               gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
             }}
           >
-            {PLANS.map((p) => (
-              <div key={p.name} style={{ ...cardStyle, padding: 24 }}>
-                <h2 style={{ color: C.navy, fontSize: 26, fontWeight: 800, margin: 0 }}>{p.name}</h2>
+            {PLANS.map((p) => {
+              const pr = prices.plans[p.mode];
+              const ask = "Ask us";
+              const q = savingPercent(pr, "quarterly");
+              const y = savingPercent(pr, "yearly");
+              return (
+              <div key={p.mode} style={{ ...cardStyle, padding: 24 }}>
+                <h2 style={{ color: C.navy, fontSize: 26, fontWeight: 800, margin: 0 }}>{PLAN_NAME[p.mode]}</h2>
                 <p style={{ color: C.muted, fontSize: 16, lineHeight: 1.5, margin: "8px 0 16px" }}>{p.bestFor}</p>
                 <dl style={{ margin: 0, display: "grid", gap: 8, color: C.navy, fontSize: 16 }}>
-                  <Row label="Monthly" value={p.monthly} />
-                  <Row label="Every 3 months (save 10%)" value={p.quarterly} />
-                  <Row label="Every 12 months (save 20%)" value={p.yearly} />
-                  <Row label="Setup with our team, paid once" value={p.setup} />
+                  <Row label="Monthly" value={formatPrice(pr.monthly_kobo) ?? ask} />
+                  <Row label={`Every 3 months${q ? ` (save ${q}%)` : ""}`} value={formatPrice(pr.quarterly_kobo) ?? ask} />
+                  <Row label={`Every 12 months${y ? ` (save ${y}%)` : ""}`} value={formatPrice(pr.yearly_kobo) ?? ask} />
+                  <Row label="Setup with our team, paid once" value={setupText(pr) ?? ask} />
                 </dl>
                 {p.intro && <p style={{ color: C.navy, fontWeight: 700, margin: "20px 0 8px" }}>{p.intro}</p>}
                 <ul style={{ color: C.muted, fontSize: 16, lineHeight: 1.6, margin: p.intro ? 0 : "20px 0 0", paddingLeft: 20, listStyle: "disc" }}>
@@ -156,7 +149,8 @@ function PricingPage() {
                   ))}
                 </ul>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { monthlyPricesSentence, setupFeesSentence } from "@/lib/platform-settings";
+import { usePublicSettings } from "@/lib/use-public-settings";
 
 import {
   C,
@@ -157,11 +159,11 @@ const GROUPS: Group[] = [
       },
       {
         q: "Is there a setup fee?",
-        a: "Yes. Our team sets up your kitchen with you, and you pay the setup fee once: Buka ₦10,000, Restaurant ₦15,000, Full Suite from ₦25,000. Message us on WhatsApp.",
+        a: "Yes. Our team sets up your kitchen with you, and you pay the setup fee once. {setup} Message us on WhatsApp.",
       },
       {
         q: "How much does it cost?",
-        a: "There are three plans: Buka, Restaurant and Full Suite. Buka is ₦5,000 a month, Restaurant ₦10,000 and Full Suite ₦20,000. Pay for 3 months and save 10%, or for 12 months and save 20%. See the pricing page for the full list. Message us on WhatsApp to pay, and we will give you the payment details.",
+        a: "There are three plans: Buka, Restaurant and Full Suite. {prices} Paying for 3 months or 12 months costs less than month by month. See the pricing page for every price. Message us on WhatsApp to pay, and we will give you the payment details.",
       },
       {
         q: "How do I pay?",
@@ -181,13 +183,18 @@ const GROUPS: Group[] = [
   },
 ];
 
+const PRICES_FALLBACK = "Message us on WhatsApp for current prices.";
+const SETUP_FALLBACK = "Message us on WhatsApp for the amount.";
+/** The visible answers show the prices an admin has set, so they never go stale. The structured data uses the generic lines. */
+const fill = (a: string, prices: string, setup: string) => a.replace("{prices}", prices || PRICES_FALLBACK).replace("{setup}", setup || SETUP_FALLBACK);
+
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: GROUPS.flatMap((g) => g.items).map((i) => ({
     "@type": "Question",
     name: i.q,
-    acceptedAnswer: { "@type": "Answer", text: i.a },
+    acceptedAnswer: { "@type": "Answer", text: fill(i.a, "", "") },
   })),
 });
 
@@ -207,6 +214,9 @@ export const Route = createFileRoute("/faq")({
 });
 
 function FaqPage() {
+  const { prices } = usePublicSettings();
+  const priceLine = monthlyPricesSentence(prices);
+  const setupLine = setupFeesSentence(prices);
   return (
     <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
@@ -286,7 +296,7 @@ function FaqPage() {
                           +
                         </span>
                       </summary>
-                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{item.a}</p>
+                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{fill(item.a, priceLine, setupLine)}</p>
                     </details>
                   ))}
                 </div>

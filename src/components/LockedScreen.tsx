@@ -1,7 +1,7 @@
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { formatLagosDate } from "@/lib/subscription";
-import { formatPrice, renderTemplate } from "@/lib/platform-settings";
+import { PLAN_MODES, PLAN_NAME, formatPrice, renderTemplate } from "@/lib/platform-settings";
 import { usePublicSettings } from "@/lib/use-public-settings";
 
 const WHATSAPP_NUMBER = "2349124766666";
@@ -12,7 +12,6 @@ export function LockedScreen({ businessName, endedAt, onSignOut }: { businessNam
   const { prices, locked_screen: text } = usePublicSettings();
   const name = businessName ?? "Your business";
   const whatsapp = `https://wa.me/${WHATSAPP_NUMBER}?text=` + encodeURIComponent(renderTemplate(text.whatsapp_message, { business: name }));
-  const planPrices: [string, number | null][] = [["Monthly", prices.monthly_kobo], ["Quarterly", prices.quarterly_kobo], ["Yearly", prices.yearly_kobo]];
   return (
     <main className="np-public flex min-h-dvh items-center justify-center bg-home-surface px-4 py-10">
       <div className="w-full max-w-lg space-y-6 rounded-2xl bg-card p-6 shadow-sm sm:p-8">
@@ -26,10 +25,11 @@ export function LockedScreen({ businessName, endedAt, onSignOut }: { businessNam
         <div className="space-y-2">
           <h2 className="font-semibold text-brand-navy">Choose a plan</h2>
           <ul className="grid gap-2 sm:grid-cols-3">
-            {planPrices.map(([p, kobo]) => (
-              <li key={p} className="rounded-lg border border-border p-3 text-center font-medium">
-                {p}
-                {formatPrice(kobo) && <div className="mt-1 text-sm font-semibold text-brand-blue">{formatPrice(kobo)}</div>}
+            {PLAN_MODES.map((m) => (
+              <li key={m} className="rounded-lg border border-border p-3 text-center font-medium">
+                {PLAN_NAME[m]}
+                {([["Monthly", prices.plans[m].monthly_kobo], ["3 months", prices.plans[m].quarterly_kobo], ["12 months", prices.plans[m].yearly_kobo]] as const).map(([label, kobo]) =>
+                  formatPrice(kobo) ? <div key={label} className="mt-1 text-sm text-muted-foreground">{label} <span className="font-semibold text-brand-blue">{formatPrice(kobo)}</span></div> : null)}
               </li>
             ))}
           </ul>
