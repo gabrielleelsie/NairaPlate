@@ -2,18 +2,31 @@
 // Used by the browser (to show the text), the server (to validate what an admin saves) and the admin screen.
 // Every field has a built-in default, so a missing or broken setting can never blank a screen.
 import { z } from "zod";
+import type { OperatingMode } from "@/lib/features";
 
 export type SettingKey = "prices" | "locked_screen" | "expiry_banner";
 export const SETTING_KEYS: SettingKey[] = ["prices", "locked_screen", "expiry_banner"];
 export const SETTING_LABEL: Record<SettingKey, string> = { prices: "Plan prices", locked_screen: "Locked screen wording", expiry_banner: "Expiry warning banner" };
 
-export type Prices = { monthly_kobo: number | null; quarterly_kobo: number | null; yearly_kobo: number | null };
+export type PlanKey = "monthly" | "quarterly" | "yearly";
+export const PLAN_MODES: OperatingMode[] = ["buka", "standard", "advanced"];
+/** The names customers see for the three operating profiles. */
+export const PLAN_NAME: Record<OperatingMode, string> = { buka: "Buka", standard: "Restaurant", advanced: "Full Suite" };
+export type PlanPrice = { monthly_kobo: number | null; quarterly_kobo: number | null; yearly_kobo: number | null; setup_kobo: number | null; setup_from: boolean };
+export type Prices = { plans: Record<OperatingMode, PlanPrice> };
 export type LockedScreenText = { title: string; intro: string; intro_no_date: string; steps: string[]; whatsapp_message: string };
 export type ExpiryBannerText = { text: string };
 export type PlatformSettings = { prices: Prices; locked_screen: LockedScreenText; expiry_banner: ExpiryBannerText };
 
 export const DEFAULT_SETTINGS: PlatformSettings = {
-  prices: { monthly_kobo: null, quarterly_kobo: null, yearly_kobo: null }, // blank = no price shown, never an invented one
+  // The agreed price list. An admin can change any box; a blank box shows no price on the website.
+  prices: {
+    plans: {
+      buka: { monthly_kobo: 500_000, quarterly_kobo: 1_350_000, yearly_kobo: 4_800_000, setup_kobo: 1_000_000, setup_from: false },
+      standard: { monthly_kobo: 1_000_000, quarterly_kobo: 2_700_000, yearly_kobo: 9_600_000, setup_kobo: 1_500_000, setup_from: false },
+      advanced: { monthly_kobo: 2_000_000, quarterly_kobo: 5_400_000, yearly_kobo: 19_200_000, setup_kobo: 2_500_000, setup_from: true },
+    },
+  },
   locked_screen: {
     title: "Your NairaPlate plan has ended",
     intro: "{business} had access until {date}. Your records are safe and nothing has been deleted.",
@@ -53,8 +66,12 @@ export const plain = (max: number, allowed: readonly string[], label: string) =>
 
 const price = z.number().int("Enter a whole number of kobo.").min(100, "A price must be at least ₦1.").max(10_000_000_000, "That price is too large.").nullable();
 
+const planPrice = z.object({ monthly_kobo: price, quarterly_kobo: price, yearly_kobo: price, setup_kobo: price, setup_from: z.boolean() }).strict();
+
 export const SETTING_SCHEMAS = {
-  prices: z.object({ monthly_kobo: price, quarterly_kobo: price, yearly_kobo: price }).strict(),
+  prices: z.object({
+    plans: z.object({ buka: planPrice, standard: planPrice, advanced: planPrice }).strict(),
+  }).strict(),
   locked_screen: z.object({
     title: plain(90, PLACEHOLDERS.locked_screen.title, "Title"),
     intro: plain(300, PLACEHOLDERS.locked_screen.intro, "Opening line (with date)"),
@@ -97,8 +114,34 @@ export function bannerWhen(daysLeft: number): string {
   return daysLeft <= 1 ? "today at 11:59 pm" : daysLeft === 2 ? "tomorrow at 11:59 pm" : `in ${daysLeft - 1} days`;
 }
 
-/** The plan price as the admin types it (whole naira), or "" when no price is set. Used to pre-fill the amount on Record payment. */
-export function planPriceInput(prices: { monthly_kobo: number | null; quarterly_kobo: number | null; yearly_kobo: number | null } | null | undefined, plan: "monthly" | "quarterly" | "yearly"): string {
-  const k = prices?.[`${plan}_kobo` as const];
+/** The price as the admin types it (whole naira), or "" when no price is set. Used to pre-fill the amount on Record payment. */
+export function planPriceInput(prices: Prices | null | undefined, mode: OperatingMode | null | undefined, plan: PlanKey): string {
+  const k = mode ? prices?.plans?.[mode]?.[`${plan}_kobo` as const] : null;
   return typeof k === "number" && k > 0 ? String(k / 100) : "";
+}
+
+/** How much a 3-month or 12-month price saves against paying month by month, as a whole percent. Null when it saves nothing or a price is missing. */
+export function savingPercent(p: PlanPrice, plan: "quarterly" | "yearly"): number | null {
+  const m = p.monthly_kobo, k = p[`${plan}_kobo` as const];
+  if (m === null || k === null) return null;
+  const full = m * (plan === "quarterly" ? 3 : 12);
+  const pct = Math.round((1 - k / full) * 100);
+  return pct > 0 ? pct : null;
+}
+
+/** "₦5,000", or "from ₦25,000" when the admin marked the setup fee as a starting amount. Null when not set. */
+export function setupText(p: PlanPrice): string | null {
+  const f = formatPrice(p.setup_kobo);
+  return f ? (p.setup_from ? `from ${f}` : f) : null;
+}
+
+/** One sentence for the FAQ: "Buka ₦5,000 a month, Restaurant ₦10,000 a month, Full Suite ₦20,000 a month." Empty when no price is set. */
+export function monthlyPricesSentence(prices: Prices): string {
+  const parts = PLAN_MODES.flatMap((m) => { const f = formatPrice(prices.plans[m].monthly_kobo); return f ? [`${PLAN_NAME[m]} ${f} a month`] : []; });
+  return parts.length ? `${parts.join(", ")}.` : "";
+}
+
+export function setupFeesSentence(prices: Prices): string {
+  const parts = PLAN_MODES.flatMap((m) => { const t = setupText(prices.plans[m]); return t ? [`${PLAN_NAME[m]} ${t}`] : []; });
+  return parts.length ? `${parts.join(", ")}.` : "";
 }

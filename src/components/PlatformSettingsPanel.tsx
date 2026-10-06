@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { OperatingMode } from "@/lib/features";
 import {
   DEFAULT_REMINDERS, KIND_LABEL, REMINDER_KINDS, REMINDER_PLACEHOLDERS, REMINDER_SCHEMA, parseDays, type ReminderKind, type ReminderSettings,
 } from "@/lib/reminders";
 import {
-  DEFAULT_SETTINGS, PLACEHOLDERS, SETTING_LABEL, SETTING_SCHEMAS, bannerWhen, formatPrice, nairaTextToKobo, renderTemplate,
+  DEFAULT_SETTINGS, PLACEHOLDERS, SETTING_LABEL, SETTING_SCHEMAS, PLAN_MODES, PLAN_NAME, bannerWhen, formatPrice, nairaTextToKobo, renderTemplate, savingPercent, setupText,
   type ExpiryBannerText, type LockedScreenText, type PlatformSettings, type SettingKey,
 } from "@/lib/platform-settings";
 
@@ -102,30 +103,61 @@ function Card({ k, props, saver, children, onSave, onReset, error }: {
   );
 }
 
+const FIELDS = [["monthly_kobo", "Monthly (₦)"], ["quarterly_kobo", "3 months (₦)"], ["yearly_kobo", "12 months (₦)"], ["setup_kobo", "Setup, paid once (₦)"]] as const;
+type PriceText = Record<OperatingMode, { monthly_kobo: string; quarterly_kobo: string; yearly_kobo: string; setup_kobo: string; setup_from: boolean }>;
+const toText = (v: PlatformSettings["prices"]): PriceText =>
+  Object.fromEntries(PLAN_MODES.map((m) => {
+    const p = v.plans[m];
+    return [m, { monthly_kobo: kobo2text(p.monthly_kobo), quarterly_kobo: kobo2text(p.quarterly_kobo), yearly_kobo: kobo2text(p.yearly_kobo), setup_kobo: kobo2text(p.setup_kobo), setup_from: p.setup_from }];
+  })) as PriceText;
+
 function PricesCard(props: CardProps & { value: PlatformSettings["prices"] }) {
   const saver = useSaver("prices", props);
-  const [t, setT] = useState({ monthly: kobo2text(props.value.monthly_kobo), quarterly: kobo2text(props.value.quarterly_kobo), yearly: kobo2text(props.value.yearly_kobo) });
-  useEffect(() => setT({ monthly: kobo2text(props.value.monthly_kobo), quarterly: kobo2text(props.value.quarterly_kobo), yearly: kobo2text(props.value.yearly_kobo) }), [props.value]);
-  const parsed = { monthly_kobo: nairaTextToKobo(t.monthly), quarterly_kobo: nairaTextToKobo(t.quarterly), yearly_kobo: nairaTextToKobo(t.yearly) };
-  const bad = Object.values(parsed).includes(undefined);
+  const [t, setT] = useState<PriceText>(toText(props.value));
+  useEffect(() => setT(toText(props.value)), [props.value]);
+  const parsed = {
+    plans: Object.fromEntries(PLAN_MODES.map((m) => [m, {
+      monthly_kobo: nairaTextToKobo(t[m].monthly_kobo), quarterly_kobo: nairaTextToKobo(t[m].quarterly_kobo),
+      yearly_kobo: nairaTextToKobo(t[m].yearly_kobo), setup_kobo: nairaTextToKobo(t[m].setup_kobo), setup_from: t[m].setup_from,
+    }])),
+  };
+  const bad = Object.values(parsed.plans).some((p) => Object.values(p).includes(undefined));
   const result = bad ? null : SETTING_SCHEMAS.prices.safeParse(parsed);
-  const error = bad ? "Enter prices as numbers, for example 15000 or 15,000.50. Leave a plan blank to show no price." : result && !result.success ? (result.error.issues[0]?.message ?? "Check the prices.") : null;
+  const error = bad ? "Enter prices as numbers, for example 15000 or 15,000.50. Leave a box blank to show no price." : result && !result.success ? (result.error.issues[0]?.message ?? "Check the prices.") : null;
+  const plans = parsed.plans as PlatformSettings["prices"]["plans"];
   return (
     <Card k="prices" props={props} saver={saver} error={error}
-      onSave={() => saver.run({ action: "save_setting", value: parsed }, "Prices saved. Customers see them on the locked screen.")}
-      onReset={() => saver.run({ action: "reset_setting" }, "Prices cleared. No price is shown.")}>
-      <p className="text-sm text-muted-foreground">Shown on the locked screen. Leave a plan blank and no price is shown for it. A price is never invented.</p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {(["monthly", "quarterly", "yearly"] as const).map((p) => (
-          <div key={p} className="grid gap-1">
-            <Label htmlFor={`price-${p}`} className="capitalize">{p} (₦)</Label>
-            <Input id={`price-${p}`} inputMode="decimal" value={t[p]} onChange={(e) => setT((x) => ({ ...x, [p]: e.target.value }))} placeholder="not set" />
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Preview: {(["monthly", "quarterly", "yearly"] as const).map((p) => `${p[0]!.toUpperCase()}${p.slice(1)} ${formatPrice(parsed[`${p}_kobo`] ?? null) ?? "(no price)"}`).join(" · ")}
+      onSave={() => saver.run({ action: "save_setting", value: parsed }, "Prices saved. The pricing page, FAQ and locked screen show them.")}
+      onReset={() => saver.run({ action: "reset_setting" }, "Prices reset to the standard price list.")}>
+      <p className="text-sm text-muted-foreground">
+        One row of boxes for each plan. They show on the pricing page, in the FAQ and on the locked screen, and fill in the amount when you record a payment.
+        Leave a box blank and no price is shown for it. The "save" percentage on the website is worked out from these prices.
       </p>
+      {PLAN_MODES.map((m) => (
+        <div key={m} className="space-y-2 rounded-lg border border-border p-3">
+          <h3 className="font-semibold text-foreground">{PLAN_NAME[m]}</h3>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {FIELDS.map(([f, label]) => (
+              <div key={f} className="grid gap-1">
+                <Label htmlFor={`price-${m}-${f}`}>{label}</Label>
+                <Input id={`price-${m}-${f}`} inputMode="decimal" value={t[m][f]} placeholder="not set"
+                  onChange={(e) => setT((x) => ({ ...x, [m]: { ...x[m], [f]: e.target.value } }))} />
+              </div>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input type="checkbox" checked={t[m].setup_from} onChange={(e) => setT((x) => ({ ...x, [m]: { ...x[m], setup_from: e.target.checked } }))} />
+            Show the setup fee as "from" (the final amount depends on the kitchen)
+          </label>
+          {!bad && (
+            <p className="text-xs text-muted-foreground">
+              Preview: Monthly {formatPrice(plans[m].monthly_kobo) ?? "(no price)"} · 3 months {formatPrice(plans[m].quarterly_kobo) ?? "(no price)"}
+              {savingPercent(plans[m], "quarterly") ? ` (save ${savingPercent(plans[m], "quarterly")}%)` : ""} · 12 months {formatPrice(plans[m].yearly_kobo) ?? "(no price)"}
+              {savingPercent(plans[m], "yearly") ? ` (save ${savingPercent(plans[m], "yearly")}%)` : ""} · Setup {setupText(plans[m]) ?? "(no price)"}
+            </p>
+          )}
+        </div>
+      ))}
     </Card>
   );
 }

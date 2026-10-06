@@ -3,7 +3,7 @@
 // Tier 2 actions (suspend a business, emergency owner PIN reset) also ask for the admin's
 // own PIN, because a stolen session must never be enough to shut down or take over a kitchen.
 import { PlatformSettingsPanel } from "@/components/PlatformSettingsPanel";
-import { OPERATING_MODES, OVERRIDABLE, asMode, hasFeature } from "@/lib/features";
+import { OPERATING_MODES, OVERRIDABLE, asMode, hasFeature, type OperatingMode } from "@/lib/features";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { planPriceInput, type Prices } from "@/lib/platform-settings";
+import { PLAN_NAME, planPriceInput, type Prices } from "@/lib/platform-settings";
 import { accessState, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
@@ -436,7 +436,7 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
       </div>
 
       {(detail.business.status === "approved" || detail.business.status === "suspended") && (
-        <RecordPayment businessId={detail.business.id} businessName={detail.business.name} suspended={detail.business.status === "suspended"} busy={busy} act={act} />
+        <RecordPayment mode={detail.operating_mode == null ? null : asMode(detail.operating_mode)} businessId={detail.business.id} businessName={detail.business.name} suspended={detail.business.status === "suspended"} busy={busy} act={act} />
       )}
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="features-panel">
@@ -586,8 +586,8 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
   );
 }
 
-function RecordPayment({ businessId, businessName, suspended, busy, act }: {
-  businessId: string; businessName: string; suspended: boolean; busy: boolean; act: Act;
+function RecordPayment({ mode, businessId, businessName, suspended, busy, act }: {
+  mode: OperatingMode | null; businessId: string; businessName: string; suspended: boolean; busy: boolean; act: Act;
 }) {
   const today = lagosDateKey(new Date());
   const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">("monthly");
@@ -609,7 +609,7 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
     });
     return () => { live = false; };
   }, []);
-  useEffect(() => { if (!typed) setAmount(planPriceInput(prices, plan)); }, [plan, prices, typed]);
+  useEffect(() => { if (!typed) setAmount(planPriceInput(prices, mode, plan)); }, [plan, prices, mode, typed]);
 
   useEffect(() => {
     setPreview(null); setPerr(null);
@@ -637,7 +637,7 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
         <div className="space-y-1">
           <Label htmlFor="rp-amt">Amount paid (₦)</Label>
           <Input id="rp-amt" inputMode="decimal" value={amount} onChange={(e) => { setTyped(true); setAmount(e.target.value); }} placeholder="e.g. 15000" />
-          {planPriceInput(prices, plan) && <p className="text-xs text-muted-foreground">Filled in from the {plan} plan price. You can change it.</p>}
+          {mode && planPriceInput(prices, mode, plan) && <p className="text-xs text-muted-foreground">Filled in from the {PLAN_NAME[mode]} {plan} price. You can change it.</p>}
         </div>
         <div className="space-y-1">
           <Label htmlFor="rp-ref">Payment reference</Label>
@@ -653,7 +653,7 @@ function RecordPayment({ businessId, businessName, suspended, busy, act }: {
       {suspended && <p className="text-sm text-amber-900">This business is suspended. Recording a payment does not reactivate it.</p>}
       <Button disabled={busy || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {
         const d = await act(payload, (r) => `Payment saved for ${businessName}. Access now runs until ${formatLagosDate(String(r["period_end"]))}.${r["still_suspended"] ? " The business is still suspended." : ""}`);
-        if (d) { setTyped(false); setAmount(planPriceInput(prices, plan)); setRef(""); }
+        if (d) { setTyped(false); setAmount(planPriceInput(prices, mode, plan)); setRef(""); }
       }}>Save payment</Button>
     </section>
   );
