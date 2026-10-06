@@ -1329,10 +1329,10 @@ td .blank { min-width: 40mm; }
 <tr>
 <td>UAT-LATE-24</td>
 <td>Owner</td>
-<td><strong>Orders</strong></td>
-<td>Cancel a <strong>transfer-only</strong> paper sale that never arrived. Then try to cancel a <strong>split</strong> paper sale whose cash was taken</td>
-<td>The transfer-only one cancels. The split one is refused with "Cash was already taken for this paper sale…"</td>
-<td><strong>L1</strong> is an open decision for the split one. Database rehearsed 6 October</td>
+<td><strong>Orders</strong>, then <strong>Paper sales</strong>, <strong>Awaiting transfer</strong></td>
+<td>Try to cancel a <strong>split</strong> paper sale whose cash was taken (from the Orders screen if a cancel button exists, otherwise note that none does). Then, for a transfer-only paper sale that never arrived, cancel it as an unpaid order</td>
+<td>The split one is refused with "Cash was already taken for this paper sale… mark the transfer as lost if it never arrives." The transfer-only one can be cancelled</td>
+<td>Database rehearsed 6 October. Screen path for cancelling not checked</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1344,6 +1344,39 @@ td .blank { min-width: 40mm; }
 <td>Pick a time earlier than the dish's first recorded price (until 17:40 UTC on 7 October that is between 3 October and the evening of 4 October; later, use a dish created after the sale time), then pick the dish</td>
 <td>The line says "no menu price then", a red box explains why, and <strong>Send to owner for approval</strong> stays grey. If the entry is sent anyway (for example from an older screen) it is refused, naming the dish and the date its first price starts. It is never priced at the earliest or at today's price</td>
 <td><strong>D7</strong> and <strong>D9</strong> closed (checks read live; rehearsal 6 October). Screen preview not yet tried by a person</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-26</td>
+<td>Owner</td>
+<td><strong>Paper sales</strong>, <strong>Awaiting transfer</strong></td>
+<td>Open a posted <strong>split</strong> paper sale. Press <strong>The transfer never arrived</strong>. Type <code>too short</code> (grey button), then <code>Customer promised, never paid after 3 days</code>. Press <strong>Mark transfer as lost</strong> and OK the question</td>
+<td>The sale leaves the Awaiting transfer tab. Its card says <strong>Transfer lost</strong> and that the cash was kept. <strong>Orders</strong> shows "Transfer lost (cash kept)". The reason is in <strong>Audit trail</strong> ("paper_transfer_lost"). It cannot be confirmed, cancelled or refunded afterwards</td>
+<td>Screen built 6 October, not yet released or tried by a person. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-27</td>
+<td>Owner, then Cashier</td>
+<td>Same</td>
+<td>Look for <strong>The transfer never arrived</strong> on a <strong>transfer-only</strong> paper sale, and as a <strong>Cashier</strong> on a split sale</td>
+<td>A transfer-only sale has no such button (cancel it as an unpaid order instead). A cashier sees "Waiting for an owner to confirm the transfer." and no lost button</td>
+<td>Screen not yet tried by a person</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-28</td>
+<td>Owner</td>
+<td><strong>Cash drawer</strong></td>
+<td>Before and after marking a split sale's transfer lost, look at the open or closed shift's expected cash for the shift that sale belongs to</td>
+<td>The cash part counts in that shift both before and after. Nothing changes in the drawer when the transfer is marked lost</td>
+<td>Expected-cash change not yet released</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1361,7 +1394,7 @@ td .blank { min-width: 40mm; }
 </tr>
 </tbody>
 </table>
-<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 25. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4 and D6 fixed and re-tested: yes / no.</p>
+<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 28. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4 and D6 fixed and re-tested: yes / no.</p>
 <h2>Module F. Dish price history (after release)</h2>
 <p>Do not run this module until the price-history screen is released. Owner only, except UAT-PRICE-08.</p>
 <table class="pf">

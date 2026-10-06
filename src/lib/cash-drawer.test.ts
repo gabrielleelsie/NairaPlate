@@ -83,6 +83,10 @@ describe("expectedDrawerCash", () => {
     const r = await expectedDrawerCash(fake({ orders: [paperOrder({ cash_amount_kobo: 50000, status: "awaiting_payment", payment_method: "split" })], late_entries: [paperEntry()] }), drawer, "2026-10-01T20:00:00Z");
     expect(r.cash_sales_kobo).toBe(50000);
   });
+  it("keeps counting the cash of a split paper sale whose transfer was closed as lost", async () => {
+    const r = await expectedDrawerCash(fake({ orders: [paperOrder({ cash_amount_kobo: 50000, status: "transfer_lost", payment_method: "split" })], late_entries: [paperEntry()] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.cash_sales_kobo).toBe(50000);
+  });
   it("does not count a cancelled paper sale", async () => {
     const r = await expectedDrawerCash(fake({ orders: [paperOrder({ status: "cancelled" })], late_entries: [paperEntry()] }), drawer, "2026-10-01T20:00:00Z");
     expect(r.cash_sales_kobo).toBe(0);

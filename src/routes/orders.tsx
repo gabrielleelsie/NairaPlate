@@ -30,7 +30,7 @@ type Adj = { id: string; order_id: string; type: string; original_amount_kobo: n
 type Order = { id: string; total_kobo: number; status: string; payment_method: string; channel: string | null; created_by: string | null; created_at: string; is_late_entry?: boolean; actual_sold_at?: string | null; paper_reference?: string | null; late_delay_seconds?: number | null; late_approved_by?: string | null; order_adjustments: Adj[] };
 type Kind = "void" | "full_refund" | "partial_refund";
 const TYPE_LABEL: Record<string, string> = { void: "Void", full_refund: "Full refund", partial_refund: "Part refund" };
-const STATUS_LABEL: Record<string, string> = { paid: "Paid", cancelled: "Voided", refunded: "Refunded", partially_refunded: "Part refunded", draft: "Draft" };
+const STATUS_LABEL: Record<string, string> = { paid: "Paid", cancelled: "Voided", refunded: "Refunded", partially_refunded: "Part refunded", draft: "Draft", awaiting_payment: "Awaiting payment", transfer_lost: "Transfer lost (cash kept)" };
 
 const ref = (id: string) => `#${id.slice(0, 8)}`;
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
