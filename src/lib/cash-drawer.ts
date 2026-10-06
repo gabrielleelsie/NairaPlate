@@ -16,7 +16,7 @@ export const sumKobo = (rows: { amount_kobo: unknown }[] | null | undefined): nu
  * - cash paid out of the drawer on this shift (payout entries minus reversals; waiting requests and declines do not count).
  * Voided ('cancelled') and fully 'refunded' orders add nothing. A partial refund comes out of the cash portion (never more than the cash taken).
  * PAPER (late) sales are counted by the shift they really happened in, never by when they were approved: a paper sale posted straight to
- * THIS shift ("open_shift_direct") adds its cash portion (also while a split sale still waits for its transfer, because the cash was taken);
+ * THIS shift ("open_shift_direct") adds its cash portion (also while a split sale still waits for its transfer, and after its transfer was closed as lost, because the cash was taken and kept);
  * every other paper sale (closed shift, outside any shift) adds nothing here, because its cash is already in a closed count, an owner adjustment,
  * or belongs to no shift. A paper sale is never counted just because it was approved while this shift was open.
  * Catering and debt reversals are entries too, with the same method and a minus amount, so a payment reversed inside the window nets to nothing.
@@ -41,7 +41,7 @@ export async function expectedDrawerCash(
   const { data: paperOrders, error: po } = paperIds.length
     ? await supabase.from("orders").select("id,cash_amount_kobo")
         .eq("business_id", drawer.business_id).in("id", paperIds).in("payment_method", ["cash", "split"])
-        .in("status", ["paid", "partially_refunded", "awaiting_payment"])
+        .in("status", ["paid", "partially_refunded", "awaiting_payment", "transfer_lost"])
     : { data: [], error: null };
   if (po) throw new Error("Could not read paper sales.");
   const orders = [...(till ?? []), ...(paperOrders ?? [])];

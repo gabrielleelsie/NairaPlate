@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvalArgs, approvalProblem, awaitingTransfer, RESOLUTION_LABEL, shiftSituation, transferProblem } from "./late-entry-rules";
+import { approvalArgs, approvalProblem, awaitingTransfer, canMarkLost, isTransferLost, lostProblem, RESOLUTION_LABEL, shiftSituation, transferProblem } from "./late-entry-rules";
 
 const withShift = { source_shift_id: "s1", status: "submitted" };
 describe("shiftSituation", () => {
@@ -51,5 +51,27 @@ describe("transfer confirmation", () => {
   });
   it("labels every way a paper sale can be resolved", () => {
     for (const k of ["open_shift_direct", "closed_shift_included", "closed_shift_late_cash", "outside_shift_cash"]) expect(RESOLUTION_LABEL[k]).toBeTruthy();
+  });
+});
+
+describe("transfer lost", () => {
+  it("needs a reason of 10 characters", () => {
+    expect(lostProblem("too short")).toMatch(/at least 10/);
+    expect(lostProblem("  Customer never paid, 3 days  ")).toBeNull();
+  });
+  it("applies only to a split sale that still waits for its transfer and has cash taken", () => {
+    const split = { status: "posted", cash_kobo: 50000, transfer_kobo: 50000 };
+    expect(canMarkLost(split, "awaiting_payment")).toBe(true);
+    expect(canMarkLost({ ...split, cash_kobo: "50000" }, "awaiting_payment")).toBe(true);
+    expect(canMarkLost({ ...split, cash_kobo: 0 }, "awaiting_payment")).toBe(false); // transfer-only: cancel instead
+    expect(canMarkLost(split, "paid")).toBe(false);
+    expect(canMarkLost(split, "transfer_lost")).toBe(false);
+    expect(canMarkLost({ ...split, status: "rejected" }, undefined)).toBe(false);
+  });
+  it("recognises a sale closed as transfer lost, and it no longer waits for a transfer", () => {
+    const split = { status: "posted", cash_kobo: 50000, transfer_kobo: 50000 };
+    expect(isTransferLost(split, "transfer_lost")).toBe(true);
+    expect(isTransferLost(split, "awaiting_payment")).toBe(false);
+    expect(awaitingTransfer(split, "transfer_lost")).toBe(false);
   });
 });
