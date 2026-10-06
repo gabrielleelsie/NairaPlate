@@ -285,6 +285,13 @@ export function SiteHeader() {
             Our Story
           </Link>
           <Link
+            to="/pricing"
+            className="np-text-link np-hide-sm"
+            style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
+          >
+            Pricing
+          </Link>
+          <Link
             to="/resources"
             className="np-text-link np-hide-sm"
             style={{ color: C.navy, fontSize: 16, fontWeight: 600, textDecoration: "none" }}
@@ -326,6 +333,7 @@ export function SiteHeader() {
             <div className="np-phone-menu-links">
               <Link to="/our-story" onClick={closeMenu}>Our Story</Link>
               <Link to="/presentation" onClick={closeMenu}>Product Tour</Link>
+              <Link to="/pricing" onClick={closeMenu}>Pricing</Link>
               <Link to="/resources" onClick={closeMenu}>Resources</Link>
               <Link to="/faq" onClick={closeMenu}>FAQ</Link>
               <Link to="/contact" onClick={closeMenu}>Contact</Link>
@@ -362,6 +370,7 @@ export function SiteFooter() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
           <Link to="/our-story" className="np-footer-link" style={linkStyle}>Our Story</Link>
           <Link to="/presentation" className="np-footer-link" style={linkStyle}>Product Tour</Link>
+          <Link to="/pricing" className="np-footer-link" style={linkStyle}>Pricing</Link>
           <Link to="/resources" className="np-footer-link" style={linkStyle}>Resources</Link>
           <Link to="/faq" className="np-footer-link" style={linkStyle}>FAQ</Link>
           <Link to="/contact" className="np-footer-link" style={linkStyle}>Contact</Link>

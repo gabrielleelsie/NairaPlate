@@ -35,6 +35,7 @@ import { Route as PaymentsGuideRouteImport } from './routes/payments-guide'
 import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as PresentationRouteImport } from './routes/presentation'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as RecipesRouteImport } from './routes/recipes'
 import { Route as ReportRouteImport } from './routes/report'
@@ -194,6 +195,11 @@ const PosRoute = PosRouteImport.update({
 const PresentationRoute = PresentationRouteImport.update({
   id: '/presentation',
   path: '/presentation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PurchasesRoute = PurchasesRouteImport.update({
@@ -379,6 +385,7 @@ export interface FileRoutesByFullPath {
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
+  '/pricing': typeof PricingRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
@@ -437,6 +444,7 @@ export interface FileRoutesByTo {
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
+  '/pricing': typeof PricingRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/payouts': typeof PayoutsRoute
   '/pos': typeof PosRoute
   '/presentation': typeof PresentationRoute
+  '/pricing': typeof PricingRoute
   '/purchases': typeof PurchasesRoute
   '/recipes': typeof RecipesRoute
   '/report': typeof ReportRoute
@@ -556,6 +565,7 @@ export interface FileRouteTypes {
     | '/payouts'
     | '/pos'
     | '/presentation'
+    | '/pricing'
     | '/purchases'
     | '/recipes'
     | '/report'
@@ -614,6 +624,7 @@ export interface FileRouteTypes {
     | '/payouts'
     | '/pos'
     | '/presentation'
+    | '/pricing'
     | '/purchases'
     | '/recipes'
     | '/report'
@@ -672,6 +683,7 @@ export interface FileRouteTypes {
     | '/payouts'
     | '/pos'
     | '/presentation'
+    | '/pricing'
     | '/purchases'
     | '/recipes'
     | '/report'
@@ -731,6 +743,7 @@ export interface RootRouteChildren {
   PayoutsRoute: typeof PayoutsRoute
   PosRoute: typeof PosRoute
   PresentationRoute: typeof PresentationRoute
+  PricingRoute: typeof PricingRoute
   PurchasesRoute: typeof PurchasesRoute
   RecipesRoute: typeof RecipesRoute
   ReportRoute: typeof ReportRoute
@@ -945,6 +958,13 @@ declare module '@tanstack/react-router' {
       path: '/presentation'
       fullPath: '/presentation'
       preLoaderRoute: typeof PresentationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/purchases': {
@@ -1187,6 +1207,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayoutsRoute: PayoutsRoute,
   PosRoute: PosRoute,
   PresentationRoute: PresentationRoute,
+  PricingRoute: PricingRoute,
   PurchasesRoute: PurchasesRoute,
   RecipesRoute: RecipesRoute,
   ReportRoute: ReportRoute,
