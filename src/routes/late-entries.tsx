@@ -298,7 +298,7 @@ function NewEntry({ onDone }: { onDone: () => void }) {
     if (!iso) return;
     const ids = [...new Set(lines.map((l) => l.recipe_id).filter(Boolean))];
     Promise.all(ids.map(async (id) => {
-      const { data } = await supabase.rpc("dish_price_at", { p_dish: id, p_at: iso });
+      const { data } = await supabase.rpc("dish_price_strict", { p_dish: id, p_at: iso });
       const row = Array.isArray(data) ? data[0] : data;
       return [id, row?.price_kobo != null ? Number(row.price_kobo) : null] as const;
     })).then((r) => setPrices(Object.fromEntries(r)));
@@ -307,7 +307,8 @@ function NewEntry({ onDone }: { onDone: () => void }) {
   const total = useMemo(() => lines.reduce((s, l) => s + Math.round((prices[l.recipe_id] ?? 0) * (Number(l.quantity) || 0)), 0), [lines, prices]);
   const cashK = pay === "cash" ? total : pay === "transfer" ? 0 : nairaToKobo(cashN);
   const trK = total - cashK;
-  const ok = paper.trim().length >= 2 && reason.trim().length >= 3 && iso && lines.every((l) => l.recipe_id && Number(l.quantity) > 0) && total > 0 && (pay !== "split" || (cashK > 0 && trK > 0));
+  const missingPrice = lines.filter((l) => l.recipe_id && iso && prices[l.recipe_id] == null).map((l) => dishes.find((d) => d.id === l.recipe_id)?.name ?? "a dish");
+  const ok = paper.trim().length >= 2 && reason.trim().length >= 3 && iso && lines.every((l) => l.recipe_id && Number(l.quantity) > 0) && total > 0 && missingPrice.length === 0 && (pay !== "split" || (cashK > 0 && trK > 0));
 
   async function submit() {
     setBusy(true); setMsg("");
@@ -344,7 +345,7 @@ function NewEntry({ onDone }: { onDone: () => void }) {
               {dishes.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             <Input aria-label="Quantity" className="w-20" inputMode="decimal" value={l.quantity} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)))} />
-            <span className="w-24 text-right text-sm">{l.recipe_id && iso ? (prices[l.recipe_id] == null ? "no price then" : formatNaira(prices[l.recipe_id]!)) : ""}</span>
+            <span className="w-24 text-right text-sm">{l.recipe_id && iso ? (prices[l.recipe_id] == null ? "no menu price then" : formatNaira(prices[l.recipe_id]!)) : ""}</span>
             {lines.length > 1 && <Button size="sm" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</Button>}
           </div>
         ))}
@@ -356,6 +357,7 @@ function NewEntry({ onDone }: { onDone: () => void }) {
       {pay === "split" && <div className="space-y-1"><Label htmlFor="cash">Cash part (₦) — transfer is the rest ({formatNaira(Math.max(0, trK))})</Label><Input id="cash" inputMode="decimal" value={cashN} onChange={(e) => setCashN(e.target.value)} /></div>}
       {pay !== "cash" && <p className="text-xs text-muted-foreground">Transfer stays pending until confirmed. Writing "transfer" on paper does not make it paid.</p>}
       <div className="space-y-1"><Label htmlFor="notes">Notes (optional)</Label><Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+      {missingPrice.length > 0 && <p className="rounded border-2 border-destructive/40 p-2 text-sm">There was no menu price on record at that time for {[...new Set(missingPrice)].join(", ")}, so this sale cannot be entered. A later price, or today's price, is never used for an earlier sale.</p>}
       <p className="font-medium">Total at the sale time: {formatNaira(total)}</p>
       {msg && <p className="text-destructive">{msg}</p>}
       <Button disabled={busy || !ok} onClick={submit}>Send to owner for approval</Button>

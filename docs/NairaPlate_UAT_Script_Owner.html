@@ -26,7 +26,7 @@ td .blank { min-width: 40mm; }
 <strong>How long:</strong> about 90 minutes for Parts 0 to 7b, which run on the live site today. Modules D, E and F take longer and can only be run after the offline, paper-entry and price-history screens are released (see the box below). You can stop after any part and carry on later.
 <strong>Where:</strong> use the live app in a browser. Test business code: <code>demo-kitchen</code>. Everything you do is test data. Reversals are final, so use test entries only.</p>
 <p><strong>How to use it:</strong> do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick <strong>Pass</strong> or <strong>Fail</strong>. If a step fails, write what you saw (the exact words of any message) in the margin next to the step and move on.</p>
-<p><strong>Which parts can you run today?</strong> Parts 0 to 7b and Part 8 work on the live site now. <strong>Modules D, E, F and G are not runnable yet.</strong> Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix <code>20261102_hygiene_after_late_entries.sql</code> must be applied (Master Specification R1); (2) the paper-entry screens must be changed to match the rules decided on 5 October (a Confirm transfer button, "cash outside any shift", an estimated selling price) and defects D4 and D9 decided (Part 9 of the specification); (3) the rehearsal <code>rehearsal_phase0_prices.sql</code> must be run and clean. Tests marked <strong>Known defect</strong> in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.</p>
+<p><strong>Which parts can you run today?</strong> Parts 0 to 7b and Part 8 work on the live site. <strong>Modules D, E, F and G are now on the live site too</strong> (released on 6 October 2026) and none of them has been tried by a person yet, so run them in <strong>Demo Kitchen</strong>, not on a real business. Before Module E: open a shift in Demo Kitchen (tests that need an open shift cannot run without one), and keep one earlier shift closed with a count. Module E also needs the transfer and "cash outside any shift" steps, which are on the paper-sales screen. The strict-price preview on the entry screen (UAT-LATE-25) is written and not yet released. Tests with a <strong>Known defect</strong> note are expected to fail until that item is fixed; they are there so the fix can be proved.</p>
 <p>Menu names below are the ones on the app's home screen. The home screen groups them as <strong>Sell</strong>, <strong>Buy &amp; Stock</strong>, <strong>Kitchen</strong> and <strong>Oversight</strong>. The "Home" link at the top of every screen takes you back.</p>
 <hr />
 <h2>Part 0. Before you start (5 minutes)</h2>
@@ -1341,9 +1341,9 @@ td .blank { min-width: 40mm; }
 <td>UAT-LATE-25</td>
 <td>Cashier</td>
 <td><strong>Enter paper sale</strong></td>
-<td>Enter a paper sale for a dish that has no price on record at the sale time</td>
-<td>Refused, naming the dish. It is never priced at ₦1,500.00</td>
-<td><strong>D7</strong> closed (check read live). <strong>D9:</strong> a sale before the dish's first recorded price is still priced at the earliest price until D9 is built</td>
+<td>Pick a time earlier than the dish's first recorded price (until 17:40 UTC on 7 October that is between 3 October and the evening of 4 October; later, use a dish created after the sale time), then pick the dish</td>
+<td>The line says "no menu price then", a red box explains why, and <strong>Send to owner for approval</strong> stays grey. If the entry is sent anyway (for example from an older screen) it is refused, naming the dish and the date its first price starts. It is never priced at the earliest or at today's price</td>
+<td><strong>D7</strong> and <strong>D9</strong> closed (checks read live; rehearsal 6 October). Screen preview not yet tried by a person</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1361,7 +1361,7 @@ td .blank { min-width: 40mm; }
 </tr>
 </tbody>
 </table>
-<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 25. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4, D6 and D9 fixed and re-tested: yes / no.</p>
+<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 25. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4 and D6 fixed and re-tested: yes / no.</p>
 <h2>Module F. Dish price history (after release)</h2>
 <p>Do not run this module until the price-history screen is released. Owner only, except UAT-PRICE-08.</p>
 <table class="pf">
