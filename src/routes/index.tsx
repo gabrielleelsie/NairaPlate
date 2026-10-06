@@ -761,7 +761,7 @@ function LiveCalculator() {
 
 const TRIAL_POINTS = [
   "7 days free on the plan that suits your kitchen.",
-  "Our team sets up your recipes and market-unit conversions with you, so you're not starting from a blank screen.",
+  "Our team shows you how it works, and sets up your full menu with you when you start a paid plan, so you're not starting from a blank screen.",
   "See today's sales, food cost and profit on your owner dashboard any time during the trial, so you see the value before you're asked to pay.",
 ];
 
