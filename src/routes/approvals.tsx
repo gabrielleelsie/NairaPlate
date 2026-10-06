@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { type Prices } from "@/lib/platform-settings";
+import { PLAN_NAME, type Prices } from "@/lib/platform-settings";
 import { DIFFERENCE_REASON_MIN, expectedPayment } from "@/lib/payment-check";
 import { accessState, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
@@ -44,6 +44,7 @@ type Biz = {
 type Payment = {
   id: string; plan: string; amount_kobo: number; payment_reference: string; paid_on: string;
   period_start: string; period_end: string; recorded_by_name: string; created_at: string;
+  operating_mode?: string | null; setup_fee_kobo?: number | null; difference_reason?: string | null;
 };
 type StaffRow = {
   id: string; display_name: string; role: string; is_active: boolean;
@@ -486,7 +487,8 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
         <ul className="space-y-1 text-sm">
           {(detail.payments ?? []).map((p) => (
             <li key={p.id} className="text-muted-foreground">
-              <span className="text-foreground">{formatLagosDate(p.paid_on + "T12:00:00Z")}</span> · {PLAN_LABEL[p.plan] ?? p.plan} · {naira(Number(p.amount_kobo))} · ref {p.payment_reference}
+              <span className="text-foreground">{formatLagosDate(p.paid_on + "T12:00:00Z")}</span> · {p.operating_mode ? `${PLAN_NAME[asMode(p.operating_mode)]} ` : ""}{PLAN_LABEL[p.plan] ?? p.plan} · {naira(Number(p.amount_kobo))}{Number(p.setup_fee_kobo ?? 0) > 0 ? ` (includes setup ${naira(Number(p.setup_fee_kobo))})` : ""} · ref {p.payment_reference}
+              {p.difference_reason ? <> · <span className="text-amber-900">different from price list: {p.difference_reason}</span></> : null}
               {" "}— covers {formatLagosDate(p.period_start)} to {formatLagosDate(p.period_end)} · recorded by {p.recorded_by_name}
             </li>
           ))}
