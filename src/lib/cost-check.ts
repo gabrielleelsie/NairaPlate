@@ -2,6 +2,7 @@
 // computeCostCheck() is a pure function (easy to test). loadCostCheck() fetches the rows and calls it, and works
 // with the browser client (owner screen) or the service client (daily email), the same way calculateBusinessPnl does.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { receivedShare, TRANSFER_LOST } from "@/lib/order-revenue";
 import { computeRecipeCost, type CostConversion, type CostIngredient, type CostRecipeItem } from "@/lib/costing";
 import { compareVariants, type RecipeVariant } from "@/lib/variants";
 import { DAY_MS, LAGOS_OFFSET_MS, lagosDateKey, lagosDayStart } from "@/lib/lagos-time";
@@ -16,7 +17,8 @@ export type RecipeRow = {
 };
 export type IngredientRow = CostIngredient & { price_updated_at: string | null; current_season: string | null };
 export type OrderLine = { recipe_id: string; recipe_version_id: string | null; quantity: number; unit_price_kobo: number; cost_per_plate_kobo: number | string | null };
-export type OrderRow = { id: string; created_at: string; order_items: OrderLine[] | null };
+// sale_share: the fraction of the order's value that was received (1 normally; less for a paper sale whose transfer never arrived).
+export type OrderRow = { id: string; created_at: string; order_items: OrderLine[] | null; sale_share?: number };
 
 export type DishSales = { name: string; plates: number; sales_kobo: number; cost_kobo: number; profit_kobo: number };
 export type DayStats = {
@@ -93,7 +95,7 @@ function dayStats(
       const vid = it.recipe_version_id ?? it.recipe_id;
       const name = nameOf.get(vid) ?? nameOf.get(it.recipe_id) ?? "A sold dish";
       const q = Number(it.quantity);
-      const lineSales = Number(it.unit_price_kobo) * q;
+      const lineSales = Number(it.unit_price_kobo) * q * (o.sale_share ?? 1);
       let cost: number;
       if (it.cost_per_plate_kobo !== null && it.cost_per_plate_kobo !== undefined) cost = Number(it.cost_per_plate_kobo) * q;
       else {
@@ -207,14 +209,20 @@ export function staleIngredients(ingredients: { id: string; name: string; price_
 }
 
 /** Fetches everything and runs computeCostCheck. `staleOnly` is for roles that may not read recipes or sales. */
+/** Rows as read from the database -> order rows with the share of their value that was received. */
+function withShare(rows: unknown): OrderRow[] {
+  return ((rows ?? []) as (OrderRow & { status: string; total_kobo: unknown; cash_amount_kobo?: unknown; transfer_amount_kobo?: unknown })[])
+    .map((o) => ({ ...o, sale_share: receivedShare(o) }));
+}
+
 export async function loadCostCheck(supabase: SupabaseClient, business_id: string, now = new Date()): Promise<CostCheck> {
   const yKey = lagosDateKey(new Date(lagosDayStart(now).getTime() - 1));
   const todayStart = lagosDayStart(now);
   const weekFrom = new Date(todayStart.getTime() - 7 * DAY_MS);
   const lm = dayRange(sameDayLastMonth(yKey));
   const ordersQ = (from: Date, to: Date) => supabase.from("orders")
-    .select("id,created_at,order_items(recipe_id,recipe_version_id,quantity,unit_price_kobo,cost_per_plate_kobo)")
-    .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
+    .select("id,created_at,status,total_kobo,cash_amount_kobo,transfer_amount_kobo,order_items(recipe_id,recipe_version_id,quantity,unit_price_kobo,cost_per_plate_kobo)")
+    .eq("business_id", business_id).in("status", ["paid", "partially_refunded", TRANSFER_LOST])
     .gte("created_at", from.toISOString()).lt("created_at", to.toISOString());
 
   const [recipes, items, ings, convs, gp, biz, week, lastMonth, vr] = await Promise.all([
@@ -240,8 +248,8 @@ export async function loadCostCheck(supabase: SupabaseClient, business_id: strin
     items: (items.data ?? []).map((i) => ({ ...i, quantity: Number(i.quantity) })) as (CostRecipeItem & { recipe_id: string })[],
     ingredients: (ings.data ?? []).map((i) => ({ ...i, current_cost_kobo: Number(i.current_cost_kobo), grade_prices: gradeByIng.get(i.id) })) as IngredientRow[],
     conversions: (convs.data ?? []).map((c) => ({ ...c, base_qty: Number(c.base_qty) })),
-    week_orders: (week.data ?? []) as unknown as OrderRow[],
-    last_month_orders: (lastMonth.data ?? []) as unknown as OrderRow[],
+    week_orders: withShare(week.data),
+    last_month_orders: withShare(lastMonth.data),
     variants: vr.error ? [] : ((vr.data ?? []).map((v) => ({ ...v, yield_portions: Number(v.yield_portions) })) as RecipeVariant[]),
   });
 }

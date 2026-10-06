@@ -55,6 +55,18 @@ const order = (id: string, at: string, lines: [string, number, number, number | 
 });
 const base = { now, recipes, items, ingredients: [tomato, rice, unused], conversions: [] };
 
+describe("a paper sale whose transfer never arrived", () => {
+  it("counts every plate but only the share of the sales that was received", () => {
+    const full = order("1", "2026-09-30T10:00:00Z", [["j", 10, 400000, 250000]]);
+    const lost = { ...order("2", "2026-09-30T11:00:00Z", [["j", 10, 400000, 250000]]), sale_share: 0.4 };
+    const c = computeCostCheck({ ...base, target_margin_bps: 4100, week_orders: [full, lost], last_month_orders: [] });
+    const day = c.yesterday;
+    expect(day.plates).toBe(20);
+    expect(day.sales_kobo).toBe(4000000 + 1600000); // 10 plates at full price + 10 plates at 40% received
+    expect(day.profit_kobo).toBe(4000000 + 1600000 - 5000000); // the food cost is counted in full for both
+  });
+});
+
 describe("computeCostCheck", () => {
   it("flags a dish 3+ points under target, with a what-if at another grade and a weekly estimate", () => {
     const week = [order("1", "2026-09-30T10:00:00Z", [["j", 10, 400000, 250000]])];

@@ -13,6 +13,7 @@
 // Multi-admin by design: actor_id / actor_name on every audit row is the individual
 // administrator who acted, never a shared "platform" identity.
 import { createFileRoute } from "@tanstack/react-router";
+import { receivedKobo } from "@/lib/order-revenue";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
 import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation, sendExpiryReminderEmail } from "@/lib/email.server";
@@ -649,7 +650,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const [bizRes, staffRes, ordersRes, flagsRes, auditRes, opsRes] = await Promise.all([
             admin.from("businesses").select("id, name, status, plan, access_ends_at").neq("id", PLATFORM_BUSINESS),
             admin.from("staff_users").select("business_id, display_name, role, is_active, locked_until").neq("business_id", PLATFORM_BUSINESS),
-            admin.from("orders").select("business_id, total_kobo, status, created_at").gte("created_at", weekAgo),
+            admin.from("orders").select("business_id, total_kobo, status, cash_amount_kobo, transfer_amount_kobo, created_at").gte("created_at", weekAgo),
             admin.from("margin_flags").select("business_id, flag_type, severity, message, created_at").eq("acknowledged", false)
               .order("created_at", { ascending: false }).limit(200),
             admin.from("audit_logs").select("business_id, action, created_at").gte("created_at", dayAgo).limit(2000),
@@ -673,8 +674,8 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const lockedStaff = staff.filter((s) => Number(s.locked_until ?? 0) > now);
           const paidOrders = orders.filter((o) => o.status !== "voided" && o.status !== "cancelled");
           const gmvToday = paidOrders.filter((o) => o.created_at >= startOfToday)
-            .reduce((n, o) => n + Number(o.total_kobo ?? 0), 0);
-          const gmvWeek = paidOrders.reduce((n, o) => n + Number(o.total_kobo ?? 0), 0);
+            .reduce((n, o) => n + receivedKobo(o), 0);
+          const gmvWeek = paidOrders.reduce((n, o) => n + receivedKobo(o), 0);
           const ordersToday = paidOrders.filter((o) => o.created_at >= startOfToday).length;
 
           // Businesses that need a human look right now.
