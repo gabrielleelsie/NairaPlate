@@ -2,13 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { adjustedCount, adjustedDiscrepancy, adjustmentDelta, canAdjust, canForceClose, expectedDrawerCash, normaliseShifts, reasonOk, shiftLabel, sumKobo, type ShiftAdjustment, type ShiftRow } from "./cash-drawer";
 
-// A tiny stand-in for the database client: every filter is accepted and the table's rows come back.
+// A tiny stand-in for the database client. The table's rows come back; a filter only removes a row when the row has that field,
+// so older tests (rows with just the amounts) are unaffected. ".or(...)" is the "not a paper sale" rule: rows marked is_late_entry are dropped.
 function fake(tables: Record<string, unknown[]>, failing: string[] = []): SupabaseClient {
   return {
     from(t: string) {
+      let rows = [...(tables[t] ?? [])] as Record<string, unknown>[];
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "gte", "lte"]) q[m] = () => q;
-      q["then"] = (res: (v: unknown) => unknown) => Promise.resolve(failing.includes(t) ? { data: null, error: { message: "x" } } : { data: tables[t] ?? [], error: null }).then(res);
+      q["select"] = () => q;
+      q["gte"] = () => q;
+      q["lte"] = () => q;
+      q["eq"] = (col: string, val: unknown) => { rows = rows.filter((r) => !(col in r) || r[col] === val); return q; };
+      q["in"] = (col: string, vals: unknown[]) => { rows = rows.filter((r) => !(col in r) || vals.includes(r[col])); return q; };
+      q["or"] = () => { rows = rows.filter((r) => r["is_late_entry"] !== true); return q; };
+      q["then"] = (res: (v: unknown) => unknown) => Promise.resolve(failing.includes(t) ? { data: null, error: { message: "x" } } : { data: rows, error: null }).then(res);
       return q;
     },
   } as unknown as SupabaseClient;
@@ -53,6 +60,40 @@ describe("expectedDrawerCash", () => {
   });
   it("refuses to give an answer when cash payouts cannot be read", async () => {
     await expect(expectedDrawerCash(fake({}, ["cash_drawer_payouts"]), drawer, "2026-10-01T20:00:00Z")).rejects.toThrow("Could not read cash payouts.");
+  });
+  // Paper (late) sales: counted by the shift they really happened in, never by when they were approved.
+  const paperOrder = (o: Record<string, unknown> = {}) => ({ id: "p1", cash_amount_kobo: 150000, is_late_entry: true, status: "paid", payment_method: "cash", ...o });
+  const paperEntry = (o: Record<string, unknown> = {}) => ({ posted_order_id: "p1", source_shift_id: "d1", status: "posted", shift_resolution: "open_shift_direct", ...o });
+  it("counts a paper sale posted straight to this shift, once", async () => {
+    const r = await expectedDrawerCash(fake({ orders: [paperOrder()], late_entries: [paperEntry()] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.cash_sales_kobo).toBe(150000); expect(r.expected_cash_kobo).toBe(350000);
+  });
+  it("does not count a paper sale just because it was approved while this shift was open", async () => {
+    // its real shift was another one (closed): the cash is already in that shift's count or an adjustment
+    const r = await expectedDrawerCash(fake({ orders: [paperOrder()], late_entries: [paperEntry({ source_shift_id: "d0", shift_resolution: "closed_shift_included" })] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.cash_sales_kobo).toBe(0);
+  });
+  it("does not count cash that belongs to no shift (outside_shift_cash), nor late cash added to a closed shift", async () => {
+    for (const res of ["outside_shift_cash", "closed_shift_late_cash"]) {
+      const r = await expectedDrawerCash(fake({ orders: [paperOrder()], late_entries: [paperEntry({ shift_resolution: res })] }), drawer, "2026-10-01T20:00:00Z");
+      expect(r.cash_sales_kobo).toBe(0);
+    }
+  });
+  it("counts the cash part of a split paper sale that still waits for its transfer", async () => {
+    const r = await expectedDrawerCash(fake({ orders: [paperOrder({ cash_amount_kobo: 50000, status: "awaiting_payment", payment_method: "split" })], late_entries: [paperEntry()] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.cash_sales_kobo).toBe(50000);
+  });
+  it("does not count a cancelled paper sale", async () => {
+    const r = await expectedDrawerCash(fake({ orders: [paperOrder({ status: "cancelled" })], late_entries: [paperEntry()] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.cash_sales_kobo).toBe(0);
+  });
+  it("takes a part refund off a paper sale's cash too, and adds it to till sales", async () => {
+    const r = await expectedDrawerCash(fake({ orders: [{ id: "o1", cash_amount_kobo: 100000 }, paperOrder({ status: "partially_refunded" })], late_entries: [paperEntry()],
+      order_adjustments: [{ order_id: "p1", adjustment_amount_kobo: 40000 }] }), drawer, "2026-10-01T20:00:00Z");
+    expect(r.cash_sales_kobo).toBe(100000 + 110000);
+  });
+  it("refuses to give an answer when paper sales cannot be read", async () => {
+    await expect(expectedDrawerCash(fake({}, ["late_entries"]), drawer, "2026-10-01T20:00:00Z")).rejects.toThrow("Could not read paper sales.");
   });
   it("sumKobo copes with nothing and with text numbers", () => { expect(sumKobo(null)).toBe(0); expect(sumKobo([{ amount_kobo: "5" }, { amount_kobo: 7 }])).toBe(12); });
 });
