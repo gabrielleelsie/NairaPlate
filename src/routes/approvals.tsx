@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { PLAN_NAME, planPriceInput, type Prices } from "@/lib/platform-settings";
+import { type Prices } from "@/lib/platform-settings";
+import { DIFFERENCE_REASON_MIN, expectedPayment } from "@/lib/payment-check";
 import { accessState, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
@@ -594,13 +595,21 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
   const [amount, setAmount] = useState("");
   const [typed, setTyped] = useState(false); // once the admin types an amount, the plan price no longer overwrites it
   const [prices, setPrices] = useState<Prices | null>(null);
+  const [includesSetup, setIncludesSetup] = useState(false);
+  const [diffReason, setDiffReason] = useState("");
   const [ref, setRef] = useState("");
   const [paidOn, setPaidOn] = useState(today);
   const [preview, setPreview] = useState<string | null>(null);
   const [perr, setPerr] = useState<string | null>(null);
   const kobo = Math.round(Number(amount.replace(/[^\d.]/g, "")) * 100);
-  const valid = kobo > 0 && ref.trim().length >= 2 && !!paidOn && paidOn <= today;
-  const payload = { action: "record_payment", business_id: businessId, plan, amount_kobo: kobo, payment_reference: ref.trim(), paid_on: paidOn };
+  const expected = expectedPayment(prices, mode, plan, includesSetup);
+  const differs = !!expected && kobo > 0 && kobo !== expected.kobo;
+  const reasonOk = !differs || diffReason.trim().length >= DIFFERENCE_REASON_MIN;
+  const valid = kobo > 0 && ref.trim().length >= 2 && !!paidOn && paidOn <= today && reasonOk;
+  const payload = {
+    action: "record_payment", business_id: businessId, plan, amount_kobo: kobo, payment_reference: ref.trim(), paid_on: paidOn,
+    includes_setup: includesSetup, ...(differs ? { difference_reason: diffReason.trim() } : {}),
+  };
 
   useEffect(() => {
     let live = true;
@@ -609,7 +618,7 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
     });
     return () => { live = false; };
   }, []);
-  useEffect(() => { if (!typed) setAmount(planPriceInput(prices, mode, plan)); }, [plan, prices, mode, typed]);
+  useEffect(() => { if (!typed) setAmount(expected ? String(expected.kobo / 100) : ""); }, [expected?.kobo, typed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setPreview(null); setPerr(null);
@@ -637,8 +646,20 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
         <div className="space-y-1">
           <Label htmlFor="rp-amt">Amount paid (₦)</Label>
           <Input id="rp-amt" inputMode="decimal" value={amount} onChange={(e) => { setTyped(true); setAmount(e.target.value); }} placeholder="e.g. 15000" />
-          {mode && planPriceInput(prices, mode, plan) && <p className="text-xs text-muted-foreground">Filled in from the {PLAN_NAME[mode]} {plan} price. You can change it.</p>}
+          {expected && <p className="text-xs text-muted-foreground">Price list: {expected.text}. Filled in for you.</p>}
+          {!mode && <p className="text-xs text-amber-900">Choose this business's plan type below to check the amount against the price list.</p>}
         </div>
+        <label className="flex items-center gap-2 text-sm text-foreground sm:col-span-2">
+          <input type="checkbox" checked={includesSetup} onChange={(e) => { setIncludesSetup(e.target.checked); setTyped(false); }} />
+          This payment includes the setup fee (first payment of a new customer)
+        </label>
+        {differs && (
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="rp-diff">Why is the amount different from the price list?</Label>
+            <Input id="rp-diff" value={diffReason} onChange={(e) => setDiffReason(e.target.value)} placeholder="For example: opening discount agreed on WhatsApp" />
+            <p className="text-xs text-amber-900">The customer paid {naira(kobo)} but the price list says {naira(expected!.kobo)}. A reason is required.</p>
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="rp-ref">Payment reference</Label>
           <Input id="rp-ref" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Bank transfer reference" />
@@ -653,7 +674,7 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
       {suspended && <p className="text-sm text-amber-900">This business is suspended. Recording a payment does not reactivate it.</p>}
       <Button disabled={busy || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {
         const d = await act(payload, (r) => `Payment saved for ${businessName}. Access now runs until ${formatLagosDate(String(r["period_end"]))}.${r["still_suspended"] ? " The business is still suspended." : ""}`);
-        if (d) { setTyped(false); setAmount(planPriceInput(prices, mode, plan)); setRef(""); }
+        if (d) { setTyped(false); setIncludesSetup(false); setDiffReason(""); setAmount(""); setRef(""); }
       }}>Save payment</Button>
     </section>
   );
