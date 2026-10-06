@@ -6,7 +6,7 @@ import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { lagosLocalToIso } from "@/lib/dish-prices";
 import { reasonLabel, type CostPreview } from "@/lib/late-entry-cost";
-import { approvalArgs, approvalProblem, awaitingTransfer, RESOLUTION_LABEL, shiftSituation, transferProblem, REASON_MIN, type ShiftSituation } from "@/lib/late-entry-rules";
+import { approvalArgs, approvalProblem, awaitingTransfer, RESOLUTION_LABEL, shiftSituation, transferProblem, REASON_MIN, canMarkLost, isTransferLost, lostProblem, LOSS_REASON_MIN, type ShiftSituation } from "@/lib/late-entry-rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -123,6 +123,8 @@ function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatu
   const [shiftNote, setShiftNote] = useState("");
   const [proof, setProof] = useState("");
   const [tReason, setTReason] = useState("");
+  const [lostReason, setLostReason] = useState("");
+  const [showLost, setShowLost] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [preview, setPreview] = useState<CostPreview | null>(null);
@@ -132,6 +134,8 @@ function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatu
   const needsShift = situation !== "open";
   const needsTransfer = e.payment_method !== "cash" && Number(e.transfer_kobo) > 0;
   const waiting = awaitingTransfer(e, orderStatus);
+  const lost = isTransferLost(e, orderStatus);
+  const canLose = canMarkLost(e, orderStatus);
   const pending = isOwner && (e.status === "submitted" || e.status === "needs_shift_review");
 
   useEffect(() => {
@@ -167,6 +171,15 @@ function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatu
     if (error) setMsg(error.message); else { setProof(""); setTReason(""); onDone(); }
   }
 
+  async function markLost() {
+    if (!e.posted_order_id) return;
+    if (!confirm(`Close this sale as "transfer lost"? ${formatNaira(Number(e.transfer_kobo))} will be recorded as not received, the cash of ${formatNaira(Number(e.cash_kobo))} is kept, and this cannot be undone.`)) return;
+    setBusy(true); setMsg("");
+    const { error } = await supabase.rpc("mark_paper_transfer_lost", { p_order_id: e.posted_order_id, p_reason: lostReason.trim() });
+    setBusy(false);
+    if (error) setMsg(error.message); else { setLostReason(""); setShowLost(false); onDone(); }
+  }
+
   return (
     <div className="rounded-md border p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -175,7 +188,7 @@ function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatu
           <div className="text-muted-foreground">Sold {when(e.actual_sold_at)} · entered {when(e.entered_at)} · {delay(e.delay_seconds)} late · by {who(e.entered_by)}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`rounded px-2 py-0.5 text-xs ${pending && needsShift ? "bg-destructive/15 text-destructive" : "bg-muted"}`}>{waiting ? "Awaiting transfer" : STATUS[e.status] ?? e.status}</span>
+          <span className={`rounded px-2 py-0.5 text-xs ${pending && needsShift ? "bg-destructive/15 text-destructive" : "bg-muted"}`}>{lost ? "Transfer lost" : waiting ? "Awaiting transfer" : STATUS[e.status] ?? e.status}</span>
           <Button size="sm" variant="outline" onClick={() => setOpen(!open)}>{open ? "Hide" : "Details"}</Button>
         </div>
       </div>
@@ -188,7 +201,7 @@ function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatu
               <tr key={i.id}><td>{i.dish_name}</td><td>{Number(i.quantity)}</td><td>{formatNaira(Number(i.unit_price_kobo))}</td><td className="text-right">{formatNaira(Number(i.line_total_kobo))}</td></tr>
             ))}</tbody>
           </table>
-          <p>Cash {formatNaira(Number(e.cash_kobo))} · Transfer {formatNaira(Number(e.transfer_kobo))}{Number(e.transfer_kobo) > 0 && e.status !== "rejected" ? (e.status === "posted" ? (waiting ? " (awaiting payment until an owner confirms the transfer)" : " (transfer confirmed)") : " (will be posted as awaiting payment until an owner confirms the transfer; never marked paid from paper)") : ""}</p>
+          <p>Cash {formatNaira(Number(e.cash_kobo))} · Transfer {formatNaira(Number(e.transfer_kobo))}{Number(e.transfer_kobo) > 0 && e.status !== "rejected" ? (e.status === "posted" ? (waiting ? " (awaiting payment until an owner confirms the transfer)" : lost ? " (transfer never arrived: closed as lost, cash kept)" : " (transfer confirmed)") : " (will be posted as awaiting payment until an owner confirms the transfer; never marked paid from paper)") : ""}</p>
           {e.status === "posted" && <p>Approved by {who(e.approved_by)} · order #{e.posted_order_id?.slice(0, 8)} · {RESOLUTION_LABEL[e.shift_resolution ?? ""] ?? e.shift_resolution}{e.notes ? ` · reason: ${e.notes}` : ""}</p>}
           {waiting && (
             isOwner || role !== "cashier" ? (
@@ -204,6 +217,21 @@ function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatu
               </div>
             ) : <p className="rounded border p-2 text-muted-foreground">Waiting for an owner to confirm the transfer.</p>
           )}
+          {canLose && role !== "cashier" && (
+            <div className="space-y-2 rounded border p-2">
+              <Button size="sm" variant="outline" onClick={() => setShowLost(!showLost)}>{showLost ? "Hide" : "The transfer never arrived"}</Button>
+              {showLost && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Use this only when the customer paid the cash part and the transfer part will never arrive. The transfer is recorded as lost, the cash is kept, and the sale is closed. This cannot be undone, and the cash part cannot be refunded here.</p>
+                  <Label htmlFor={`lost-${e.id}`}>Reason (at least {LOSS_REASON_MIN} characters)</Label>
+                  <Input id={`lost-${e.id}`} value={lostReason} onChange={(ev) => setLostReason(ev.target.value)} placeholder="e.g. Customer promised, never paid after 3 days" />
+                  {lostProblem(lostReason) && lostReason && <p className="text-xs text-muted-foreground">{lostProblem(lostReason)}</p>}
+                  <Button variant="outline" disabled={busy || !!lostProblem(lostReason)} onClick={markLost}>Mark transfer as lost</Button>
+                </div>
+              )}
+            </div>
+          )}
+          {lost && <p className="rounded border p-2 text-sm">The transfer of {formatNaira(Number(e.transfer_kobo))} never arrived and was closed as lost. The cash of {formatNaira(Number(e.cash_kobo))} was kept. The reason is in the audit trail.</p>}
           {e.status === "rejected" && <p className="text-destructive">Rejected by {who(e.rejected_by)}: "{e.rejection_reason}". No sale, stock or cash change was made.</p>}
           <ReceiptPhotos type="late_entry" recordId={e.id} businessId={biz} role={role} />
           {pending && (

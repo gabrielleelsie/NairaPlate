@@ -54,3 +54,21 @@ export function transferProblem(proof: string, reason: string): string | null {
 export function awaitingTransfer(e: { status: string; transfer_kobo: number | string }, orderStatus: string | undefined): boolean {
   return e.status === "posted" && Number(e.transfer_kobo) > 0 && orderStatus === "awaiting_payment";
 }
+
+export const LOSS_REASON_MIN = 10;
+
+/** Why "Mark transfer as lost" must stay disabled, or null. */
+export function lostProblem(reason: string): string | null {
+  return reason.trim().length >= LOSS_REASON_MIN ? null : `Type a reason of at least ${LOSS_REASON_MIN} characters.`;
+}
+
+/** A posted paper sale that still waits for its transfer AND has cash already taken: the only kind that can be closed as "transfer lost".
+ *  (A transfer-only sale that never arrives is cancelled as an unpaid order instead.) */
+export function canMarkLost(e: { status: string; cash_kobo: number | string; transfer_kobo: number | string }, orderStatus: string | undefined): boolean {
+  return awaitingTransfer(e, orderStatus) && Number(e.cash_kobo) > 0;
+}
+
+/** A paper sale whose transfer was closed as lost: the cash was kept. */
+export function isTransferLost(e: { status: string }, orderStatus: string | undefined): boolean {
+  return e.status === "posted" && orderStatus === "transfer_lost";
+}
