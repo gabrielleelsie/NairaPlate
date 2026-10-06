@@ -20,7 +20,8 @@ import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPayme
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
-import { SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
+import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
+import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
 import { REMINDER_KINDS, REMINDER_LABEL, REMINDER_SCHEMA, dueReminder, mergeReminders, renderReminder, type ReminderKind } from "@/lib/reminders";
 
@@ -52,6 +53,8 @@ const ActionSchema = z.discriminatedUnion("action", [
     payment_reference: z.string().trim().min(2, "Enter the payment reference.").max(120),
     paid_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the date it was paid."),
     preview: z.boolean().optional(),
+    includes_setup: z.boolean().optional(),
+    difference_reason: z.string().trim().max(300).optional(),
   }),
   z.object({ action: z.literal("get_settings") }),
   z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), value: z.unknown(), admin_pin: PinSchema }),
@@ -402,10 +405,24 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const today = lagosDateKey(new Date());
           if (body.paid_on > today) return json({ error: "The payment date cannot be in the future." }, 400);
           const { data: biz } = await admin.from("businesses")
-            .select("id, name, status, access_ends_at").eq("id", body.business_id).maybeSingle();
+            .select("id, name, status, access_ends_at, operating_mode").eq("id", body.business_id).maybeSingle();
           if (!biz) return json({ error: "Business not found." }, 404);
           if (biz.status !== "approved" && biz.status !== "suspended")
             return json({ error: "Only approved or suspended businesses can take a payment." }, 400);
+
+          // The amount must match the price list for this business's plan (and the setup fee when included), or carry a reason.
+          let amountNote = "";
+          if (!body.preview) {
+            const { data: priceRow } = await admin.from("platform_settings").select("value").eq("key", "prices").maybeSingle();
+            const priceList = mergeSettings({ prices: priceRow?.value }).prices;
+            const om: unknown = biz.operating_mode;
+            const mode = om === "buka" || om === "standard" || om === "advanced" ? om : null;
+            const expected = expectedPayment(priceList, mode, body.plan, body.includes_setup === true);
+            const check = checkPaymentAmount(body.amount_kobo, expected, body.difference_reason);
+            if (!check.ok) return json({ error: check.error }, 400);
+            const bits = [mode ? PLAN_NAME[mode] : null, body.includes_setup ? "setup fee included" : null, check.matches ? null : `differs from price list (${expected?.text}): ${check.reason}`].filter(Boolean);
+            amountNote = bits.length ? ` [${bits.join("; ")}]` : "";
+          }
 
           // A second click or a re-sent form must never add a second term for the same transfer.
           if (!body.preview) {
@@ -434,7 +451,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           await writeAudit(admin, {
             business_id: biz.id, actor_id: adminId, actor_role: "platform_admin",
             action: "subscription_payment_recorded", entity_type: "subscription_payments", entity_id: null,
-            details: `${adminName}: ${PLAN_LABEL[body.plan]} ${amountText} (ref ${body.payment_reference}, paid ${body.paid_on}) — access until ${endsText}`,
+            details: `${adminName}: ${PLAN_LABEL[body.plan]} ${amountText} (ref ${body.payment_reference}, paid ${body.paid_on}) — access until ${endsText}${amountNote}`,
           });
 
           const { data: owner } = await admin.from("staff_users")
