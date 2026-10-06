@@ -21,12 +21,12 @@ strong { color: #0B1F33; }
 .blank { display: inline-block; min-width: 55mm; border-bottom: 0.3mm solid #444; height: 4.5mm; vertical-align: bottom; }
 td .blank { min-width: 40mm; }
 </style></head><body><h1>NairaPlate UAT script: for the Owner</h1>
-<p><strong>Version 1.4, 5 October 2026.</strong> Matches Master Specification version 1.4.</p>
+<p><strong>Version 1.5, 6 October 2026.</strong> Matches Master Specification version 1.5.</p>
 <p><strong>Who this is for:</strong> you, signed in as the Owner of the Demo Kitchen test business.
 <strong>How long:</strong> about 90 minutes for Parts 0 to 7b, which run on the live site today. Modules D, E and F take longer and can only be run after the offline, paper-entry and price-history screens are released (see the box below). You can stop after any part and carry on later.
 <strong>Where:</strong> use the live app in a browser. Test business code: <code>demo-kitchen</code>. Everything you do is test data. Reversals are final, so use test entries only.</p>
 <p><strong>How to use it:</strong> do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick <strong>Pass</strong> or <strong>Fail</strong>. If a step fails, write what you saw (the exact words of any message) in the margin next to the step and move on.</p>
-<p><strong>Which parts can you run today?</strong> Parts 0 to 7b and Part 8 work on the live site now. <strong>Modules D, E, F and G are not runnable yet.</strong> Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix <code>20261102_hygiene_after_late_entries.sql</code> must be applied (Master Specification R1); (2) the paper-entry defects D1 to D4 and D6 must be fixed (Part 9 of the specification); (3) the rehearsal <code>rehearsal_phase0_prices.sql</code> must be run and clean. Tests marked <strong>Known defect</strong> in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.</p>
+<p><strong>Which parts can you run today?</strong> Parts 0 to 7b and Part 8 work on the live site now. <strong>Modules D, E, F and G are not runnable yet.</strong> Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix <code>20261102_hygiene_after_late_entries.sql</code> must be applied (Master Specification R1); (2) the paper-entry screens must be changed to match the rules decided on 5 October (a Confirm transfer button, "cash outside any shift", an estimated selling price) and defects D4 and D9 decided (Part 9 of the specification); (3) the rehearsal <code>rehearsal_phase0_prices.sql</code> must be run and clean. Tests marked <strong>Known defect</strong> in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.</p>
 <p>Menu names below are the ones on the app's home screen. The home screen groups them as <strong>Sell</strong>, <strong>Buy &amp; Stock</strong>, <strong>Kitchen</strong> and <strong>Oversight</strong>. The "Home" link at the top of every screen takes you back.</p>
 <hr />
 <h2>Part 0. Before you start (5 minutes)</h2>
@@ -1177,8 +1177,8 @@ td .blank { min-width: 40mm; }
 <td>Cashier, then Owner</td>
 <td><strong>Enter paper sale</strong>, then <strong>Waiting</strong></td>
 <td>Enter a <strong>Transfer</strong> entry. As owner, approve it</td>
-<td>It posts, and the order is shown as waiting for payment or paid, as decided. It does not fail</td>
-<td><strong>D2.</strong> Today the approval fails with a database error</td>
+<td>It posts and the order is <strong>awaiting payment</strong>, not paid. It is not in paid sales or settled totals. Approval does not fail</td>
+<td><strong>D2</strong> is closed in the database (rehearsed 6 October). The screen wording is not yet checked</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1187,9 +1187,9 @@ td .blank { min-width: 40mm; }
 <td>UAT-LATE-10</td>
 <td>Cashier, then Owner</td>
 <td>Same</td>
-<td>Enter a <strong>Split</strong> entry (cash part and transfer part). Approve it</td>
-<td>It posts. Only the cash part counts in the shift's expected cash</td>
-<td></td>
+<td>Enter a <strong>Split</strong> entry (cash part and transfer part) for a shift that is still open. Approve it</td>
+<td>It posts as <strong>awaiting payment</strong>. Only the cash part counts in that shift's expected cash, straight away. The transfer part is not in paid sales until confirmed</td>
+<td>Expected-cash change is in the source branch, not released</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1209,9 +1209,9 @@ td .blank { min-width: 40mm; }
 <td>UAT-LATE-12</td>
 <td>Owner</td>
 <td>Same, then <strong>Cash drawer</strong></td>
-<td>Choose "Yes, the cash was included in the count at close" and approve. Look at the <strong>open</strong> shift's expected cash and the closed shift</td>
-<td>The sale posts. The open shift's expected cash does <strong>not</strong> include that cash. The closed shift's figures are unchanged</td>
-<td><strong>D3.</strong> Today the open shift counts the cash</td>
+<td>Choose "Yes, the cash was included in the count at close", type a reason of 5 or more characters, and approve. Look at the <strong>open</strong> shift's expected cash and the closed shift</td>
+<td>The sale posts. The open shift's expected cash does <strong>not</strong> include that cash. The closed shift's figures are unchanged. Without a reason, or with no choice, the approval is refused</td>
+<td><strong>D3</strong> is closed in the database and the expected-cash code (not released). The reason box is not on the screen yet</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1221,8 +1221,8 @@ td .blank { min-width: 40mm; }
 <td>Owner</td>
 <td>Same, then <strong>Cash drawer</strong></td>
 <td>Do the same with a second entry and choose "No, record it as late cash against that closed shift"</td>
-<td>The closed shift shows one adjustment for that cash amount. The cash is counted once only</td>
-<td><strong>D3, D6.</strong> Today it counts in the open shift too</td>
+<td>The closed shift shows one adjustment for that cash amount. The cash is counted once only, and not in the open shift. If that shift was closed without a count, the choice is refused</td>
+<td><strong>D3, D6</strong> closed in the database</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1283,6 +1283,72 @@ td .blank { min-width: 40mm; }
 <td>☐</td>
 </tr>
 <tr>
+<td>UAT-LATE-20</td>
+<td>Owner</td>
+<td><strong>Orders</strong>, a paper sale that is awaiting payment</td>
+<td>Press <strong>Confirm transfer</strong>. Type proof of <code>UBA ref 123456</code> and a reason <code>Customer paid at 3pm</code>. Confirm</td>
+<td>The order becomes <strong>paid</strong>. The Orders screen and <strong>Audit trail</strong> show who confirmed it, the proof and the reason. Pressing it a second time changes nothing</td>
+<td>Screen not built yet. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-21</td>
+<td>Owner</td>
+<td>Same</td>
+<td>Try proof <code>abc</code>, then a reason <code>abc</code></td>
+<td>Both are refused, and the order stays awaiting payment</td>
+<td>Screen not built yet</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-22</td>
+<td>Cashier</td>
+<td><strong>Orders</strong></td>
+<td>Open a paper sale that is awaiting payment</td>
+<td>There is no Confirm transfer button. A cashier cannot confirm</td>
+<td>Screen not built yet</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-23</td>
+<td>Cashier, then Owner</td>
+<td><strong>Enter paper sale</strong>, then <strong>Waiting</strong></td>
+<td>Enter a paper sale whose time is outside every shift. As owner, try to approve it with no choice, then reject it, then (with another) approve it as <strong>cash outside any shift</strong> with a reason</td>
+<td>No choice: refused. Reject: works with a reason. Cash outside any shift: posts, and the cash appears in no drawer</td>
+<td>Screen not built yet. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-24</td>
+<td>Owner</td>
+<td><strong>Orders</strong></td>
+<td>Cancel a <strong>transfer-only</strong> paper sale that never arrived. Then try to cancel a <strong>split</strong> paper sale whose cash was taken</td>
+<td>The transfer-only one cancels. The split one is refused with "Cash was already taken for this paper sale…"</td>
+<td><strong>L1</strong> is an open decision for the split one. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-25</td>
+<td>Cashier</td>
+<td><strong>Enter paper sale</strong></td>
+<td>Enter a paper sale for a dish that has no price on record at the sale time</td>
+<td>Refused, naming the dish. It is never priced at ₦1,500.00</td>
+<td><strong>D7</strong> closed (check read live). <strong>D9:</strong> a sale before the dish's first recorded price is still priced at the earliest price until D9 is built</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
 <td>UAT-LATE-16</td>
 <td>Owner</td>
 <td><strong>Oversight</strong>, then <strong>Audit trail</strong></td>
@@ -1295,7 +1361,7 @@ td .blank { min-width: 40mm; }
 </tr>
 </tbody>
 </table>
-<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 19. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4 and D6 fixed and re-tested: yes / no.</p>
+<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 25. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4, D6 and D9 fixed and re-tested: yes / no.</p>
 <h2>Module F. Dish price history (after release)</h2>
 <p>Do not run this module until the price-history screen is released. Owner only, except UAT-PRICE-08.</p>
 <table class="pf">
