@@ -315,7 +315,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             .order("created_at", { ascending: false }).limit(25);
 
           const { data: pays } = await admin.from("subscription_payments")
-            .select("id, plan, amount_kobo, payment_reference, paid_on, period_start, period_end, recorded_by, created_at")
+            .select("id, plan, amount_kobo, payment_reference, paid_on, period_start, period_end, recorded_by, created_at, operating_mode, setup_fee_kobo, difference_reason")
             .eq("business_id", body.business_id).order("created_at", { ascending: false });
           const recorderIds = [...new Set((pays ?? []).map((p) => p.recorded_by))];
           const { data: recorders } = recorderIds.length
@@ -412,14 +412,20 @@ export const Route = createFileRoute("/api/public/platform-admin")({
 
           // The amount must match the price list for this business's plan (and the setup fee when included), or carry a reason.
           let amountNote = "";
+          let payMode: "buka" | "standard" | "advanced" | null = null;
+          let setupFee = 0;
+          let savedReason: string | null = null;
           if (!body.preview) {
             const { data: priceRow } = await admin.from("platform_settings").select("value").eq("key", "prices").maybeSingle();
             const priceList = mergeSettings({ prices: priceRow?.value }).prices;
             const om: unknown = biz.operating_mode;
             const mode = om === "buka" || om === "standard" || om === "advanced" ? om : null;
+            payMode = mode;
             const expected = expectedPayment(priceList, mode, body.plan, body.includes_setup === true);
             const check = checkPaymentAmount(body.amount_kobo, expected, body.difference_reason);
             if (!check.ok) return json({ error: check.error }, 400);
+            setupFee = body.includes_setup === true && expected ? Math.min(expected.setupKobo, body.amount_kobo) : 0; // never more than was paid
+            savedReason = check.matches ? null : check.reason;
             const bits = [mode ? PLAN_NAME[mode] : null, body.includes_setup ? "setup fee included" : null, check.matches ? null : `differs from price list (${expected?.text}): ${check.reason}`].filter(Boolean);
             amountNote = bits.length ? ` [${bits.join("; ")}]` : "";
           }
@@ -439,6 +445,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             business_id: biz.id, plan: body.plan, amount_kobo: body.amount_kobo,
             payment_reference: body.payment_reference, paid_on: body.paid_on,
             period_start: result.period_start, period_end: result.period_end, recorded_by: adminId,
+            operating_mode: payMode, setup_fee_kobo: setupFee, difference_reason: savedReason,
           });
           if (pe) return json({ error: "Could not save the payment: " + pe.message }, 500);
           // Status is never touched here: a suspended business stays suspended.
