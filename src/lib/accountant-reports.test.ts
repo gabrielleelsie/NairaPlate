@@ -27,6 +27,20 @@ describe("accountant reports", () => {
     expect(rows[1]!["cashier_name"]).toBe("Ada");
     expect(Object.keys(rows[1]!).sort()).toEqual([...REPORT_SCHEMAS.sales_day_book.columns].sort());
   });
+  it("shows a transfer-lost paper sale's unpaid transfer on its own and counts only the cash kept as net sales", () => {
+    const rows = buildSalesDayBook([
+      { id: "cccccccc-3", subtotal_kobo: 100000, total_kobo: 100000, cash_amount_kobo: 40000, transfer_amount_kobo: 60000, status: "transfer_lost", payment_method: "split", channel: "walk_in", created_by: null, created_at: "2026-10-02T12:00:00Z", is_late_entry: true },
+      { id: "dddddddd-4", subtotal_kobo: 50000, total_kobo: 50000, cash_amount_kobo: 50000, transfer_amount_kobo: 0, status: "paid", payment_method: "cash", channel: "walk_in", created_by: null, created_at: "2026-10-02T13:00:00Z" },
+    ], [], new Map(), new Map());
+    expect(rows[0]!["status"]).toBe("transfer_lost");
+    expect(rows[0]!["gross_sales_naira"]).toBe("1000.00");
+    expect(rows[0]!["lost_transfer_naira"]).toBe("600.00");
+    expect(rows[0]!["net_sales_naira"]).toBe("400.00");
+    expect(rows[0]!["net_sales_kobo"]).toBe("40000");
+    expect(rows[1]!["lost_transfer_naira"]).toBe("0.00");
+    expect(rows[1]!["net_sales_kobo"]).toBe("50000");
+    expect(REPORT_SCHEMAS.sales_day_book.version).toBe("sales_day_book_v3");
+  });
   it("receipt columns: late entries counted, till sales FALSE/0, unknown stays blank", () => {
     const o = (id: string, late: boolean, t: string) => ({ id, subtotal_kobo: 1000, total_kobo: 1000, status: "completed", payment_method: "cash", channel: null, created_by: null, created_at: t, is_late_entry: late });
     const orders = [o("till", false, "2026-10-02T08:00:00Z"), o("le0", true, "2026-10-02T09:00:00Z"), o("le1", true, "2026-10-02T10:00:00Z"), o("le2", true, "2026-10-02T11:00:00Z")];

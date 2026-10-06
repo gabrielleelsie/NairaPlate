@@ -13,6 +13,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeRecipeCost, type CostConversion, type CostIngredient, type CostRecipeItem } from "@/lib/costing";
 import { PriceHistoryIndex, normaliseHistoryRows, type PriceTrack } from "@/lib/ingredient-price-history";
 import { DAY_MS, fromLagosWallClock, lagosDateKey, toLagosWallClock } from "@/lib/lagos-time";
+import { formatNaira } from "@/lib/costing";
+import { lostTransferKobo, receivedKobo, TRANSFER_LOST } from "@/lib/order-revenue";
 
 export type DateRange = { from: Date; to: Date }; // inclusive from, exclusive to
 
@@ -47,10 +49,11 @@ export async function calculateBusinessPnl(
   const from = date_range.from.toISOString();
   const to = date_range.to.toISOString();
 
-  // Only 'paid' and 'partially_refunded' orders count. 'cancelled' (void) and 'refunded' count as ₦0.
+  // Only 'paid', 'partially_refunded' and 'transfer_lost' orders count. 'cancelled' (void) and 'refunded' count as ₦0.
+  // A 'transfer_lost' paper sale counts only the cash it kept as sales (its food cost is counted in full): see order-revenue.ts.
   const ordersQuery = (cols: string) => supabase.from("orders")
-    .select(`id,total_kobo,created_at,channel,order_items(${cols})`)
-    .eq("business_id", business_id).in("status", ["paid", "partially_refunded"])
+    .select(`id,total_kobo,status,cash_amount_kobo,transfer_amount_kobo,created_at,channel,order_items(${cols})`)
+    .eq("business_id", business_id).in("status", ["paid", "partially_refunded", TRANSFER_LOST])
     .gte("created_at", from).lt("created_at", to);
 
   const [ordersF, ordersV, wastage, ingredients, conversions, recipes, recipeItems, partials, gradePrices, priceHistory] = await Promise.all([
@@ -150,9 +153,11 @@ export async function calculateBusinessPnl(
   let estimated = 0; // no frozen cost and a price at that time is unknown: costed at today's prices
   const dishAgg = new Map<string, DishLine>();
   const chanAgg = new Map<string, { channel: string; sales_kobo: number; cost_kobo: number }>();
-  for (const o of (orders.data ?? []) as unknown as { id: string; total_kobo: number; created_at: string; channel?: string | null; order_items: SoldItem[] | null }[]) {
-    // Net sale = total minus every partial refund on that order (discounts are already inside total_kobo).
-    const total = Number(o.total_kobo) - (refundedByOrder.get(o.id) ?? 0);
+  let lostOrders = 0, lostKobo = 0, keptKobo = 0;
+  for (const o of (orders.data ?? []) as unknown as { id: string; total_kobo: number; status: string; cash_amount_kobo?: number | null; transfer_amount_kobo?: number | null; created_at: string; channel?: string | null; order_items: SoldItem[] | null }[]) {
+    // Net sale = what was received (a transfer-lost sale: the cash kept only) minus every partial refund on that order (discounts are already inside total_kobo).
+    const total = receivedKobo(o) - (refundedByOrder.get(o.id) ?? 0);
+    if (o.status === TRANSFER_LOST) { lostOrders += 1; lostKobo += lostTransferKobo(o); keptKobo += receivedKobo(o); }
     gross_sales_kobo += total;
     const k = dayKey(new Date(o.created_at));
     daily.set(k, (daily.get(k) ?? 0) + total);
@@ -202,6 +207,9 @@ export async function calculateBusinessPnl(
   }
   if (estimated > 0) {
     warnings.push(`${estimated} older sold item${estimated === 1 ? "" : "s"} had no saved cost and no known ingredient price for the day of the sale, so ${estimated === 1 ? "its" : "their"} cost uses today's ingredient prices.`);
+  }
+  if (lostOrders > 0) {
+    warnings.push(`${lostOrders} paper sale${lostOrders === 1 ? "" : "s"} had a transfer that never arrived. Only the cash kept (${formatNaira(keptKobo)}) is counted as sales; the unpaid transfer of ${formatNaira(lostKobo)} is not. The food cost of ${lostOrders === 1 ? "that sale is" : "those sales is"} counted in full.`);
   }
   const recipe_cost_of_goods_kobo = Math.round(recipeCost);
   const wastage_cost_kobo = (wastage.data ?? []).reduce((s, w) => s + Number(w.cost_kobo), 0);
