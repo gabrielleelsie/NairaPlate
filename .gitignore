@@ -30,3 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Internal audit documents are kept private, never in this repository
+docs/NairaPlate_Master_Business_Rules_and_Audit_Specification.*
+docs/build_master*
