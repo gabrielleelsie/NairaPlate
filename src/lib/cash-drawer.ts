@@ -15,6 +15,10 @@ export const sumKobo = (rows: { amount_kobo: unknown }[] | null | undefined): nu
  * + cash catering payments (deposits included, once they carry a cash method) + cash debt payments recorded in the same window
  * - cash paid out of the drawer on this shift (payout entries minus reversals; waiting requests and declines do not count).
  * Voided ('cancelled') and fully 'refunded' orders add nothing. A partial refund comes out of the cash portion (never more than the cash taken).
+ * PAPER (late) sales are counted by the shift they really happened in, never by when they were approved: a paper sale posted straight to
+ * THIS shift ("open_shift_direct") adds its cash portion (also while a split sale still waits for its transfer, because the cash was taken);
+ * every other paper sale (closed shift, outside any shift) adds nothing here, because its cash is already in a closed count, an owner adjustment,
+ * or belongs to no shift. A paper sale is never counted just because it was approved while this shift was open.
  * Catering and debt reversals are entries too, with the same method and a minus amount, so a payment reversed inside the window nets to nothing.
  * NOT counted: catering deposits taken before methods were saved (the two carried-over ones), and any cash purchase or supplier payment that was
  * not marked "paid from the cash drawer" (those are paid from somewhere else).
@@ -22,13 +26,26 @@ export const sumKobo = (rows: { amount_kobo: unknown }[] | null | undefined): nu
 export async function expectedDrawerCash(
   supabase: SupabaseClient, drawer: DrawerForExpected, untilIso: string,
 ): Promise<DrawerExpected> {
-  const { data: orders, error: oe } = await supabase.from("orders")
+  const { data: till, error: oe } = await supabase.from("orders")
     .select("id,cash_amount_kobo")
     .eq("business_id", drawer.business_id).in("payment_method", ["cash", "split"])
     .in("status", ["paid", "partially_refunded"])
+    .or("is_late_entry.is.null,is_late_entry.eq.false")
     .gte("created_at", drawer.opened_at).lte("created_at", untilIso);
   if (oe) throw new Error("Could not read orders.");
-  const ids = (orders ?? []).map((o) => o.id as string);
+  // Paper sales that belong to this shift, wherever and whenever they were approved.
+  const { data: paper, error: pe0 } = await supabase.from("late_entries").select("posted_order_id")
+    .eq("business_id", drawer.business_id).eq("source_shift_id", drawer.id).eq("status", "posted").eq("shift_resolution", "open_shift_direct");
+  if (pe0) throw new Error("Could not read paper sales.");
+  const paperIds = (paper ?? []).map((x) => x.posted_order_id as string | null).filter((x): x is string => !!x);
+  const { data: paperOrders, error: po } = paperIds.length
+    ? await supabase.from("orders").select("id,cash_amount_kobo")
+        .eq("business_id", drawer.business_id).in("id", paperIds).in("payment_method", ["cash", "split"])
+        .in("status", ["paid", "partially_refunded", "awaiting_payment"])
+    : { data: [], error: null };
+  if (po) throw new Error("Could not read paper sales.");
+  const orders = [...(till ?? []), ...(paperOrders ?? [])];
+  const ids = orders.map((o) => o.id as string);
   const { data: partials, error: pe } = ids.length
     ? await supabase.from("order_adjustments").select("order_id,adjustment_amount_kobo")
         .eq("type", "partial_refund").in("order_id", ids)
@@ -38,7 +55,7 @@ export async function expectedDrawerCash(
   for (const a of pe ? [] : partials ?? []) {
     refunded.set(a.order_id, (refunded.get(a.order_id) ?? 0) + Number(a.adjustment_amount_kobo));
   }
-  const cash_sales_kobo = (orders ?? []).reduce(
+  const cash_sales_kobo = orders.reduce(
     (s, o) => s + Math.max(0, Number(o.cash_amount_kobo) - (refunded.get(o.id) ?? 0)), 0);
   const window = (table: string) => supabase.from(table).select("amount_kobo")
     .eq("business_id", drawer.business_id).eq("method", "cash").gte("created_at", drawer.opened_at).lte("created_at", untilIso);
