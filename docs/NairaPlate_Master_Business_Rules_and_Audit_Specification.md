@@ -18,7 +18,9 @@ status: "Reference manual. Describes the system as it stands on 6 October 2026 (
 5. **Expiry reminder emails are now scheduled** (`20261113`, applied 6 October; job read live). They are still **off**: nothing is sent until an admin switches them on, and the log has no rows. [C]
 6. **Items from version 1.5 that are now closed:** the expected-cash change was released on 6 October (item 2 of 1.5 said it was not), and the "transfer never arrives" decision (L1, item 4 of 1.5) was made and built as the **transfer lost** status (`20261110`; see 3.11 and Part 9). D9, D4, S5 and S6 are closed as listed in Part 9.
 7. **A limit found on 6 October and left as it is by decision:** a signed-out visitor cannot read the saved prices (the function that hands them out is for signed-in people only). The public pricing page and FAQ therefore show the built-in agreed list, not what an admin has typed into the price boxes. The two lists are the same today. See 3.13 and Part 9. [C]
-8. **Automated checks:** 379 checks across 41 test files pass on the source branch. [L]
+8. **Four more sections for work done on 4 to 5 October that the document had not described:** receipts and photo evidence (3.14), the attention inbox and "Why did my margin change?" (3.15), the accountant CSV exports (3.16) and other screens and documents (3.17). **The appendices were compared name by name with the live database on 6 October** and now list the three tables, two archive tables, eleven functions and thirteen triggers that were missing (Appendices A, B and C). The scheduled jobs are all named (Appendix E). [C]
+9. **A correction to a common description of the exports:** the checksum on the exports cover sheet is a short fingerprint (FNV-1a, 32 bits), not SHA-256 (3.16). [C]
+10. **Automated checks:** 379 checks across 41 test files pass on the source branch. [L]
 
 **What is new in version 1.5.**
 
@@ -400,6 +402,59 @@ This section describes how a kitchen gets access to NairaPlate and how that is r
 
 ---
 
+## 3.14 Receipt and photo evidence
+
+Staff can attach a photo (a receipt, a slip, a paper sale ticket) to a record. The photo is evidence only: it changes no amount. Read from `20261106_receipts_a.sql`, the code and the live database on 6 October 2026. [C]
+
+- **Which records.** Four kinds: a purchase, a cash payout, a supplier payment and a paper (late) entry. Many photos per record are allowed; each photo is one row in `receipts`. [C]
+- **Who.** Owners and Supa Admins on all four kinds. A purchaser on purchases and supplier payments. A cashier on cash payouts and paper entries, and only on records they made themselves. Cooks cannot. [C]
+- **The photo.** It goes into a **private** storage bucket called `receipts` (10 MB, JPEG, PNG or WebP). Before it leaves the phone, the browser re-encodes it as a JPEG no wider or taller than 1,600 pixels at quality 0.8. A photo is shown through a signed link that lasts one hour. [C]
+- **Only through a checked function.** Nobody signed in can read or write the table directly (row security on, no privilege for signed-in people or visitors). `attach_receipt` checks that the person is signed in, the plan is active, their role may add to that record type, the file is in the right folder and has finished uploading, and the record belongs to their business. Every photo writes an audit line (`receipt_attached`). [C]
+- **Corrections.** A photo can never be edited or deleted: a trigger (`receipts_guard`) refuses both. An owner or Supa Admin can mark one **not valid** with a reason of 5 or more characters (`void_receipt`, audit line `receipt_voided`). A not-valid photo stays on file and is ignored by the screens and the exports. [C]
+- **Seen on the exports.** The Sales Day Book and the Cash Paid-Out Register carry `receipt_attached` and `receipt_count` columns (3.16). [C]
+- **Proof.** The receipts guard was found open to visitors and closed by `20261108` (R3). No person has used the photo screens on the live site. [S]
+
+## 3.15 The attention inbox and "Why did my margin change?"
+
+Two screens that only read. Neither changes a record. [C]
+
+**Attention inbox** (`/inbox`; the home screen button is "Things to check" on Buka and "Attention inbox" on the others). It shows signals NairaPlate already records and stores nothing of its own. An item disappears only when the screen that handles it is used: nothing is "resolved" in the inbox. Items, in four groups:
+
+- **Needs approval:** a paper sale waiting for approval, or waiting for a decision because its shift is closed.
+- **Cash and till:** a cash payout request waiting, a shift open for 18 hours or more, a drawer that did not balance.
+- **Stock and pricing:** stock below zero or running low, a dish whose margin is below its target, an ingredient whose price may be out of date.
+- **System:** a payment connection that needs attention, and any other alert. An alert can be marked seen. [C]
+
+**"Why did my margin change?"** (`/margin-diagnostic`; Restaurant and Full Suite; Restaurant shows the top 2 reasons, Full Suite all). It compares the gross margin of two periods. The headline numbers come only from the profit and loss calculation, so they always match the P&L and the printable report for the same dates. The reasons are **estimates for interpretation, not exact accounting**:
+
+1. Ingredient price rises: the median purchase price per base unit this period against last, times the amount used by the plates sold now. Shown only for a rise of 5% or more with an effect of ₦1,000 or more, on an ingredient with at least ₦5,000 bought this period.
+2. Sales mix: dishes (and channels) whose share of sales moved by 2 percentage points or more, with an effect of ₦2,000 or more.
+3. Wastage and batch yield: the change in logged wastage cost, plus batches that made 5 percentage points or more fewer plates than expected.
+
+Whatever is left is shown as "other changes" (selling prices, recipe edits, rounding), not hidden. With less than ₦20,000 of sales or fewer than 10 orders the screen says there is too little data. The thresholds are **pilot values** in the code and may change. [C][L] **Neither screen has been used by a person on the live site.** [S]
+
+## 3.16 Accountant exports (CSV)
+
+Eight read-only CSV reports for an accountant (`/exports`). Pick a date range (today, yesterday, this or last week, this or last month, or custom) and download one report or all of them. [C]
+
+- **Which a kitchen sees.** Full Suite sees all eight. Restaurant sees the three core reports. Buka sees none (3.13). [C]
+- **Reports and versions.** Sales Day Book (`sales_day_book_v3`), Cash Drawer Summary (`_v1`), Cash Paid-Out Register (`_v2`), Supplier Ledger, Customer Ledger, Refund and Reversal Register, Wastage Log and Batch Production (each `_v1`). A column list is changed only together with its version tag. [C]
+- **Sales Day Book** shows every sale with refunds taken off, the **transfer lost** amount (since `v3`), paper sales marked with their paper reference and sale time, how sure the food cost is, and whether a photo is attached and how many. [C]
+- **The cover sheet.** Downloading all reports also downloads a manifest with one row per file: report name and version, file name, when it was made and by whom, the date range, the number of rows, the total amount and a **checksum**. [C]
+- **The checksum is a short fingerprint (FNV-1a, 32 bits), not SHA-256.** It lets someone notice that a copy was edited by accident. It is **not a security signature** and does not stop a person who changes the file and the cover sheet together. [C]
+- Dates are Nigeria time. Money is shown in naira and, where useful, kobo. [C]
+- **Not tried by a person.** [S]
+
+## 3.17 Other screens and documents added since 3 October
+
+- **Paper (late) entries screen** (`/late-entries`) and the **save-once Till** are described in 3.9 and 3.11. [C]
+- **Interactive acceptance test screen** (`/uat`): a browser version of the owner test script that records pass or fail for each step and exports the protocol as a Word file. It records results in the browser; it does not change any kitchen data. [C]
+- **Resources page** (`/resources`): download cards for the owner brochure and the accountant brochure (PDF). **The owner brochure still carries the old line "Print daily summary" and must be reissued**: the home button is now "Print weekly or monthly report", and the daily summary is an email at 8 pm. [C]
+- **Home screen button.** The print button was renamed on 6 October to say what it prints (a weekly or monthly report). [C]
+- **Public pages.** The pricing page (`/pricing`) was added on 6 October (3.13). [C]
+
+---
+
 # Part 4. How the key numbers are worked out
 
 ## 4.1 Expected cash in a drawer
@@ -658,7 +713,8 @@ This is evidence, not a new business rule. The rules are in 3.9.
 ## 8.7 Plans, prices, payments and reminders: evidence, 6 October 2026
 
 - **Read from the live database (read-only):** `subscription_payments` has the three new columns, both checks, row security on and no read access for signed-in people; 1 payment row before and after; no rehearsal rows left. The hourly job `nairaplate-expiry-reminders` is active, runs at minute 0 of every hour, calls `/api/public/expiry-reminders` with the scheduler secret (the same pattern as the daily summary and news watch jobs); the log table exists with 0 rows; no reminders setting is saved. `public_settings` can be run by signed-in people and not by visitors. [C]
-- **Rehearsal on the live database** (`20261114_payment_columns_a_rehearsal.sql`, run by the owner, result read): ALL CLEAR, 6 passed, 0 failed (a normal payment with a plan type; setup fee with a reason; unknown plan type refused; setup fee above the amount refused; negative setup fee refused; an old-style payment with no plan type still saves). Nothing was saved. [R]
+- **Inventory read live on 6 October (evening).** 57 tables in the public area (1 more is a view), 132 application functions (the others are the btree_gist extension), 66 triggers, 1 storage bucket (`receipts`) and 6 scheduled jobs. Compared name by name with this document: the objects missing from the first draft of 1.6 (3 tables, 2 backup tables, 11 functions, 13 triggers) were added to Appendices A, B and C and to 3.14 to 3.17. [C]
+- **Rehearsal on the live database** (`20261114_payment_columns_a_rehearsal.sql', run by the owner, result read): ALL CLEAR, 6 passed, 0 failed (a normal payment with a plan type; setup fee with a reason; unknown plan type refused; setup fee above the amount refused; negative setup fee refused; an old-style payment with no plan type still saves). Nothing was saved. [R]
 - **Local tests:** the same script on a local copy applied, re-ran without effect, passed its check and rehearsal, and rolled back cleanly. The payment amount rule (7 checks), the price list (savings, sentences, schema) and the plan and export switches are covered by automated tests. [L]
 - **Released and read in the deployed code** on 6 October: the pricing page, the price boxes, the amount check and the reason box, the new payment columns being written, the trial wording on the FAQ and home page, and the new trial reminder wording. [C]
 - **Not proved:** no person has used the price boxes, the amount check, the new payment list or the pricing page on a phone; the server payment route has not been run against the live database with a real payment (a test payment on the Demo Kitchen with a wrong amount, then with a reason, would prove it); no reminder email has ever been sent. [S]
@@ -814,6 +870,11 @@ All appendices were read from the live database and the code on 2, 3 and 4 Octob
 | daily_summary_log | System log | nobody (server only) | - | - | - |
 | dish_prices | Price history | any member (own business, active plan) | - | - | - |
 | drawer_settings | Settings | owner, cashier, supa_admin | - | - | - |
+| function_grant_backup_20261025 | Archived | nobody (row security on, no privilege for signed-in people or visitors) | - | - | - |
+| grant_backup_20261025 | Archived | nobody (row security on, no privilege for signed-in people or visitors; about 354 rows) | - | - | - |
+| ingredient_price_history | Price record (add-only) | nobody directly; owners, Supa Admins and purchasers read it through two checked functions | - | - | - |
+| paper_transfer_confirmations | Paper entries (add-only) | owner, supa_admin, cashier (own business, plan active) | - | - | - |
+| paper_transfer_losses | Paper entries (add-only) | owner, supa_admin, cashier (own business, plan active) | - | - | - |
 | ingredient_grade_prices | Price record | cook, owner, cashier, purchaser, supa_admin | - | - | - |
 | ingredients | Stock and price | cook, owner, cashier, purchaser, supa_admin | owner, purchaser, supa_admin (stock and price columns must start at zero) | owner, purchaser, supa_admin (stock, cost, grade, season, price date locked; unit locked once history exists) | owner, supa_admin (refused once history exists) |
 | late_entries | Paper entries | cashier, owner, supa_admin | - (no row-security rule; privilege open, R1) | - (same) | - (same) |
@@ -911,9 +972,17 @@ Every function below fixes its search path. "Definer" functions run with the pri
 | `refresh_dish_prices()` | definer | any signed-in person (own business) | Bring started scheduled prices up to date |
 | `submit_late_entry(...)` | definer | owner, cashier, supa_admin | Submit a paper (late) entry |
 | `reject_late_entry(entry, reason)` | definer | owner, supa_admin | Reject a paper entry |
+| `attach_receipt(record type, record, path, size, type, width, height, caption)` | definer | owner, supa_admin; purchaser (purchases, supplier payments); cashier (own payouts and paper entries) | Add a photo to a record (3.14) |
+| `void_receipt(receipt, reason)` | definer | owner, supa_admin | Mark a photo not valid, reason 5 or more characters |
+| `list_receipts(record type, record)` | definer | the roles `receipt_role_allowed` allows for that record type | List a record's photos |
+| `receipt_counts(record type, records)` | definer | owner, supa_admin | Count photos for the exports |
+| `receipt_role_allowed(role, record type)` | invoker | any | The one rule for who may add which photo |
+| `ingredient_price_at(ingredient, grade, moment)` | definer | owner, supa_admin, purchaser | The price an ingredient had at a moment, or "unknown"; never a substitute (3.12) |
+| `ingredient_price_history_for(ingredient, until)` | definer | owner, supa_admin, purchaser | The price history of one ingredient up to a moment |
+| `late_entry_cost_preview(entry)` | definer | owner, supa_admin | The food cost of a paper entry before it is approved (3.12) |
 | `approve_and_post_late_entry(entry, resolution, notes)` | definer | owner, supa_admin | Approve a paper entry and post it as a sale |
 
-**Server-only functions** (no signed-in person can call them): `apply_stock_count`, `attach_payment_account`, `raise_catering_alerts`, `read_payment_connection`, `recipe_plate_cost_kobo`, `record_provider_payment`, `save_payment_connection`, `signup_business`, `supplier_balance_kobo`, `to_base_qty`, and (added 3 and 4 October) `apply_due_dish_prices`, `sale_once_existing`, `sale_once_stamp`, `record_supplier_payment_core`.
+**Server-only functions** (no signed-in person can call them): `recipe_plate_cost_at(recipe, business, moment)` (plate cost at a past moment, used by the paper-entry functions; read live 6 October: definer, not callable by signed-in people or visitors), `apply_stock_count`, `attach_payment_account`, `raise_catering_alerts`, `read_payment_connection`, `recipe_plate_cost_kobo`, `record_provider_payment`, `save_payment_connection`, `signup_business`, `supplier_balance_kobo`, `to_base_qty`, and (added 3 and 4 October) `apply_due_dish_prices`, `sale_once_existing`, `sale_once_stamp`, `record_supplier_payment_core`.
 
 # Appendix C. Triggers
 
@@ -972,6 +1041,20 @@ Every function below fixes its search path. "Definer" functions run with the pri
 | wastage_logs | wastage_logs_apply_stock | apply_wastage_stock | after insert | Reduces stock |
 | wastage_logs | wastage_logs_restore_stock | apply_wastage_stock | after delete | Puts stock back |
 
+| ingredient_price_history | ingredient_price_history_no_truncate | ingredient_price_history_protect | before truncate (once per statement) | Refuses emptying the table |
+| ingredient_price_history | ingredient_price_history_protect | ingredient_price_history_protect | before update, delete | Add-only: refuses edits and deletes. Direct inserts are refused by having no privilege for signed-in people |
+| ingredients | ingredients_require_price_history | ingredients_require_price_history | after update (deferred, checked at the end of the transaction) | Refuses an app price change that left no history row (3.12) |
+| purchases | purchases_record_price_history | purchases_record_price_history | after insert | Writes the price history row for a purchase or a reversal |
+| receipts | receipts_guard_trg | receipts_guard | before update, delete | Refuses edits and deletes; allows marking not valid once (3.14) |
+| paper_transfer_confirmations | paper_transfer_confirmations_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts from signed-in people |
+| paper_transfer_confirmations | paper_transfer_confirmations_no_change | ledger_block_change | before update, delete | Refuses edits and deletes |
+| paper_transfer_losses | paper_transfer_losses_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts from signed-in people |
+| paper_transfer_losses | paper_transfer_losses_no_change | ledger_block_change | before update, delete | Refuses edits and deletes |
+| audit_logs | audit_logs_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts from signed-in people (A2) |
+| audit_logs | audit_logs_no_change | ledger_block_change | before update, delete | Refuses edits and deletes (A2) |
+| channel_payouts | channel_payouts_no_direct_insert | block_direct_insert | before insert | Refuses direct inserts from signed-in people (A3) |
+| channel_payouts | channel_payouts_no_change | ledger_block_change | before update, delete | Refuses edits and deletes (A3) |
+
 The shared guard `ledger_block_change` refuses any change or deletion when a signed-in person is acting. The server key and the SQL editor pass, for administration only.
 
 # Appendix D. Ledger rules at a glance
@@ -1016,7 +1099,7 @@ All 17 routes run on the server with the service key. Each one checks the caller
 | ping | Connection check for the Till: answers with nothing; no database work | Visitor (the Till) | Public by design; read-only; no data in or out |
 | summary-unsubscribe | "Stop these emails" link | Owner (from email) | Link signed with the summary secret; two steps (view, then confirm) |
 
-**Scheduled jobs (database scheduler):** daily summary 19:00 UTC daily; news watch at minute 20 every hour; catering alerts, catering morning email 05:30 UTC daily; catering evening email 17:30 UTC daily. **Vault secrets:** the site address and the scheduler secret. Expiry reminders: top of every hour since 6 October 2026 (created by `20261113`; the emails stay off until an admin switches them on).
+**Scheduled jobs (database scheduler):** daily summary 19:00 UTC daily; news watch at minute 20 every hour; catering alerts, catering morning email 05:30 UTC daily; catering evening email 17:30 UTC daily. **Vault secrets:** the site address and the scheduler secret. Read live on 6 October 2026, six jobs exist: `nairaplate-daily-summary`, `nairaplate-news-watch`, `nairaplate-catering-alerts`, `nairaplate-catering-morning`, `nairaplate-catering-evening` and `nairaplate-expiry-reminders`. Expiry reminders: top of every hour since 6 October 2026 (created by `20261113`; the emails stay off until an admin switches them on).
 
 # Appendix F. Audit events
 
