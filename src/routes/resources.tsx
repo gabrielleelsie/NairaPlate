@@ -17,6 +17,26 @@ import {
 const BROCHURE_PDF = "/resources/NairaPlate-Brochure.pdf?v=2";
 const BROCHURE_COVER = "/resources/NairaPlate-Brochure-cover.jpg";
 
+// Role brochures: plain files in public/downloads, served by this site.
+const OWNER_BROCHURE = {
+  file: "/downloads/nairaplate-owner-brochure.pdf",
+  cover: "/downloads/nairaplate-owner-brochure-cover.jpg",
+  downloadName: "NairaPlate-Brochure-for-Food-Business-Owners.pdf",
+  label: "BROCHURE · PDF · 2 PAGES · 342 KB",
+  title: "Brochure for Food Business Owners",
+  description: "2 pages. Daily cash and sales, staff controls, real food cost and margin, and how to get started.",
+  coverAlt: "First page of the NairaPlate brochure for food business owners",
+};
+const ACCOUNTANT_BROCHURE = {
+  file: "/downloads/nairaplate-accountant-brochure.pdf",
+  cover: "/downloads/nairaplate-accountant-brochure-cover.jpg",
+  downloadName: "NairaPlate-Brochure-for-Accountants-and-Bookkeepers.pdf",
+  label: "BROCHURE · PDF · 1 PAGE · 274 KB",
+  title: "Brochure for Accountants and Bookkeepers",
+  description: "1 page. The CSV reports, the controls behind the numbers, and how month-end works.",
+  coverAlt: "First page of the NairaPlate brochure for accountants and bookkeepers",
+};
+
 export const Route = createFileRoute("/resources")({
   head: () => ({
     meta: [
@@ -52,6 +72,57 @@ const linkButtonStyle: React.CSSProperties = {
   textDecoration: "none",
   boxSizing: "border-box",
 };
+
+function RoleBrochureCard({ b }: { b: typeof OWNER_BROCHURE }) {
+  return (
+    <article
+      style={{
+        ...cardStyle,
+        padding: 0,
+        overflow: "hidden",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+      }}
+    >
+      <div style={{ background: C.navy, padding: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <img
+          src={b.cover}
+          alt={b.coverAlt}
+          width={300}
+          height={424}
+          loading="lazy"
+          style={{ width: "100%", maxWidth: 300, height: "auto", borderRadius: 8, boxShadow: "0 16px 32px rgba(0,0,0,0.35)" }}
+        />
+      </div>
+      <div style={{ padding: "40px 32px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.blue, fontWeight: 700, fontSize: 14, letterSpacing: 1 }}>
+          <FileText size={20} aria-hidden="true" /> {b.label}
+        </div>
+        <h2 style={{ color: C.navy, fontSize: 32, fontWeight: 800, lineHeight: 1.2, margin: 0 }}>{b.title}</h2>
+        <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.6, margin: 0 }}>{b.description}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
+          <a
+            href={b.file}
+            download={b.downloadName}
+            className="np-primary-btn"
+            style={{ ...linkButtonStyle, background: C.blue, color: C.white }}
+          >
+            <Download size={20} aria-hidden="true" /> Download brochure
+          </a>
+          <a
+            href={b.file}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="np-outline-btn"
+            style={{ ...linkButtonStyle, border: `2px solid ${C.blue}`, color: C.blue, padding: "10px 22px" }}
+          >
+            View in browser
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function ResourcesPage() {
   return (
@@ -130,6 +201,11 @@ function ResourcesPage() {
                 </div>
               </div>
             </article>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 24 }}>
+              <RoleBrochureCard b={OWNER_BROCHURE} />
+              <RoleBrochureCard b={ACCOUNTANT_BROCHURE} />
+            </div>
 
             <div
               style={{
