@@ -1,10 +1,14 @@
 # NairaPlate UAT script: for the Owner
 
+**Version 1.5, 6 October 2026.** Matches Master Specification version 1.5.
+
 **Who this is for:** you, signed in as the Owner of the Demo Kitchen test business.
-**How long:** about 60 minutes. You can stop after any part and carry on later.
+**How long:** about 90 minutes for Parts 0 to 7b, which run on the live site today. Modules D, E and F take longer and can only be run after the offline, paper-entry and price-history screens are released (see the box below). You can stop after any part and carry on later.
 **Where:** use the live app in a browser. Test business code: `demo-kitchen`. Everything you do is test data. Reversals are final, so use test entries only.
 
 **How to use it:** do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick **Pass** or **Fail**. If a step fails, write what you saw (the exact words of any message) in the margin next to the step and move on.
+
+**Which parts can you run today?** Parts 0 to 7b and Part 8 work on the live site now. **Modules D, E, F and G are not runnable yet.** Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix `20261102_hygiene_after_late_entries.sql` must be applied (Master Specification R1); (2) the paper-entry screens must be changed to match the rules decided on 5 October (a Confirm transfer button, "cash outside any shift", an estimated selling price) and defects D4 and D9 decided (Part 9 of the specification); (3) the rehearsal `rehearsal_phase0_prices.sql` must be run and clean. Tests marked **Known defect** in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.
 
 Menu names below are the ones on the app's home screen. The home screen groups them as **Sell**, **Buy & Stock**, **Kitchen** and **Oversight**. The "Home" link at the top of every screen takes you back.
 
@@ -14,10 +18,12 @@ Menu names below are the ones on the app's home screen. The home screen groups t
 
 | # | Go to | Do | You should see | Pass | Fail |
 |---|---|---|---|---|---|
-| 0.1 | Supabase, then SQL Editor | Paste the whole of `system_health_check.sql` and press Run | One row. The first eight columns read `0, 0, 0, 0, 0, 0, true, 8` | ☐ | ☐ |
-| 0.2 | Supabase, then SQL Editor | Paste the whole of `rehearsal_demo_kitchen.sql` and press Run | A red error that starts "REHEARSAL DONE. NOTHING WAS SAVED. ALL CLEAR" with `findings=0, test_errors=0`. The red colour is normal: the error is the report | ☐ | ☐ |
+| 0.1 | Supabase, then SQL Editor | Paste the whole of `system_health_check.sql` and press Run | One row. The first eight columns read `0, 0, 0, 0, 0, 0, true, 8`. **Known issue until the permission fix is applied:** the second, third and fourth values read `21, 9, 2` (Master Specification R1). That is the known issue, not a new fault; any other number is a Fail | ☐ | ☐ |
+| 0.2 | Supabase, then SQL Editor | Paste the whole of `rehearsal_demo_kitchen.sql` and press Run | A red error that starts "REHEARSAL DONE. NOTHING WAS SAVED. ALL CLEAR" with `findings=0, test_errors=0` (200 steps passed on 3 October; the number may be higher after later additions). The red colour is normal: the error is the report | ☐ | ☐ |
 | 0.3 | Cloudflare, then Workers and Pages, then nairaplate, then Deployments | Look at the newest deployment | It is green (succeeded) and came from the `main` branch | ☐ | ☐ |
 | 0.4 | Supabase, then Database, then Backups | Look at the page | Backups, or Point in Time Recovery, are switched on | ☐ | ☐ |
+
+| 0.5 | Supabase, then SQL Editor | Before releasing the offline, price-history and paper-entry screens only: paste the whole of `rehearsal_phase0_prices.sql` and press Run | A red error that starts "REHEARSAL DONE. NOTHING WAS SAVED. ALL CLEAR" with `findings=0, test_errors=0` | ☐ | ☐ |
 
 ## Part 1. Create the account for your first-time tester (3 minutes)
 
@@ -122,6 +128,7 @@ Do this with a shift open. If you closed it earlier, open a new one first (Home,
 | 7b.7 | Owner | **Cash drawer** | Press **Decline**, type a reason such as `not needed on the shift`, press **Decline this request** | The request shows "Declined" with your reason and does not count | ☐ | ☐ |
 | 7b.8 | Owner | **Cash drawer** | Take out `20000` yourself (**Supplier settlement**, note `settled the flour account`) | Recorded straight away with no approval step, because owners have no limit | ☐ | ☐ |
 | 7b.9 | Owner | Same list | On that ₦20,000 payout press **Reverse**, type a reason, press **Reverse this payout** | It is struck through and marked Reversed. No Reverse button remains on it | ☐ | ☐ |
+| 7b.9a | Owner | Same list | Find a payout that was **Approved** (from step 7b.5), not Recorded | It has no **Reverse** button. This is how the screen was built (Master Specification S2). Tick Pass if there is no button | ☐ | ☐ |
 | 7b.10 | Owner | **Cash drawer**, **Cashier limit** box | Type `12000` and press **Save limit** | "The limit was changed." The label now says ₦12,000.00. Put it back to `10000` afterwards | ☐ | ☐ |
 | 7b.11 | Purchaser | Home, then **Buy & Stock**, then **Purchases** | Log a purchase: **Payment** Cash. Tick **Paid from the cash drawer**. Submit | Saved. On the Cash drawer screen (as owner) a new payout "Purchase of …, paid from the drawer" appears | ☐ | ☐ |
 | 7b.12 | Owner | **Purchases**, **Recent purchases** | Reverse that purchase with a reason | The purchase is reversed AND the payout on the Cash drawer screen shows as Reversed with the same reason | ☐ | ☐ |
@@ -129,9 +136,10 @@ Do this with a shift open. If you closed it earlier, open a new one first (Home,
 | 7b.14 | Purchaser | Same screen | Pay a supplier `100` and choose **Bank transfer** | Saved. No new payout appears. Open the supplier's page: the line says "Bank transfer" | ☐ | ☐ |
 | 7b.14a | Purchaser | Same screen | Try to press **Record payment** with **How was it paid?** left on "Choose how it was paid" | The button stays greyed out | ☐ | ☐ |
 | 7b.14b | Purchaser | Same screen | Choose **Other** and leave the note empty (or type `abc`) | A red message asks for a note of at least 5 characters, and the button stays greyed out. With the note `paid by POS card` it saves | ☐ | ☐ |
-| 7b.15 | Cashier | **Cash drawer** | Count the drawer: float, plus cash sales, minus everything taken out and approved (declined and reversed ones do not count). Type that in **Cash counted in drawer (₦)** and press **Close shift** | "Shift closed". The summary shows **Cash paid out of the drawer** and the shift is **Balanced** | ☐ | ☐ |
+| 7b.14c | Purchaser | Same screen, with **no shift open** | Choose **Cash from the drawer** and press **Record payment** | A red message: "There is no open shift, so this cannot be paid from the cash drawer…". Nothing is saved (the supplier balance does not change). Choose **Bank transfer** instead and it saves | ☐ | ☐ |
+| 7b.15 | Cashier | **Cash drawer** | **Check first:** if float plus cash sales is less than what you took out, the expected figure is below zero and cannot be typed as a count. Ring up cash sales on the Till first (Home, then **Sell**, then **Till**), or have the owner close the shift with **Close this shift as owner**. Then count the drawer: float, plus cash sales, minus everything taken out and approved (declined and reversed ones do not count). Type that in **Cash counted in drawer (₦)** and press **Close shift** | "Shift closed". The summary shows **Cash paid out of the drawer** and the shift is **Balanced** | ☐ | ☐ |
 | 7b.16 | Owner | **Cash drawer**, **Closed shifts** | Look at the closed shift | The line shows "paid out ₦…" with the figures | ☐ | ☐ |
-| 7b.17 | Cook or Purchaser | Open **Cash drawer** from the address bar if you can | The page says "Cashiers and owners only." | ☐ | ☐ |
+| 7b.17 | Cook or Purchaser | The address bar | Type the address of the Cash drawer screen (`/drawer`) after the web address | The page says "Cashiers and owners only." | ☐ | ☐ |
 
 ### Catering deposit method
 
@@ -139,6 +147,18 @@ Do this with a shift open. If you closed it earlier, open a new one first (Home,
 |---|---|---|---|---|---|
 | 7b.18 | Owner or cashier: Home, then **Sell**, then **Catering** | Start a booking. Type a **Deposit paid (₦)** of `500`. Do not choose how it was paid yet | A new box **How was the deposit paid?** appears. The booking cannot be saved: the message says to choose cash or transfer | ☐ | ☐ |
 | 7b.19 | Same booking | Choose **Cash** and book it | Booked. With a shift open, the cash deposit is counted in that shift's expected cash | ☐ | ☐ |
+
+### Catering calendar
+
+| # | Go to | Do | You should see | Pass | Fail |
+|---|---|---|---|---|---|
+| 7b.20 | Owner or cashier: Home, then **Sell**, then **Catering** | Find a **confirmed** order that has a date. Press **Add to calendar** | Up to four buttons: **Share calendar file (any calendar)**, **Google Calendar**, **Outlook**, and (only if the customer's phone number is readable) **Send calendar links to customer on WhatsApp**. A line under them says how long the entry lasts and that it holds no prices | ☐ | ☐ |
+| 7b.21 | Same | On a phone, press **Share calendar file (any calendar)** | The phone's share list opens (choose WhatsApp or Files). On a computer the file downloads instead and a green message says it was saved | ☐ | ☐ |
+| 7b.22 | Same | Open the file you saved or received | Your calendar offers to add "{business}: catering order" on the right date at the event time (Nigeria time), for 2 hours, with the address as the place and an alert one day before. No price or balance is in it | ☐ | ☐ |
+| 7b.23 | Same | Press **Google Calendar** | A Google Calendar page opens with the title, date, time, place and items filled in. Saving adds it | ☐ | ☐ |
+| 7b.24 | Same | Press **Outlook** | Outlook on the web opens with the same details. If it fails for a work or school account, write that down: the calendar file is the reliable route | ☐ | ☐ |
+| 7b.25 | Same | Press **Send calendar links to customer on WhatsApp** | WhatsApp opens a message to the customer with a Google link and an Outlook link, and no prices | ☐ | ☐ |
+| 7b.26 | Same | Look at an order that is an **enquiry** or **cancelled**, and at one with no event time | The enquiry and the cancelled order show no **Add to calendar**. An order with no event time gives an all-day entry | ☐ | ☐ |
 
 ## Module D. Offline resilience, safe degraded mode (Phase 0)
 
@@ -177,6 +197,77 @@ Run on a real Android phone. Do UAT-OFF-01 to 07 first, then 08 to 15.
 
 **Owner sign-off (Module D):** I (name) ______________ ran Module D on (date) ____________. Passed ____ of 15. Failed ____. Blocked ____.
 
+## Module E. Paper (late) entries (after release)
+
+Do **not** run this module until the permission fix is applied, D1 to D4 and D6 are fixed, and the screens are released (see the box at the top). Run it as the Owner and as a Cashier (UAT Tester) in two browsers. Rejections and approvals cannot be undone. Use test dishes.
+
+**Test data:** a dish that has never been edited (for example Jollof Rice), a dish whose menu row is a later version (for example Eba & Egusi), a past shift that is closed and the current open shift.
+
+| ID | Sign in as | Go to | Do | You should see | Known defect | Pass | Fail | Blocked |
+|---|---|---|---|---|---|---|---|---|
+| UAT-LATE-01 | Cashier | Home, then **Sell**, then **Paper sales** | Look at the tabs and buttons | The tab **Enter paper sale** is open. There is no **Approve & post** and no **Reject** button anywhere | | ☐ | ☐ | ☐ |
+| UAT-LATE-02 | Cashier | **Paper sales**, **Enter paper sale** | Type **Paper form reference** `PS-001`, **Actual sale time** two hours ago, **Why it was on paper** `network down`. Pick **Jollof Rice** quantity `2`, payment Cash. Press **Send to owner for approval** | The entry is sent. The screen says it is a request that is not yet a saved sale and does not change cash, stock or reports. The price shown for the dish is the price in force at that time | | ☐ | ☐ | ☐ |
+| UAT-LATE-03 | Owner | **Orders**, **Cash drawer**, **Ingredients**, **Stock trail** | Look for the paper sale | Nothing: no new order, no change in expected cash, no stock movement | | ☐ | ☐ | ☐ |
+| UAT-LATE-04 | Cashier | **Enter paper sale** | Enter a paper sale for **Eba & Egusi** with a sale time two hours ago | The dish shows its price at that time and the entry is sent | **D1.** The database was fixed and read live on 5 October (the lookup now accepts the menu row). Not yet proved on the screen. If it still shows "no price then", D1 is not fixed | ☐ | ☐ | ☐ |
+| UAT-LATE-05 | Cashier | **Enter paper sale** | Try a sale time 4 days ago, then a time tomorrow | Both are refused: older than 72 hours, and not in the future | | ☐ | ☐ | ☐ |
+| UAT-LATE-06 | Cashier | **Enter paper sale** | Fill a valid entry (reference `PS-002`) and press **Send to owner for approval** twice quickly | Only one entry exists in the owner's **Waiting** tab | | ☐ | ☐ | ☐ |
+| UAT-LATE-07 | Owner | **Paper sales**, **Waiting** | Open an entry with **Details**. Type `no` as the reject reason: **Reject** stays greyed out. Type `duplicate of a till sale` and press **Reject** | The entry moves to **Posted & rejected** as rejected, with your reason. Orders, cash and stock are unchanged | | ☐ | ☐ | ☐ |
+| UAT-LATE-08 | Owner | **Paper sales**, **Waiting** | Approve a cash entry whose sale time is inside the **currently open** shift (press **Approve & post**) | A sale is posted. **Orders** shows it with a **Late entry** label, the paper reference, the real sale time, who entered it and who approved it. Stock is reduced for a made-to-order dish. Expected cash on the open shift includes the cash | | ☐ | ☐ | ☐ |
+| UAT-LATE-09 | Cashier, then Owner | **Enter paper sale**, then **Waiting** | Enter a **Transfer** entry. As owner, approve it | It posts and the order is **awaiting payment**, not paid. It is not in paid sales or settled totals. Approval does not fail | **D2** is closed in the database (rehearsed 6 October). The screen wording is not yet checked | ☐ | ☐ | ☐ |
+| UAT-LATE-10 | Cashier, then Owner | Same | Enter a **Split** entry (cash part and transfer part) for a shift that is still open. Approve it | It posts as **awaiting payment**. Only the cash part counts in that shift's expected cash, straight away. The transfer part is not in paid sales until confirmed | Expected-cash change is in the source branch, not released | ☐ | ☐ | ☐ |
+| UAT-LATE-11 | Cashier, then Owner | Same | Enter a paper sale whose time falls in an earlier shift that is **closed**. As owner, open it | It shows **needs shift review**. **Approve & post** stays greyed out until you choose one of the two answers about the cash | | ☐ | ☐ | ☐ |
+| UAT-LATE-12 | Owner | Same, then **Cash drawer** | Choose "Yes, the cash was included in the count at close", type a reason of 5 or more characters, and approve. Look at the **open** shift's expected cash and the closed shift | The sale posts. The open shift's expected cash does **not** include that cash. The closed shift's figures are unchanged. Without a reason, or with no choice, the approval is refused | **D3** is closed in the database and the expected-cash code (not released). The reason box is not on the screen yet | ☐ | ☐ | ☐ |
+| UAT-LATE-13 | Owner | Same, then **Cash drawer** | Do the same with a second entry and choose "No, record it as late cash against that closed shift" | The closed shift shows one adjustment for that cash amount. The cash is counted once only, and not in the open shift. If that shift was closed without a count, the choice is refused | **D3, D6** closed in the database | ☐ | ☐ | ☐ |
+| UAT-LATE-14 | Owner | **Orders** | On a posted paper sale press the usual refund or void | It works like any other sale. Write down whether a void is allowed: a void is normally only on the day of the sale, and for a paper sale it is not clear which day counts | | ☐ | ☐ | ☐ |
+| UAT-LATE-15 | Cook or Purchaser | The address bar | Type `/late-entries` after the web address | No entries and no approve or reject buttons. Nothing can be sent | | ☐ | ☐ | ☐ |
+| UAT-LATE-17 | Owner | **Waiting** | Open an entry for a dish with a sale time earlier than 25 September 2026 (before any ingredient price was known) | The card says **Food cost unknown at sale time** and lists the missing prices. **Approve & post** is replaced by a box **Use today's cost as an estimate** and a reason box. With a reason under 5 letters the button stays grey | | ☐ | ☐ | ☐ |
+| UAT-LATE-18 | Owner | Same, then **Orders** | Tick the estimate box, type a reason of 5 or more letters and press **Approve with estimated cost**. Then open **Orders** | The sale posts. **Orders** shows the label **Food cost: Estimated — today's prices** in red. A sale whose prices were all known shows **Costed at sale time** instead | | ☐ | ☐ | ☐ |
+| UAT-LATE-19 | Owner | Same | Approve (or try to approve) a closed-shift entry and choose "record it as late cash" for a shift that was closed **without a count** | Refused with "That shift was closed without a count…". Choose the other answer instead | **D6 fix** (script `20261106`). Not proved on the screen | ☐ | ☐ | ☐ |
+| UAT-LATE-20 | Owner | **Orders**, a paper sale that is awaiting payment | Press **Confirm transfer**. Type proof of `UBA ref 123456` and a reason `Customer paid at 3pm`. Confirm | The order becomes **paid**. The Orders screen and **Audit trail** show who confirmed it, the proof and the reason. Pressing it a second time changes nothing | Screen not built yet. Database rehearsed 6 October | ☐ | ☐ | ☐ |
+| UAT-LATE-21 | Owner | Same | Try proof `abc`, then a reason `abc` | Both are refused, and the order stays awaiting payment | Screen not built yet | ☐ | ☐ | ☐ |
+| UAT-LATE-22 | Cashier | **Orders** | Open a paper sale that is awaiting payment | There is no Confirm transfer button. A cashier cannot confirm | Screen not built yet | ☐ | ☐ | ☐ |
+| UAT-LATE-23 | Cashier, then Owner | **Enter paper sale**, then **Waiting** | Enter a paper sale whose time is outside every shift. As owner, try to approve it with no choice, then reject it, then (with another) approve it as **cash outside any shift** with a reason | No choice: refused. Reject: works with a reason. Cash outside any shift: posts, and the cash appears in no drawer | Screen not built yet. Database rehearsed 6 October | ☐ | ☐ | ☐ |
+| UAT-LATE-24 | Owner | **Orders** | Cancel a **transfer-only** paper sale that never arrived. Then try to cancel a **split** paper sale whose cash was taken | The transfer-only one cancels. The split one is refused with "Cash was already taken for this paper sale…" | **L1** is an open decision for the split one. Database rehearsed 6 October | ☐ | ☐ | ☐ |
+| UAT-LATE-25 | Cashier | **Enter paper sale** | Enter a paper sale for a dish that has no price on record at the sale time | Refused, naming the dish. It is never priced at ₦1,500.00 | **D7** closed (check read live). **D9:** a sale before the dish's first recorded price is still priced at the earliest price until D9 is built | ☐ | ☐ | ☐ |
+| UAT-LATE-16 | Owner | **Oversight**, then **Audit trail** | Look for the lines for the entries above | "Late entry submitted", "Late entry rejected" and "Late entry posted" lines with the paper reference and amounts | | ☐ | ☐ | ☐ |
+
+**Owner sign-off (Module E):** I (name) ______________ ran Module E on (date) ____________. Passed ____ of 25. Failed ____. Blocked ____. Defects D1 to D4, D6 and D9 fixed and re-tested: yes / no.
+
+## Module F. Dish price history (after release)
+
+Do not run this module until the price-history screen is released. Owner only, except UAT-PRICE-08.
+
+| ID | Go to | Do | You should see | Pass | Fail | Blocked |
+|---|---|---|---|---|---|---|
+| UAT-PRICE-01 | Home, then **Kitchen**, then **Recipes**. Press **Edit** on a saved dish. Scroll to **Price history** | Read the list | One row marked **In use** (set by "Starting price") with today's start time, and the explanation that a started price can't be changed | ☐ | ☐ | ☐ |
+| UAT-PRICE-02 | Same | Under **Set new price (₦)** type today's price plus `50`. Keep **Start now**. Press **Use this price now** | The message "New price is now in use." The old row says **Ended**, the new row **In use** | ☐ | ☐ | ☐ |
+| UAT-PRICE-03 | Home, then **Sell**, then **Till** | Add that dish and press Cash | The Till shows the new price and a cash sale at the new total saves. The earlier sale in **Orders** keeps the old price | ☐ | ☐ | ☐ |
+| UAT-PRICE-04 | Back on the dish's **Price history** | Choose **Start on…**, pick tomorrow 09:00, type a price, press **Schedule price** | "New price scheduled for …". A row marked **Scheduled** with a **Cancel** button. The Till still charges today's price | ☐ | ☐ | ☐ |
+| UAT-PRICE-05 | Same | Choose **Start on…** and pick a time in the past | A red message: "Pick a future date and time." | ☐ | ☐ | ☐ |
+| UAT-PRICE-06 | Same | Press **Cancel** on the scheduled row. Look at the **In use** and **Ended** rows | "Scheduled price cancelled." The row is gone. The rows that have started have no Cancel button and no way to edit them | ☐ | ☐ | ☐ |
+| UAT-PRICE-07 | **Oversight**, **Pricing review** | Publish a price on a dish, then open that dish's **Price history** | A new row appears, set by "Recipe or pricing change". Reversing the decision (Part 5) adds another | ☐ | ☐ | ☐ |
+| UAT-PRICE-08 | Cook, then Cashier | Open **Recipes** and edit a dish | No **Price history** panel is shown to a cook or a cashier | ☐ | ☐ | ☐ |
+| UAT-PRICE-09 | Owner | **Oversight**, **Audit trail** | "Dish price started", "Dish price scheduled" and "Dish price cancelled" lines with the dish, the price and the time (Lagos) | ☐ | ☐ | ☐ |
+
+**Owner sign-off (Module F):** I (name) ______________ ran Module F on (date) ____________. Passed ____ of 9. Failed ____. Blocked ____.
+
+## Module G. Ingredient price history (after release)
+
+Do not run this module until the ingredient screens are released. Run it as the Owner, except UAT-ING-07. Use one test ingredient (for example Rice) and write down its price before you start.
+
+| ID | Sign in as | Go to | Do | You should see | Pass | Fail | Blocked |
+|---|---|---|---|---|---|---|---|
+| UAT-ING-01 | Owner | **Ingredients** | Press **Price timeline** on your test ingredient | A list, newest first. Rows from before today carry the grey tag **from earlier records**. The line "Before the oldest row, the price is not known" is shown. No Edit or Delete on any row | ☐ | ☐ | ☐ |
+| UAT-ING-02 | Owner | **Ingredients** | Change the price of the ingredient by hand (new price, grade, season) and save. Reopen **Price timeline** | A new top row **Price changed by hand** with the new price, grade and today's time. The older row is still there | ☐ | ☐ | ☐ |
+| UAT-ING-03 | Purchaser | **Purchases** | Log a purchase of that ingredient that sets a new price. Reopen **Price timeline** | A row **Purchase** with the price worked out from the total and quantity | ☐ | ☐ | ☐ |
+| UAT-ING-04 | Owner | **Purchases** | Reverse that purchase with a reason. Reopen **Price timeline** | A row **Purchase reversed** showing the price going back to what it was. The two earlier rows are unchanged | ☐ | ☐ | ☐ |
+| UAT-ING-05 | Owner | The owner's profit and loss report | Pick a period that straddles your price change in UAT-ING-02 | Older sales without a saved cost use the price in force when they were sold, and later sales the new price. For a period before the first known price, the report falls back to today's prices and shows a warning that those sales are estimates. Write down the exact warning wording | ☐ | ☐ | ☐ |
+| UAT-ING-06 | Owner | **Ingredients** | Try to delete the test ingredient and to change its unit | Both are refused: an ingredient with price history keeps its unit and cannot be deleted | ☐ | ☐ | ☐ |
+| UAT-ING-07 | Cook, then Cashier | **Ingredients** | Look for **Price timeline** | The button is not shown to a cook or a cashier | ☐ | ☐ | ☐ |
+| UAT-ING-08 | Owner | **Oversight**, **Audit trail** | Look for the line about the hand price change in UAT-ING-02 | "… changed the price of … from … to … kobo per …" with who and when | ☐ | ☐ | ☐ |
+
+**Owner sign-off (Module G):** I (name) ______________ ran Module G on (date) ____________. Passed ____ of 8. Failed ____. Blocked ____.
+
 ## Part 8. Final tidy-up
 
 | # | Do | Pass | Fail |
@@ -186,6 +277,6 @@ Run on a real Android phone. Do UAT-OFF-01 to 07 first, then 08 to 15.
 
 ## What to send me
 
-For every Fail: the step number, what you did, what you saw, and the exact words of any message. Also send the outputs of steps 0.1 and 0.2. I will check the database side before changing anything.
+For every Fail: the step number, what you did, what you saw, and the exact words of any message. Also send the outputs of steps 0.1 and 0.2 (and 0.5 once it applies). I will check the database side before changing anything.
 
 **Sign-off:** I (name) ______________ ran this script on (date) ____________. Steps passed ____ of ____. Steps failed ____.
