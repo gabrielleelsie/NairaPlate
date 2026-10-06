@@ -38,3 +38,7 @@ docs/build_master*
 # Database scripts and internal test scripts are kept private, never in this repository
 supabase/external/
 docs/NairaPlate_UAT_Script_*
+
+# Internal plans, test pages and checklists are kept private
+.lovable/plan/
+docs/NairaPlate_System_Test_Checklist.*

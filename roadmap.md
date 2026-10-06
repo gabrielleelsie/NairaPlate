@@ -15,7 +15,7 @@
 - [x] Build Phase 0 code (connection bar, drafts, save-once, paper form)
 
 - [x] Owner ran SQL + check (1,1,6,false,false,0) on 4 Oct 2026
-- [x] Phase 0 UAT cases UAT-OFF-01..15 added to /uat and Word export
+- [x] Phase 0 offline test cases written (kept privately)
 - [ ] Run UAT-OFF-01..07 in preview with real network cuts (blocker: owner/tester on a phone)
 - [x] Module D + release gate added to Owner UAT script, master spec (8.4) and system checklist
 - [x] Till keeps expired drafts as "Expired — not saved" (print, owner review form, discard; 7-day purge)
