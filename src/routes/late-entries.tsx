@@ -6,6 +6,7 @@ import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { lagosLocalToIso } from "@/lib/dish-prices";
 import { reasonLabel, type CostPreview } from "@/lib/late-entry-cost";
+import { approvalArgs, approvalProblem, awaitingTransfer, RESOLUTION_LABEL, shiftSituation, transferProblem, REASON_MIN, type ShiftSituation } from "@/lib/late-entry-rules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,8 @@ function LateEntriesScreen() {
   const { session, loading } = useStaffSession();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [shiftStatus, setShiftStatus] = useState<Record<string, string>>({});
+  const [orderStatus, setOrderStatus] = useState<Record<string, string>>({});
   const [err, setErr] = useState("");
   const load = useCallback(async () => {
     if (!session) return;
@@ -51,7 +54,17 @@ function LateEntriesScreen() {
       supabase.from("staff_users").select("id,display_name").eq("business_id", session.businessId),
     ]);
     if (e.error) setErr(e.error.message); else setErr("");
-    setEntries((e.data ?? []) as Entry[]);
+    const list = (e.data ?? []) as Entry[];
+    setEntries(list);
+    // The shift each sale really belongs to (open or closed now) and the order each posted sale made (paid or awaiting its transfer).
+    const sids = [...new Set(list.map((x) => x.source_shift_id).filter((x): x is string => !!x))];
+    const oids = list.map((x) => x.posted_order_id).filter((x): x is string => !!x);
+    const [d, o] = await Promise.all([
+      sids.length ? supabase.from("cash_drawers").select("id,status").in("id", sids) : Promise.resolve({ data: [] as { id: string; status: string }[] }),
+      oids.length ? supabase.from("orders").select("id,status").in("id", oids) : Promise.resolve({ data: [] as { id: string; status: string }[] }),
+    ]);
+    setShiftStatus(Object.fromEntries((d.data ?? []).map((r: { id: string; status: string }) => [r.id, r.status])));
+    setOrderStatus(Object.fromEntries((o.data ?? []).map((r: { id: string; status: string }) => [r.id, r.status])));
     setNames(Object.fromEntries((s.data ?? []).map((r: { id: string; display_name: string }) => [r.id, r.display_name])));
   }, [session]);
   useEffect(() => { void load(); }, [load]);
@@ -62,6 +75,12 @@ function LateEntriesScreen() {
   const isOwner = session.role !== "cashier";
   const who = (id: string | null) => (id && names[id]) || (id === session.userId ? `${session.name} (me)` : "Staff");
   const by = (st: string[]) => entries.filter((e) => st.includes(e.status));
+  const waitingTransfer = entries.filter((e) => awaitingTransfer(e, e.posted_order_id ? orderStatus[e.posted_order_id] : undefined));
+  const card = (e: Entry, owner: boolean) => (
+    <EntryCard key={e.id} e={e} who={who} isOwner={owner} onDone={load} biz={session.businessId} role={session.role}
+      shiftStatus={e.source_shift_id ? shiftStatus[e.source_shift_id] : undefined}
+      orderStatus={e.posted_order_id ? orderStatus[e.posted_order_id] : undefined} />
+  );
 
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4">
@@ -74,34 +93,46 @@ function LateEntriesScreen() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="new">Enter paper sale</TabsTrigger>
           <TabsTrigger value="review">Waiting ({by(["submitted", "needs_shift_review"]).length})</TabsTrigger>
+          <TabsTrigger value="transfer">Awaiting transfer ({waitingTransfer.length})</TabsTrigger>
           <TabsTrigger value="done">Posted & rejected</TabsTrigger>
         </TabsList>
         <TabsContent value="new"><NewEntry onDone={load} /></TabsContent>
         <TabsContent value="review" className="space-y-2">
           {by(["submitted", "needs_shift_review"]).length === 0 && <p className="text-muted-foreground">Nothing waiting.</p>}
           {by(["needs_shift_review", "submitted"]).sort((a, b) => (a.status === "needs_shift_review" ? -1 : 1) - (b.status === "needs_shift_review" ? -1 : 1))
-            .map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={isOwner} onDone={load} biz={session.businessId} role={session.role} />)}
+            .map((e) => card(e, isOwner))}
+        </TabsContent>
+        <TabsContent value="transfer" className="space-y-2">
+          <p className="text-sm text-muted-foreground">Paper sales paid by transfer or split stay <strong>awaiting payment</strong> until an owner confirms the money arrived. A paper ticket is not proof of payment.</p>
+          {waitingTransfer.length === 0 && <p className="text-muted-foreground">No paper transfers are waiting.</p>}
+          {waitingTransfer.map((e) => card(e, isOwner))}
         </TabsContent>
         <TabsContent value="done" className="space-y-2">
           {by(["posted", "rejected", "approved"]).length === 0 && <p className="text-muted-foreground">None yet.</p>}
-          {by(["posted", "rejected", "approved"]).map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={false} onDone={load} biz={session.businessId} role={session.role} />)}
+          {by(["posted", "rejected", "approved"]).map((e) => card(e, false))}
         </TabsContent>
       </Tabs>
     </main>
   );
 }
 
-function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id: string | null) => string; isOwner: boolean; onDone: () => void; biz: string; role: string }) {
+function EntryCard({ e, who, isOwner, onDone, biz, role, shiftStatus, orderStatus }: { e: Entry; who: (id: string | null) => string; isOwner: boolean; onDone: () => void; biz: string; role: string; shiftStatus?: string | undefined; orderStatus?: string | undefined }) {
   const [open, setOpen] = useState(false);
   const [res, setRes] = useState("");
   const [reason, setReason] = useState("");
+  const [shiftNote, setShiftNote] = useState("");
+  const [proof, setProof] = useState("");
+  const [tReason, setTReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [preview, setPreview] = useState<CostPreview | null>(null);
   const [useEstimate, setUseEstimate] = useState(false);
   const [estReason, setEstReason] = useState("");
-  const needsShift = e.status === "needs_shift_review";
-  const pending = isOwner && (e.status === "submitted" || needsShift);
+  const situation: ShiftSituation = shiftSituation(e, shiftStatus);
+  const needsShift = situation !== "open";
+  const needsTransfer = e.payment_method !== "cash" && Number(e.transfer_kobo) > 0;
+  const waiting = awaitingTransfer(e, orderStatus);
+  const pending = isOwner && (e.status === "submitted" || e.status === "needs_shift_review");
 
   useEffect(() => {
     if (!open || !pending) return;
@@ -110,10 +141,11 @@ function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id:
 
   const unknown = preview != null && !preview.is_complete;
   const estimateOk = !unknown || (useEstimate && estReason.trim().length >= 5);
+  const shiftProblem = approvalProblem(situation, res, shiftNote);
 
   async function approve() {
     setBusy(true); setMsg("");
-    const args: Record<string, unknown> = { p_id: e.id, p_shift_resolution: needsShift ? res : null };
+    const args: Record<string, unknown> = { p_id: e.id, ...approvalArgs(situation, res, shiftNote) };
     if (unknown && useEstimate) { args["p_cost_decision"] = "estimate_current_price"; args["p_estimate_reason"] = estReason.trim(); }
     const { error } = await supabase.rpc("approve_and_post_late_entry", args as never);
     setBusy(false);
@@ -127,6 +159,14 @@ function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id:
     if (error) setMsg(error.message); else onDone();
   }
 
+  async function confirmTransfer() {
+    if (!e.posted_order_id) return;
+    setBusy(true); setMsg("");
+    const { error } = await supabase.rpc("confirm_paper_transfer", { p_order_id: e.posted_order_id, p_proof: proof.trim(), p_reason: tReason.trim() });
+    setBusy(false);
+    if (error) setMsg(error.message); else { setProof(""); setTReason(""); onDone(); }
+  }
+
   return (
     <div className="rounded-md border p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -135,7 +175,7 @@ function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id:
           <div className="text-muted-foreground">Sold {when(e.actual_sold_at)} · entered {when(e.entered_at)} · {delay(e.delay_seconds)} late · by {who(e.entered_by)}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`rounded px-2 py-0.5 text-xs ${needsShift ? "bg-destructive/15 text-destructive" : "bg-muted"}`}>{STATUS[e.status] ?? e.status}</span>
+          <span className={`rounded px-2 py-0.5 text-xs ${pending && needsShift ? "bg-destructive/15 text-destructive" : "bg-muted"}`}>{waiting ? "Awaiting transfer" : STATUS[e.status] ?? e.status}</span>
           <Button size="sm" variant="outline" onClick={() => setOpen(!open)}>{open ? "Hide" : "Details"}</Button>
         </div>
       </div>
@@ -148,8 +188,22 @@ function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id:
               <tr key={i.id}><td>{i.dish_name}</td><td>{Number(i.quantity)}</td><td>{formatNaira(Number(i.unit_price_kobo))}</td><td className="text-right">{formatNaira(Number(i.line_total_kobo))}</td></tr>
             ))}</tbody>
           </table>
-          <p>Cash {formatNaira(Number(e.cash_kobo))} · Transfer {formatNaira(Number(e.transfer_kobo))}{Number(e.transfer_kobo) > 0 && e.status !== "rejected" ? " (stays pending until confirmed — never marked paid from paper)" : ""}</p>
-          {e.status === "posted" && <p>Approved by {who(e.approved_by)} · order #{e.posted_order_id?.slice(0, 8)} · {e.shift_resolution === "open_shift_direct" ? "posted into the open shift" : e.shift_resolution === "closed_shift_included" ? "cash was already in the closed shift's count" : "late cash recorded against the closed shift"}</p>}
+          <p>Cash {formatNaira(Number(e.cash_kobo))} · Transfer {formatNaira(Number(e.transfer_kobo))}{Number(e.transfer_kobo) > 0 && e.status !== "rejected" ? (e.status === "posted" ? (waiting ? " (awaiting payment until an owner confirms the transfer)" : " (transfer confirmed)") : " (will be posted as awaiting payment until an owner confirms the transfer; never marked paid from paper)") : ""}</p>
+          {e.status === "posted" && <p>Approved by {who(e.approved_by)} · order #{e.posted_order_id?.slice(0, 8)} · {RESOLUTION_LABEL[e.shift_resolution ?? ""] ?? e.shift_resolution}{e.notes ? ` · reason: ${e.notes}` : ""}</p>}
+          {waiting && (
+            isOwner || role !== "cashier" ? (
+              <div className="space-y-2 rounded border-2 border-accent p-2">
+                <p className="font-medium">Confirm the transfer of {formatNaira(Number(e.transfer_kobo))} arrived</p>
+                <p className="text-xs text-muted-foreground">Only after you have seen the money in the bank. This marks the order paid and cannot be undone.</p>
+                <Label htmlFor={`proof-${e.id}`}>Proof: bank reference or short note (at least {REASON_MIN} characters)</Label>
+                <Input id={`proof-${e.id}`} value={proof} onChange={(ev) => setProof(ev.target.value)} placeholder="e.g. UBA ref 123456789" />
+                <Label htmlFor={`treason-${e.id}`}>Reason (at least {REASON_MIN} characters)</Label>
+                <Input id={`treason-${e.id}`} value={tReason} onChange={(ev) => setTReason(ev.target.value)} placeholder="e.g. Customer paid at 3pm" />
+                {transferProblem(proof, tReason) && (proof || tReason) && <p className="text-xs text-muted-foreground">{transferProblem(proof, tReason)}</p>}
+                <Button disabled={busy || !!transferProblem(proof, tReason)} onClick={confirmTransfer}>Confirm transfer received</Button>
+              </div>
+            ) : <p className="rounded border p-2 text-muted-foreground">Waiting for an owner to confirm the transfer.</p>
+          )}
           {e.status === "rejected" && <p className="text-destructive">Rejected by {who(e.rejected_by)}: "{e.rejection_reason}". No sale, stock or cash change was made.</p>}
           <ReceiptPhotos type="late_entry" recordId={e.id} businessId={biz} role={role} />
           {pending && (
@@ -181,17 +235,30 @@ function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id:
                   )}
                 </div>
               )}
-              {needsShift && (
+              {needsTransfer && <p className="rounded border p-2 text-xs">This sale was paid {e.payment_method === "split" ? "partly " : ""}by transfer, so it will be posted as <strong>awaiting payment</strong>. You confirm the transfer later, in the Awaiting transfer tab.</p>}
+              {situation === "open" && <p className="text-xs text-muted-foreground">The shift this sale happened in is still open, so it is posted straight into that shift.</p>}
+              {situation === "closed" && (
                 <fieldset className="space-y-1 rounded border-2 border-destructive/40 p-2">
-                  <legend className="px-1 font-medium">The shift at that time is closed (or none was open). Was this cash counted at close?</legend>
-                  <label className="flex gap-2"><input type="radio" name={`r-${e.id}`} checked={res === "closed_shift_included"} onChange={() => setRes("closed_shift_included")} />Yes — the cash was included in the count at close</label>
-                  <label className="flex gap-2"><input type="radio" name={`r-${e.id}`} checked={res === "closed_shift_late_cash"} onChange={() => setRes("closed_shift_late_cash")} />No — record it as late cash against that closed shift</label>
-                  <p className="text-xs text-muted-foreground">Not sure? Reject it instead. The closed shift's count is never changed and cash is never moved to another shift.</p>
+                  <legend className="px-1 font-medium">The shift this sale happened in is now closed. Was this cash counted at close?</legend>
+                  <label className="flex gap-2"><input type="radio" name={`r-${e.id}`} checked={res === "closed_shift_included"} onChange={() => setRes("closed_shift_included")} />Yes: the cash was included in the count at close</label>
+                  <label className="flex gap-2"><input type="radio" name={`r-${e.id}`} checked={res === "closed_shift_late_cash"} onChange={() => setRes("closed_shift_late_cash")} />No: add it to that closed shift as late cash (an adjustment beside the original count)</label>
+                  <Label htmlFor={`sn-${e.id}`}>Reason for your choice (at least {REASON_MIN} characters)</Label>
+                  <Input id={`sn-${e.id}`} value={shiftNote} onChange={(ev) => setShiftNote(ev.target.value)} placeholder="e.g. Cashier confirms it was in the drawer at close" />
+                  <p className="text-xs text-muted-foreground">Not sure? Reject it instead. The closed shift's original count is never rewritten, and the cash is never counted in a different shift.</p>
                 </fieldset>
               )}
-              <Button disabled={busy || (needsShift && !res) || !estimateOk} onClick={approve}>
-                {unknown && useEstimate ? "Approve with estimated cost" : "Approve & post"} {formatNaira(Number(e.total_kobo))}
+              {situation === "outside" && (
+                <fieldset className="space-y-1 rounded border-2 border-destructive/40 p-2">
+                  <legend className="px-1 font-medium">No shift covered the time of this sale.</legend>
+                  <p>You can reject it, or approve it as <strong>cash outside any shift</strong>. The cash is recorded on the sale but belongs to no drawer.</p>
+                  <Label htmlFor={`sn-${e.id}`}>Reason (at least {REASON_MIN} characters)</Label>
+                  <Input id={`sn-${e.id}`} value={shiftNote} onChange={(ev) => setShiftNote(ev.target.value)} placeholder="e.g. Night sale, no shift was open" />
+                </fieldset>
+              )}
+              <Button disabled={busy || !!shiftProblem || !estimateOk} onClick={approve}>
+                {unknown && useEstimate ? "Approve with estimated cost" : situation === "outside" ? "Approve as cash outside any shift" : "Approve & post"} {formatNaira(Number(e.total_kobo))}
               </Button>
+              {shiftProblem && (res || shiftNote) && <p className="text-xs text-muted-foreground">{shiftProblem}</p>}
               <div className="space-y-1">
                 <Label htmlFor={`rej-${e.id}`}>Reject reason (at least 5 letters)</Label>
                 <Textarea id={`rej-${e.id}`} value={reason} onChange={(ev) => setReason(ev.target.value)} />

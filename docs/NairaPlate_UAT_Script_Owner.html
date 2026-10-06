@@ -1209,9 +1209,9 @@ td .blank { min-width: 40mm; }
 <td>UAT-LATE-12</td>
 <td>Owner</td>
 <td>Same, then <strong>Cash drawer</strong></td>
-<td>Choose "Yes, the cash was included in the count at close", type a reason of 5 or more characters, and approve. Look at the <strong>open</strong> shift's expected cash and the closed shift</td>
-<td>The sale posts. The open shift's expected cash does <strong>not</strong> include that cash. The closed shift's figures are unchanged. Without a reason, or with no choice, the approval is refused</td>
-<td><strong>D3</strong> is closed in the database and the expected-cash code (not released). The reason box is not on the screen yet</td>
+<td>Open the entry. Choose "Yes: the cash was included in the count at close", type a reason of 5 or more characters, and approve. Look at the <strong>open</strong> shift's expected cash and the closed shift</td>
+<td>The sale posts. The open shift's expected cash does <strong>not</strong> include that cash. The closed shift's figures are unchanged. <strong>Approve &amp; post</strong> stays grey until a choice and a reason are given</td>
+<td><strong>D3</strong> closed in the database and the expected-cash code. Screen built 6 October, not yet tried by a person</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1285,10 +1285,10 @@ td .blank { min-width: 40mm; }
 <tr>
 <td>UAT-LATE-20</td>
 <td>Owner</td>
-<td><strong>Orders</strong>, a paper sale that is awaiting payment</td>
-<td>Press <strong>Confirm transfer</strong>. Type proof of <code>UBA ref 123456</code> and a reason <code>Customer paid at 3pm</code>. Confirm</td>
-<td>The order becomes <strong>paid</strong>. The Orders screen and <strong>Audit trail</strong> show who confirmed it, the proof and the reason. Pressing it a second time changes nothing</td>
-<td>Screen not built yet. Database rehearsed 6 October</td>
+<td><strong>Paper sales</strong>, <strong>Awaiting transfer</strong> tab</td>
+<td>Open a posted paper sale paid by transfer. Type proof <code>UBA ref 123456</code> and reason <code>Customer paid at 3pm</code>. Press <strong>Confirm transfer received</strong></td>
+<td>The order becomes <strong>paid</strong> and leaves the Awaiting transfer tab. <strong>Orders</strong> and <strong>Audit trail</strong> show who confirmed it, the proof and the reason. It cannot be confirmed twice</td>
+<td>Screen built 6 October, not yet tried by a person. Database rehearsed 6 October</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1298,8 +1298,8 @@ td .blank { min-width: 40mm; }
 <td>Owner</td>
 <td>Same</td>
 <td>Try proof <code>abc</code>, then a reason <code>abc</code></td>
-<td>Both are refused, and the order stays awaiting payment</td>
-<td>Screen not built yet</td>
+<td><strong>Confirm transfer received</strong> stays grey and says what is missing. The order stays awaiting payment</td>
+<td>Screen built 6 October, not yet tried by a person</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1307,10 +1307,10 @@ td .blank { min-width: 40mm; }
 <tr>
 <td>UAT-LATE-22</td>
 <td>Cashier</td>
-<td><strong>Orders</strong></td>
-<td>Open a paper sale that is awaiting payment</td>
-<td>There is no Confirm transfer button. A cashier cannot confirm</td>
-<td>Screen not built yet</td>
+<td><strong>Paper sales</strong>, <strong>Awaiting transfer</strong> tab</td>
+<td>Open a paper sale that is awaiting its transfer</td>
+<td>You see "Waiting for an owner to confirm the transfer." There is no confirm form. A cashier cannot confirm</td>
+<td>Screen built 6 October, not yet tried by a person</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
@@ -1319,9 +1319,9 @@ td .blank { min-width: 40mm; }
 <td>UAT-LATE-23</td>
 <td>Cashier, then Owner</td>
 <td><strong>Enter paper sale</strong>, then <strong>Waiting</strong></td>
-<td>Enter a paper sale whose time is outside every shift. As owner, try to approve it with no choice, then reject it, then (with another) approve it as <strong>cash outside any shift</strong> with a reason</td>
-<td>No choice: refused. Reject: works with a reason. Cash outside any shift: posts, and the cash appears in no drawer</td>
-<td>Screen not built yet. Database rehearsed 6 October</td>
+<td>Enter a paper sale whose time is outside every shift. As owner, open it: you see "No shift covered the time of this sale". Try <strong>Approve as cash outside any shift</strong> with no reason, then with a reason. Reject a second one with a reason</td>
+<td>No reason: the button stays grey. With a reason: it posts and the cash appears in no drawer. Reject works with a reason</td>
+<td>Screen built 6 October, not yet tried by a person. Database rehearsed 6 October</td>
 <td>☐</td>
 <td>☐</td>
 <td>☐</td>
