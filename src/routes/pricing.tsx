@@ -158,12 +158,12 @@ function PricingPage() {
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px" }}>
             <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "0 0 12px" }}>7 days free</h2>
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
-              Your free trial starts the day we approve your account. We set you up on the plan that suits your kitchen. It ends at 11:59 pm (Nigeria time) on day 7.
+              Your free trial starts the day we approve your account. We put you on the plan that suits your kitchen and show you how to use it. The trial has limits on recipes and ingredients. It ends at 11:59 pm (Nigeria time) on day 7.
             </p>
 
             <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "40px 0 12px" }}>Setup</h2>
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
-              Our team sets up your kitchen with you: your market units, ingredients, recipes, dishes and staff. You pay the setup fee once.
+              There is no setup fee during the free trial. When you start a paid plan, our team sets up your kitchen with you: your market units, ingredients, recipes, dishes and staff. You pay the setup fee once.
             </p>
 
             <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "40px 0 12px" }}>How to pay</h2>

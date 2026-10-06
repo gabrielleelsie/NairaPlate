@@ -131,7 +131,7 @@ const GROUPS: Group[] = [
     items: [
       {
         q: "How does the free trial work?",
-        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day. We choose the plan that suits your kitchen (Buka, Restaurant or Full Suite) and our team sets it up with you.",
+        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day. We choose the plan that suits your kitchen (Buka, Restaurant or Full Suite) and our team shows you how to use it.",
       },
       {
         q: "Is there a limit during the trial?",
@@ -159,7 +159,7 @@ const GROUPS: Group[] = [
       },
       {
         q: "Is there a setup fee?",
-        a: "Yes. Our team sets up your kitchen with you, and you pay the setup fee once. {setup} Message us on WhatsApp.",
+        a: "Yes. There is no setup fee during the free trial. When you start a paid plan, our team sets up your full menu with you, and you pay the setup fee once. {setup} Message us on WhatsApp.",
       },
       {
         q: "How much does it cost?",
