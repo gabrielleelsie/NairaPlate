@@ -1,0 +1,1591 @@
+<!doctype html><html><head><meta charset="utf-8"><title>NairaPlate UAT script: for the Owner</title><style>
+@page { size: A4; margin: 16mm 13mm 18mm 13mm; }
+* { box-sizing: border-box; }
+body { font: 10pt/1.4 "DejaVu Sans", "Liberation Sans", Arial, sans-serif; color: #1a1a1a; }
+h1 { font-size: 20pt; color: #0B1F33; margin: 0 0 4mm; border-bottom: 0.6mm solid #1677D2; padding-bottom: 2mm; }
+h2 { font-size: 13pt; color: #0B1F33; margin: 7mm 0 2.5mm; page-break-after: avoid; }
+h3 { font-size: 11pt; color: #0B1F33; margin: 5mm 0 1.5mm; page-break-after: avoid; }
+p, li { margin: 1.5mm 0; }
+hr { border: 0; border-top: 0.3mm solid #bbb; margin: 5mm 0; }
+code { font: 9pt "DejaVu Sans Mono", monospace; background: #F0F0F0; padding: 0 1mm; border-radius: 1mm; }
+table { width: 100%; border-collapse: collapse; margin: 3mm 0 4mm; font-size: 8.8pt; }
+th { background: #0B1F33; color: #fff; text-align: left; padding: 1.8mm 2mm; }
+td { border: 0.25mm solid #bbb; padding: 1.8mm 2mm; vertical-align: top; }
+tr { page-break-inside: avoid; }
+td:empty { height: 12mm; }
+tr:nth-child(even) td { background: #F7F9FC; }
+table.pf td:first-child, table.pf th:first-child { width: 9mm; text-align: center; }
+table.pf td:nth-last-child(-n+2), table.pf th:nth-last-child(-n+2) { width: 11mm; text-align: center; font-size: 11pt; }
+blockquote { border-left: 1.2mm solid #1677D2; background: #EAF3FC; margin: 3mm 0; padding: 2mm 4mm; }
+strong { color: #0B1F33; }
+.blank { display: inline-block; min-width: 55mm; border-bottom: 0.3mm solid #444; height: 4.5mm; vertical-align: bottom; }
+td .blank { min-width: 40mm; }
+</style></head><body><h1>NairaPlate UAT script: for the Owner</h1>
+<p><strong>Version 1.5, 6 October 2026.</strong> Matches Master Specification version 1.5.</p>
+<p><strong>Who this is for:</strong> you, signed in as the Owner of the Demo Kitchen test business.
+<strong>How long:</strong> about 90 minutes for Parts 0 to 7b, which run on the live site today. Modules D, E and F take longer and can only be run after the offline, paper-entry and price-history screens are released (see the box below). You can stop after any part and carry on later.
+<strong>Where:</strong> use the live app in a browser. Test business code: <code>demo-kitchen</code>. Everything you do is test data. Reversals are final, so use test entries only.</p>
+<p><strong>How to use it:</strong> do the steps in order. For each step, "Go to" tells you where to click, "Do" tells you what to do, and "You should see" is the pass condition. Tick <strong>Pass</strong> or <strong>Fail</strong>. If a step fails, write what you saw (the exact words of any message) in the margin next to the step and move on.</p>
+<p><strong>Which parts can you run today?</strong> Parts 0 to 7b and Part 8 work on the live site now. <strong>Modules D, E, F and G are not runnable yet.</strong> Their screens are in the source branch and not on the live site. Before they are released: (1) the permission fix <code>20261102_hygiene_after_late_entries.sql</code> must be applied (Master Specification R1); (2) the paper-entry screens must be changed to match the rules decided on 5 October (a Confirm transfer button, "cash outside any shift", an estimated selling price) and defects D4 and D9 decided (Part 9 of the specification); (3) the rehearsal <code>rehearsal_phase0_prices.sql</code> must be run and clean. Tests marked <strong>Known defect</strong> in Module E are expected to fail until their defect is fixed; they are there so the fix can be proved.</p>
+<p>Menu names below are the ones on the app's home screen. The home screen groups them as <strong>Sell</strong>, <strong>Buy &amp; Stock</strong>, <strong>Kitchen</strong> and <strong>Oversight</strong>. The "Home" link at the top of every screen takes you back.</p>
+<hr />
+<h2>Part 0. Before you start (5 minutes)</h2>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>Supabase, then SQL Editor</td>
+<td>Paste the whole of <code>system_health_check.sql</code> and press Run</td>
+<td>One row. The first eight columns read <code>0, 0, 0, 0, 0, 0, true, 8</code>. <strong>Known issue until the permission fix is applied:</strong> the second, third and fourth values read <code>21, 9, 2</code> (Master Specification R1). That is the known issue, not a new fault; any other number is a Fail</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>0.2</td>
+<td>Supabase, then SQL Editor</td>
+<td>Paste the whole of <code>rehearsal_demo_kitchen.sql</code> and press Run</td>
+<td>A red error that starts "REHEARSAL DONE. NOTHING WAS SAVED. ALL CLEAR" with <code>findings=0, test_errors=0</code> (200 steps passed on 3 October; the number may be higher after later additions). The red colour is normal: the error is the report</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>Cloudflare, then Workers and Pages, then nairaplate, then Deployments</td>
+<td>Look at the newest deployment</td>
+<td>It is green (succeeded) and came from the <code>main</code> branch</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>0.4</td>
+<td>Supabase, then Database, then Backups</td>
+<td>Look at the page</td>
+<td>Backups, or Point in Time Recovery, are switched on</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p>| 0.5 | Supabase, then SQL Editor | Before releasing the offline, price-history and paper-entry screens only: paste the whole of <code>rehearsal_phase0_prices.sql</code> and press Run | A red error that starts "REHEARSAL DONE. NOTHING WAS SAVED. ALL CLEAR" with <code>findings=0, test_errors=0</code> | ☐ | ☐ |</p>
+<h2>Part 1. Create the account for your first-time tester (3 minutes)</h2>
+<p>Do this once. It gives her a name and a PIN. This app has no emails or passwords: staff sign in with the <strong>business code</strong> and their own <strong>PIN of 4 to 8 digits</strong>.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.1</td>
+<td>Open the app and sign in as yourself</td>
+<td>Enter business code <code>demo-kitchen</code>, press <strong>Continue</strong>, tap your name, enter your PIN</td>
+<td>The home screen with Sell, Buy &amp; Stock, Kitchen and Oversight</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>1.2</td>
+<td>Home, then <strong>Oversight</strong>, then <strong>Staff</strong></td>
+<td>Look at the <strong>Add staff member</strong> form</td>
+<td>Fields: Name, Role, Starting PIN (4 to 8 digits)</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>1.3</td>
+<td>Same form</td>
+<td>Type the name <code>UAT Tester</code>. For <strong>Role</strong> pick <strong>Cashier</strong>. Press <strong>Generate</strong> next to the PIN</td>
+<td>A 6-digit PIN appears on screen: "PIN: 123456 — tell UAT Tester this PIN. It won't be shown again." <strong>Write it down now</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>1.4</td>
+<td>Same form</td>
+<td>Press <strong>Add staff member</strong></td>
+<td>A confirmation, and "UAT Tester" appears under <strong>Current staff</strong> as "Cashier · Active"</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p>Write her sign-in details on the first-time-user script: business code <code>demo-kitchen</code>, name <code>UAT Tester</code>, and the PIN you wrote down. Do not send the PIN by any channel you would not use for a password. When testing is over, come back to <strong>Staff</strong>, find UAT Tester and press <strong>Deactivate</strong>.</p>
+<h2>Part 2. Selling (Cashier work, done as Owner) (10 minutes)</h2>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.1</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Cash drawer</strong></td>
+<td>If it says a shift is already open, stop and tell me. Otherwise type an <strong>Opening float (₦)</strong> of <code>2000</code> and press <strong>Open shift</strong></td>
+<td>The page now shows "Shift open since …" with a ₦2,000 float</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.2</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Till</strong></td>
+<td>Leave <strong>Channel</strong> as Walk-in and <strong>Price tier</strong> as Standard. Under <strong>Item</strong> choose a dish, set <strong>Quantity</strong> 1, press <strong>Add</strong> (or <strong>Add item</strong>)</td>
+<td>The dish appears in the order with its price</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.3</td>
+<td>Same screen</td>
+<td>Under <strong>Payment</strong> pick <strong>Cash</strong>, then press the <strong>Charge ₦…</strong> button</td>
+<td>A confirmation that the sale was saved</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.4</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Orders</strong></td>
+<td>Find the sale you just made</td>
+<td>It shows as <strong>Paid</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.5</td>
+<td>Same order</td>
+<td>Press <strong>Void / Refund</strong>. Choose <strong>Void</strong>, type a reason such as <code>test sale, customer left</code> (at least 5 letters), press the <strong>Void ₦…</strong> button</td>
+<td>The order now shows as <strong>Voided</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.6</td>
+<td>Same screen, <strong>Adjustments</strong> tab</td>
+<td>Look at the list</td>
+<td>A "Void" line with your reason, who did it and when</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.7</td>
+<td><strong>Till</strong></td>
+<td>Make a second cash sale. Then in <strong>Orders</strong> press <strong>Void / Refund</strong> on it, choose <strong>Part refund</strong>, type an amount smaller than the total and a reason, press the refund button</td>
+<td>The order shows as <strong>Part refunded</strong> and the Adjustments tab shows a "Part refund" line</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.8</td>
+<td><strong>Till</strong></td>
+<td>Make a sale with <strong>Payment</strong> set to <strong>Customer credit (owe)</strong>. Type a customer name <code>Test Customer</code> and a phone number</td>
+<td>A confirmation that it was put on credit</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2.9</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Customer credit</strong></td>
+<td>On the <strong>Still owing</strong> tab find Test Customer. Press <strong>Record payment</strong>, enter a smaller amount, choose Cash</td>
+<td>The balance goes down by that amount</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Part 3. Stock and money going out (15 minutes)</h2>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.1</td>
+<td>Home, then <strong>Buy &amp; Stock</strong>, then <strong>Ingredients</strong></td>
+<td>Find <strong>Garri</strong> and write down its stock (about 5.2 kg when this script was written). You will compare later. Units that Garri understands are <strong>derica</strong> (1.2 kg) and <strong>mudu</strong> (1.5 kg): the <strong>Units</strong> button on its row shows them</td>
+<td>A list with each ingredient's stock</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3.2</td>
+<td>Home, then <strong>Kitchen</strong>, then <strong>Wastage</strong></td>
+<td>Under <strong>Ingredient</strong> choose Garri, <strong>Quantity</strong> <code>1</code>, <strong>Unit</strong> derica, <strong>Reason</strong> Spoilage, press <strong>Log wastage</strong></td>
+<td>A message "Logged 1 derica of Garri … Stock has been reduced."</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3.3</td>
+<td><strong>Ingredients</strong>, then <strong>Stock trail</strong> on that ingredient</td>
+<td>Look at the newest line</td>
+<td>A line for the wastage, reducing stock by 1.2 (one derica)</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3.4</td>
+<td>Home, then <strong>Buy &amp; Stock</strong>, then <strong>Purchases</strong></td>
+<td>Fill in <strong>Ingredient</strong> Garri, <strong>Quantity</strong> <code>2</code>, <strong>Unit</strong> derica, <strong>Total paid (₦)</strong> <code>1700</code>, <strong>Grade</strong> B and <strong>Season</strong> Normal (both required), <strong>Payment</strong> Cash. Press <strong>Submit purchase</strong></td>
+<td>The purchase appears under <strong>Recent purchases</strong>. Garri stock goes up by 2.4 kg (two dericas)</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3.5</td>
+<td>Same list</td>
+<td>On that purchase press <strong>Reverse</strong>. Type a reason of 5 or more characters, press <strong>Reverse this purchase</strong></td>
+<td>The purchase is marked as reversed and the stock goes back down</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3.6</td>
+<td><strong>Ingredients</strong>, then <strong>Edit</strong> on one ingredient</td>
+<td>Change <strong>Price per kg (₦)</strong> to a slightly higher number, choose <strong>Grade this price is for</strong> B and <strong>Season it was bought in</strong> Normal, press <strong>Save</strong></td>
+<td>The new price shows on the list, and the <strong>History</strong> button for that ingredient shows the change</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3.7</td>
+<td>Home, then <strong>Buy &amp; Stock</strong>, then <strong>Stock take</strong></td>
+<td>Under <strong>Count stock</strong> type a <strong>Counted</strong> figure that differs from the system figure for one ingredient. In "Why is it different? (required)" type a reason. Press <strong>Save count and correct stock</strong></td>
+<td>The count is saved and the stock is corrected. It appears under <strong>Recent counts</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Part 4. The cash drawer (5 minutes)</h2>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.1</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Cash drawer</strong></td>
+<td>Under <strong>Cash counted in drawer (₦)</strong> type a figure close to float plus the cash sales you made (voided sales do not count) and press <strong>Close shift</strong></td>
+<td>"Shift closed", with the expected cash and how it was worked out (float, cash sales, and so on). A difference shows a note</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>4.2</td>
+<td>Same page, <strong>Closed shifts</strong></td>
+<td>Find the shift you just closed and press <strong>Correct the count</strong>. Type a new count and a reason of 5 or more characters, press <strong>Save adjustment</strong></td>
+<td>The original count stays on screen, with your adjustment beside it</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>4.3</td>
+<td>Home, then <strong>Oversight</strong>, then <strong>Alerts</strong></td>
+<td>Look at the list</td>
+<td>If the count was different from expected, an alert about the difference is there</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Part 5. Batches and the three Reverse buttons (20 minutes)</h2>
+<p>Use test entries only. Every reversal is final.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5.1</td>
+<td>Home, then <strong>Kitchen</strong>, then <strong>Log a batch</strong></td>
+<td>Under <strong>Dish cooked</strong> choose a dish. If it says "This dish is set to Made to order", choose a different dish. Leave <strong>How many times the recipe</strong> at <code>1</code>, type <strong>Plates actually made</strong> <code>10</code>, press <strong>Save batch</strong></td>
+<td>A "Saved:" summary with cost per plate</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.2</td>
+<td><strong>Ingredients</strong>, then <strong>Stock trail</strong> on an ingredient used by that dish</td>
+<td>Look at the newest line</td>
+<td>"Used in a batch", reducing stock</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.3</td>
+<td><strong>Log a batch</strong>, then scroll to <strong>Recent batches</strong></td>
+<td>Find the batch you just made. Press <strong>Reverse</strong>. Read the note. Type a reason of 5 or more characters. Press <strong>Reverse this batch</strong></td>
+<td>The batch is marked "Reversed" with your reason. A green message says the ingredients are back in stock</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.4</td>
+<td><strong>Ingredients</strong>, then <strong>Stock trail</strong> (same ingredient)</td>
+<td>Look at the newest lines</td>
+<td>A line "Batch reversed, put back" which cancels the earlier "Used in a batch" line. Stock is back to what it was before the batch</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.5</td>
+<td><strong>Log a batch</strong>, <strong>Recent batches</strong></td>
+<td>Look at the older batches from before 3 October (there are six)</td>
+<td>Each has a <strong>Reverse</strong> button. Pressing it with a reason gives the message "This batch was recorded before reversals existed, so it cannot be reversed." That message is correct and expected</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.6</td>
+<td>Home, then <strong>Oversight</strong>, then <strong>Channel payouts</strong></td>
+<td>Pick <strong>Channel</strong> Walk-in, keep the dates, type <strong>Commission they took (₦)</strong> <code>0</code> and <strong>Amount that reached your bank (₦)</strong> equal to the sales shown above, press <strong>Save payout</strong></td>
+<td>"Payout saved." It appears under <strong>Past payouts</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.7</td>
+<td>Same page, <strong>Past payouts</strong></td>
+<td>On that payout press <strong>Reverse</strong>. Type fewer than 5 characters first: the <strong>Reverse this payout</strong> button stays greyed out. Then type a proper reason and press the button</td>
+<td>The payout is faded, struck through and marked <strong>Reversed</strong>, with "Reversed by [your name] … It no longer counts." A green message says to record the correct payout</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.8</td>
+<td>Same page</td>
+<td>Look at the reversed payout</td>
+<td>There is no <strong>Reverse</strong> button on it any more</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.9</td>
+<td>Home, then <strong>Buy &amp; Stock</strong>, then <strong>Ingredients</strong>, then <strong>Edit</strong> on an ingredient used by a dish</td>
+<td>Raise the price noticeably (for example by a third) and press <strong>Save</strong></td>
+<td>The new price is saved</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.10</td>
+<td>Home, then <strong>Oversight</strong>, then <strong>Pricing review</strong> (this opens the Recipes page, scroll to <strong>Pricing review</strong>)</td>
+<td>Find the dish whose price is now more than 2% away from the suggestion</td>
+<td>The dish appears with "Now ₦…" and "Suggested ₦…" and three buttons: <strong>Publish</strong>, <strong>Adjust portion</strong>, <strong>Defer</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.11</td>
+<td>Same section</td>
+<td>Press <strong>Publish ₦…</strong></td>
+<td>A message "price changed ₦… → ₦…". The new price shows</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.12</td>
+<td>Same page, <strong>Price decision history</strong></td>
+<td>Find that decision (newest, "Published new price"). Press <strong>Reverse</strong>. Read the note: it says the price goes back to the old figure. Type a reason and press <strong>Reverse this decision</strong></td>
+<td>A message "Decision reversed. The dish price is back to ₦…". The decision is marked "(Reversed)"</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.13</td>
+<td><strong>Recipes</strong>, then the dish</td>
+<td>Check the selling price</td>
+<td>It is the old price again</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.14</td>
+<td><strong>Pricing review</strong>, history</td>
+<td>Find an older "Published new price" decision from earlier days and press <strong>Reverse</strong> with a reason</td>
+<td>Either it works, or you see "Not reversed: the dish price has changed since this decision, so it cannot be put back safely." Both are correct. Write down which you got</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5.15</td>
+<td><strong>Ingredients</strong>, <strong>Edit</strong></td>
+<td>Put the ingredient price back to what it was in step 3.6 and press <strong>Save</strong></td>
+<td>Saved</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Part 6. The record of what happened (5 minutes)</h2>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>6.1</td>
+<td>Home, then <strong>Oversight</strong>, then <strong>Audit log</strong></td>
+<td>Leave the dates on the last 7 days and look at the list</td>
+<td>Lines for what you did today: order voided or refunded, cost changed, price published, and others</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>6.2</td>
+<td>Same page</td>
+<td>Look for lines about the payout, the price decision and the batch you reversed</td>
+<td>Known issue: these three may show as plain code names (<code>payout_reversed</code>, <code>price_decision_reversed</code>, <code>batch_reversed</code>) instead of readable text. The lines should still be there with the reason in the description. Write down what you see</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Part 7. Who can see what (10 minutes)</h2>
+<p>For each row, sign out first (the sign-out icon in the top bar of the home screen), then sign in again with <code>demo-kitchen</code> and pick the person from <strong>Who's working?</strong>. Use the existing Demo Kitchen staff, or the UAT Tester account.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Sign in as</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7.1</td>
+<td>A Cook (Kitchen Staff)</td>
+<td>Look at the home screen</td>
+<td>Only the Kitchen group (Recipes, Log a batch, Wastage, Stock take). No Till, no Purchases</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7.2</td>
+<td>The same Cook</td>
+<td>Open <strong>Log a batch</strong>, then scroll to <strong>Recent batches</strong></td>
+<td>The list shows, but there is <strong>no Reverse button</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7.3</td>
+<td>A Cashier (or UAT Tester)</td>
+<td>Look at the home screen</td>
+<td>Only the Sell group (Till, Cash drawer, Orders, Customer credit)</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7.4</td>
+<td>The same Cashier</td>
+<td>Open <strong>Orders</strong> and look at an order made by someone else</td>
+<td>Pressing <strong>Void / Refund</strong> and trying gives "Only an owner can adjust another cashier's order"</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7.5</td>
+<td>A Purchaser</td>
+<td>Look at the home screen</td>
+<td>Only Buy &amp; Stock. In <strong>Purchases</strong>, recent purchases have no <strong>Reverse</strong> button</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Part 7b. Cash taken out of the drawer (15 minutes)</h2>
+<p>Do this with a shift open. If you closed it earlier, open a new one first (Home, then <strong>Sell</strong>, then <strong>Cash drawer</strong>, float <code>2000</code>, <strong>Open shift</strong>). The cashier steps (7b.1 to 7b.4) can be done signed in as the cashier or UAT Tester; the owner steps need you signed in as the Owner.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Sign in as</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7b.1</td>
+<td>Cashier who opened the shift</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Cash drawer</strong></td>
+<td>Scroll to <strong>Cash taken out</strong>. Type <strong>Amount (₦)</strong> <code>4000</code>, <strong>What for</strong> Market run, <strong>Note</strong> <code>tomatoes and pepper</code>. Press <strong>Take cash out</strong></td>
+<td>"₦4,000.00 recorded as taken out of the drawer." It appears in the list as Recorded</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.2</td>
+<td>Same cashier</td>
+<td>Same section</td>
+<td>Take out another <code>4000</code> (<strong>Gas or fuel</strong>, note <code>gas refill for the stove</code>)</td>
+<td>Recorded. The text above the form now says you can take out about ₦2,000 more</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.3</td>
+<td>Same cashier</td>
+<td>Same section</td>
+<td>Try <code>4000</code> again (<strong>Transport</strong>, note <code>bike to the market</code>). The button now says <strong>Ask the owner</strong>. Press it</td>
+<td>A message that it is over your limit and is waiting for the owner. The list shows it as "Waiting for the owner"</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.4</td>
+<td>Same cashier</td>
+<td>Same page</td>
+<td>Look at the <strong>Close shift</strong> button</td>
+<td>It is greyed out, with a red message: a cash payout is waiting for the owner</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.5</td>
+<td>Owner</td>
+<td><strong>Cash drawer</strong></td>
+<td>Find <strong>Waiting for your approval</strong>. Press <strong>Decline</strong>, type <code>no</code>: the <strong>Decline this request</strong> button stays greyed out. Then press <strong>Approve</strong> instead</td>
+<td>The request becomes "Approved" and now counts as paid out</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.6</td>
+<td>Cashier</td>
+<td><strong>Cash drawer</strong></td>
+<td>Ask for another large amount, for example <code>9000</code> (Other, note <code>large item for the stove</code>)</td>
+<td>It waits for the owner</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.7</td>
+<td>Owner</td>
+<td><strong>Cash drawer</strong></td>
+<td>Press <strong>Decline</strong>, type a reason such as <code>not needed on the shift</code>, press <strong>Decline this request</strong></td>
+<td>The request shows "Declined" with your reason and does not count</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.8</td>
+<td>Owner</td>
+<td><strong>Cash drawer</strong></td>
+<td>Take out <code>20000</code> yourself (<strong>Supplier settlement</strong>, note <code>settled the flour account</code>)</td>
+<td>Recorded straight away with no approval step, because owners have no limit</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.9</td>
+<td>Owner</td>
+<td>Same list</td>
+<td>On that ₦20,000 payout press <strong>Reverse</strong>, type a reason, press <strong>Reverse this payout</strong></td>
+<td>It is struck through and marked Reversed. No Reverse button remains on it</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.9a</td>
+<td>Owner</td>
+<td>Same list</td>
+<td>Find a payout that was <strong>Approved</strong> (from step 7b.5), not Recorded</td>
+<td>It has no <strong>Reverse</strong> button. This is how the screen was built (Master Specification S2). Tick Pass if there is no button</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.10</td>
+<td>Owner</td>
+<td><strong>Cash drawer</strong>, <strong>Cashier limit</strong> box</td>
+<td>Type <code>12000</code> and press <strong>Save limit</strong></td>
+<td>"The limit was changed." The label now says ₦12,000.00. Put it back to <code>10000</code> afterwards</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.11</td>
+<td>Purchaser</td>
+<td>Home, then <strong>Buy &amp; Stock</strong>, then <strong>Purchases</strong></td>
+<td>Log a purchase: <strong>Payment</strong> Cash. Tick <strong>Paid from the cash drawer</strong>. Submit</td>
+<td>Saved. On the Cash drawer screen (as owner) a new payout "Purchase of …, paid from the drawer" appears</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.12</td>
+<td>Owner</td>
+<td><strong>Purchases</strong>, <strong>Recent purchases</strong></td>
+<td>Reverse that purchase with a reason</td>
+<td>The purchase is reversed AND the payout on the Cash drawer screen shows as Reversed with the same reason</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.13</td>
+<td>Purchaser</td>
+<td>Home, then <strong>Buy &amp; Stock</strong>, then <strong>Suppliers</strong>, <strong>Pay a supplier</strong></td>
+<td>Pick a supplier, amount <code>500</code>. Open <strong>How was it paid?</strong> and choose <strong>Cash from the drawer</strong>. Press <strong>Record payment</strong></td>
+<td>Saved. A payout "Payment to …, paid from the drawer" appears on the Cash drawer screen</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.14</td>
+<td>Purchaser</td>
+<td>Same screen</td>
+<td>Pay a supplier <code>100</code> and choose <strong>Bank transfer</strong></td>
+<td>Saved. No new payout appears. Open the supplier's page: the line says "Bank transfer"</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.14a</td>
+<td>Purchaser</td>
+<td>Same screen</td>
+<td>Try to press <strong>Record payment</strong> with <strong>How was it paid?</strong> left on "Choose how it was paid"</td>
+<td>The button stays greyed out</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.14b</td>
+<td>Purchaser</td>
+<td>Same screen</td>
+<td>Choose <strong>Other</strong> and leave the note empty (or type <code>abc</code>)</td>
+<td>A red message asks for a note of at least 5 characters, and the button stays greyed out. With the note <code>paid by POS card</code> it saves</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.14c</td>
+<td>Purchaser</td>
+<td>Same screen, with <strong>no shift open</strong></td>
+<td>Choose <strong>Cash from the drawer</strong> and press <strong>Record payment</strong></td>
+<td>A red message: "There is no open shift, so this cannot be paid from the cash drawer…". Nothing is saved (the supplier balance does not change). Choose <strong>Bank transfer</strong> instead and it saves</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.15</td>
+<td>Cashier</td>
+<td><strong>Cash drawer</strong></td>
+<td><strong>Check first:</strong> if float plus cash sales is less than what you took out, the expected figure is below zero and cannot be typed as a count. Ring up cash sales on the Till first (Home, then <strong>Sell</strong>, then <strong>Till</strong>), or have the owner close the shift with <strong>Close this shift as owner</strong>. Then count the drawer: float, plus cash sales, minus everything taken out and approved (declined and reversed ones do not count). Type that in <strong>Cash counted in drawer (₦)</strong> and press <strong>Close shift</strong></td>
+<td>"Shift closed". The summary shows <strong>Cash paid out of the drawer</strong> and the shift is <strong>Balanced</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.16</td>
+<td>Owner</td>
+<td><strong>Cash drawer</strong>, <strong>Closed shifts</strong></td>
+<td>Look at the closed shift</td>
+<td>The line shows "paid out ₦…" with the figures</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.17</td>
+<td>Cook or Purchaser</td>
+<td>The address bar</td>
+<td>Type the address of the Cash drawer screen (<code>/drawer</code>) after the web address</td>
+<td>The page says "Cashiers and owners only."</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h3>Catering deposit method</h3>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7b.18</td>
+<td>Owner or cashier: Home, then <strong>Sell</strong>, then <strong>Catering</strong></td>
+<td>Start a booking. Type a <strong>Deposit paid (₦)</strong> of <code>500</code>. Do not choose how it was paid yet</td>
+<td>A new box <strong>How was the deposit paid?</strong> appears. The booking cannot be saved: the message says to choose cash or transfer</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.19</td>
+<td>Same booking</td>
+<td>Choose <strong>Cash</strong> and book it</td>
+<td>Booked. With a shift open, the cash deposit is counted in that shift's expected cash</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h3>Catering calendar</h3>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7b.20</td>
+<td>Owner or cashier: Home, then <strong>Sell</strong>, then <strong>Catering</strong></td>
+<td>Find a <strong>confirmed</strong> order that has a date. Press <strong>Add to calendar</strong></td>
+<td>Up to four buttons: <strong>Share calendar file (any calendar)</strong>, <strong>Google Calendar</strong>, <strong>Outlook</strong>, and (only if the customer's phone number is readable) <strong>Send calendar links to customer on WhatsApp</strong>. A line under them says how long the entry lasts and that it holds no prices</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.21</td>
+<td>Same</td>
+<td>On a phone, press <strong>Share calendar file (any calendar)</strong></td>
+<td>The phone's share list opens (choose WhatsApp or Files). On a computer the file downloads instead and a green message says it was saved</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.22</td>
+<td>Same</td>
+<td>Open the file you saved or received</td>
+<td>Your calendar offers to add "{business}: catering order" on the right date at the event time (Nigeria time), for 2 hours, with the address as the place and an alert one day before. No price or balance is in it</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.23</td>
+<td>Same</td>
+<td>Press <strong>Google Calendar</strong></td>
+<td>A Google Calendar page opens with the title, date, time, place and items filled in. Saving adds it</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.24</td>
+<td>Same</td>
+<td>Press <strong>Outlook</strong></td>
+<td>Outlook on the web opens with the same details. If it fails for a work or school account, write that down: the calendar file is the reliable route</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.25</td>
+<td>Same</td>
+<td>Press <strong>Send calendar links to customer on WhatsApp</strong></td>
+<td>WhatsApp opens a message to the customer with a Google link and an Outlook link, and no prices</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7b.26</td>
+<td>Same</td>
+<td>Look at an order that is an <strong>enquiry</strong> or <strong>cancelled</strong>, and at one with no event time</td>
+<td>The enquiry and the cancelled order show no <strong>Add to calendar</strong>. An order with no event time gives an all-day entry</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>Module D. Offline resilience, safe degraded mode (Phase 0)</h2>
+<p>Run on a real Android phone. Do UAT-OFF-01 to 07 first, then 08 to 15.</p>
+<p><strong>Test data:</strong> cashier account, owner account, a normal menu dish, a credit customer (name and phone), and one cash, one transfer and one split sale. UAT-OFF-14 also needs a second test business.</p>
+<p><strong>Record for this run:</strong> Tester <span class="blank"></span> Device <span class="blank"></span> Browser and version <span class="blank"></span> Android version <span class="blank"></span> Start time <span class="blank"></span> End time <span class="blank"></span></p>
+<table class="pf">
+<thead>
+<tr>
+<th>ID</th>
+<th>Test</th>
+<th>Connection setup</th>
+<th>Do</th>
+<th>Expect</th>
+<th>Actual</th>
+<th>Pass</th>
+<th>Fail</th>
+<th>Blocked</th>
+<th>Screenshot / recording ref (for any fail)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UAT-OFF-01</td>
+<td>Normal online cash sale</td>
+<td>Online</td>
+<td>Add two dishes, Cash, press Charge. Check Orders.</td>
+<td>One order with a sale code; draft clears only after the save is confirmed.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-02</td>
+<td>Double-tap Charge</td>
+<td>Online</td>
+<td>Build a sale, tap Charge twice quickly. Check Orders.</td>
+<td>One order only; the second tap returns the original sale.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-03</td>
+<td>Connection drops before submit</td>
+<td>Airplane mode</td>
+<td>Build a sale, turn on airplane mode, try Charge. Reconnect, check Orders.</td>
+<td>Red offline warning; Charge disabled; draft kept; no sale created.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-04</td>
+<td>Connection drops during submit</td>
+<td>Airplane mode straight after Charge</td>
+<td>Press Charge, cut connection at once. Try another sale.</td>
+<td>"Checking sale status…"; draft locked; no second sale possible.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-05</td>
+<td>Server saved, browser timed out</td>
+<td>Airplane mode straight after Charge</td>
+<td>Reconnect, press Check again.</td>
+<td>Original sale found; no duplicate; draft clears only after confirmation.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-06</td>
+<td>Server did not save</td>
+<td>Airplane mode before the request leaves</td>
+<td>Reconnect, Check again, then Charge again. Check Orders.</td>
+<td>Reported not saved; retry creates exactly one sale.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-07</td>
+<td>Refresh during unsaved draft</td>
+<td>None</td>
+<td>Build a split sale with several items, refresh.</td>
+<td>Items, quantities, payment method and split amounts restore.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-08</td>
+<td>Credit draft refresh</td>
+<td>None</td>
+<td>Credit sale with name and phone, refresh. Then discard (and let one expire).</td>
+<td>Name and phone restore; removed on discard or expiry.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-09</td>
+<td>Cash/transfer/split draft refresh</td>
+<td>None</td>
+<td>Build each, refresh.</td>
+<td>No customer details kept on the device.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-10</td>
+<td>Browser restart during outage</td>
+<td>Airplane mode</td>
+<td>Build a sale offline, close browser fully, reopen Till.</td>
+<td>Recoverable draft offered, clearly not a saved sale.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-11</td>
+<td>Paper fallback</td>
+<td>Airplane mode</td>
+<td>Print the paper form.</td>
+<td>All fields print; it says it is not a saved NairaPlate sale.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-12</td>
+<td>Connection returns</td>
+<td>Airplane mode off</td>
+<td>Go offline, then reconnect; watch the bar and Charge.</td>
+<td>Offline → checking → online; Charge back only after a successful server check.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-13</td>
+<td>Existing sale code reused</td>
+<td>Controlled resend</td>
+<td>Resend the same sale code for the same business.</td>
+<td>Original order returned; no new sale.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-14</td>
+<td>Cross-business client sale code isolation</td>
+<td>Second test business</td>
+<td>From business B, Check again and submit with Demo Kitchen's code.</td>
+<td>B cannot see Demo Kitchen's sale; B's submission becomes only B's order; Demo Kitchen's order unchanged.</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+<tr>
+<td>UAT-OFF-15</td>
+<td>Expired draft guard</td>
+<td>Draft (cash and credit) last edited over 24 hours ago, set by a safe test method</td>
+<td>Open the Till; read the card; look for Charge; press Ask owner to review; discard with reason and confirm; check stored drafts and Orders, payments, stock, drawer, Credit</td>
+<td>Card says "Expired — not saved" with times, items, payment, unconfirmed total, customer-details flag and "no order, payment, stock movement or cash-drawer entry was created"; cannot be charged; review form prints and draft stays uncharged; discard removes it and any customer name/phone; nothing created in money or stock records</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Release gate.</strong> Phase 0 is not released until all 15 tests have a recorded result and all of these hold:</p>
+<ol>
+<li>No duplicate order is created in double-submit, retry and timeout-recovery paths.</li>
+<li>No unsaved draft is shown as a saved sale.</li>
+<li>Cashier instructions are understood during offline and uncertain-submission states.</li>
+<li>No unnecessary customer data stays in non-credit drafts, or after a draft is discarded or expires.</li>
+<li>Health check, regression tests and full rehearsal remain clean after the Phase 0 changes.</li>
+<li>The deployed preview is tested on at least one real Android phone using airplane mode, not only desktop tools or unit tests.</li>
+</ol>
+<p><strong>Owner sign-off (Module D):</strong> I (name) <span class="blank"></span> ran Module D on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 15. Failed <span class="blank"></span>. Blocked <span class="blank"></span>.</p>
+<h2>Module E. Paper (late) entries (after release)</h2>
+<p>Do <strong>not</strong> run this module until the permission fix is applied, D1 to D4 and D6 are fixed, and the screens are released (see the box at the top). Run it as the Owner and as a Cashier (UAT Tester) in two browsers. Rejections and approvals cannot be undone. Use test dishes.</p>
+<p><strong>Test data:</strong> a dish that has never been edited (for example Jollof Rice), a dish whose menu row is a later version (for example Eba &amp; Egusi), a past shift that is closed and the current open shift.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>ID</th>
+<th>Sign in as</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Known defect</th>
+<th>Pass</th>
+<th>Fail</th>
+<th>Blocked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UAT-LATE-01</td>
+<td>Cashier</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Paper sales</strong></td>
+<td>Look at the tabs and buttons</td>
+<td>The tab <strong>Enter paper sale</strong> is open. There is no <strong>Approve &amp; post</strong> and no <strong>Reject</strong> button anywhere</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-02</td>
+<td>Cashier</td>
+<td><strong>Paper sales</strong>, <strong>Enter paper sale</strong></td>
+<td>Type <strong>Paper form reference</strong> <code>PS-001</code>, <strong>Actual sale time</strong> two hours ago, <strong>Why it was on paper</strong> <code>network down</code>. Pick <strong>Jollof Rice</strong> quantity <code>2</code>, payment Cash. Press <strong>Send to owner for approval</strong></td>
+<td>The entry is sent. The screen says it is a request that is not yet a saved sale and does not change cash, stock or reports. The price shown for the dish is the price in force at that time</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-03</td>
+<td>Owner</td>
+<td><strong>Orders</strong>, <strong>Cash drawer</strong>, <strong>Ingredients</strong>, <strong>Stock trail</strong></td>
+<td>Look for the paper sale</td>
+<td>Nothing: no new order, no change in expected cash, no stock movement</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-04</td>
+<td>Cashier</td>
+<td><strong>Enter paper sale</strong></td>
+<td>Enter a paper sale for <strong>Eba &amp; Egusi</strong> with a sale time two hours ago</td>
+<td>The dish shows its price at that time and the entry is sent</td>
+<td><strong>D1.</strong> The database was fixed and read live on 5 October (the lookup now accepts the menu row). Not yet proved on the screen. If it still shows "no price then", D1 is not fixed</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-05</td>
+<td>Cashier</td>
+<td><strong>Enter paper sale</strong></td>
+<td>Try a sale time 4 days ago, then a time tomorrow</td>
+<td>Both are refused: older than 72 hours, and not in the future</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-06</td>
+<td>Cashier</td>
+<td><strong>Enter paper sale</strong></td>
+<td>Fill a valid entry (reference <code>PS-002</code>) and press <strong>Send to owner for approval</strong> twice quickly</td>
+<td>Only one entry exists in the owner's <strong>Waiting</strong> tab</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-07</td>
+<td>Owner</td>
+<td><strong>Paper sales</strong>, <strong>Waiting</strong></td>
+<td>Open an entry with <strong>Details</strong>. Type <code>no</code> as the reject reason: <strong>Reject</strong> stays greyed out. Type <code>duplicate of a till sale</code> and press <strong>Reject</strong></td>
+<td>The entry moves to <strong>Posted &amp; rejected</strong> as rejected, with your reason. Orders, cash and stock are unchanged</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-08</td>
+<td>Owner</td>
+<td><strong>Paper sales</strong>, <strong>Waiting</strong></td>
+<td>Approve a cash entry whose sale time is inside the <strong>currently open</strong> shift (press <strong>Approve &amp; post</strong>)</td>
+<td>A sale is posted. <strong>Orders</strong> shows it with a <strong>Late entry</strong> label, the paper reference, the real sale time, who entered it and who approved it. Stock is reduced for a made-to-order dish. Expected cash on the open shift includes the cash</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-09</td>
+<td>Cashier, then Owner</td>
+<td><strong>Enter paper sale</strong>, then <strong>Waiting</strong></td>
+<td>Enter a <strong>Transfer</strong> entry. As owner, approve it</td>
+<td>It posts and the order is <strong>awaiting payment</strong>, not paid. It is not in paid sales or settled totals. Approval does not fail</td>
+<td><strong>D2</strong> is closed in the database (rehearsed 6 October). The screen wording is not yet checked</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-10</td>
+<td>Cashier, then Owner</td>
+<td>Same</td>
+<td>Enter a <strong>Split</strong> entry (cash part and transfer part) for a shift that is still open. Approve it</td>
+<td>It posts as <strong>awaiting payment</strong>. Only the cash part counts in that shift's expected cash, straight away. The transfer part is not in paid sales until confirmed</td>
+<td>Expected-cash change is in the source branch, not released</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-11</td>
+<td>Cashier, then Owner</td>
+<td>Same</td>
+<td>Enter a paper sale whose time falls in an earlier shift that is <strong>closed</strong>. As owner, open it</td>
+<td>It shows <strong>needs shift review</strong>. <strong>Approve &amp; post</strong> stays greyed out until you choose one of the two answers about the cash</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-12</td>
+<td>Owner</td>
+<td>Same, then <strong>Cash drawer</strong></td>
+<td>Choose "Yes, the cash was included in the count at close", type a reason of 5 or more characters, and approve. Look at the <strong>open</strong> shift's expected cash and the closed shift</td>
+<td>The sale posts. The open shift's expected cash does <strong>not</strong> include that cash. The closed shift's figures are unchanged. Without a reason, or with no choice, the approval is refused</td>
+<td><strong>D3</strong> is closed in the database and the expected-cash code (not released). The reason box is not on the screen yet</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-13</td>
+<td>Owner</td>
+<td>Same, then <strong>Cash drawer</strong></td>
+<td>Do the same with a second entry and choose "No, record it as late cash against that closed shift"</td>
+<td>The closed shift shows one adjustment for that cash amount. The cash is counted once only, and not in the open shift. If that shift was closed without a count, the choice is refused</td>
+<td><strong>D3, D6</strong> closed in the database</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-14</td>
+<td>Owner</td>
+<td><strong>Orders</strong></td>
+<td>On a posted paper sale press the usual refund or void</td>
+<td>It works like any other sale. Write down whether a void is allowed: a void is normally only on the day of the sale, and for a paper sale it is not clear which day counts</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-15</td>
+<td>Cook or Purchaser</td>
+<td>The address bar</td>
+<td>Type <code>/late-entries</code> after the web address</td>
+<td>No entries and no approve or reject buttons. Nothing can be sent</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-17</td>
+<td>Owner</td>
+<td><strong>Waiting</strong></td>
+<td>Open an entry for a dish with a sale time earlier than 25 September 2026 (before any ingredient price was known)</td>
+<td>The card says <strong>Food cost unknown at sale time</strong> and lists the missing prices. <strong>Approve &amp; post</strong> is replaced by a box <strong>Use today's cost as an estimate</strong> and a reason box. With a reason under 5 letters the button stays grey</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-18</td>
+<td>Owner</td>
+<td>Same, then <strong>Orders</strong></td>
+<td>Tick the estimate box, type a reason of 5 or more letters and press <strong>Approve with estimated cost</strong>. Then open <strong>Orders</strong></td>
+<td>The sale posts. <strong>Orders</strong> shows the label <strong>Food cost: Estimated — today's prices</strong> in red. A sale whose prices were all known shows <strong>Costed at sale time</strong> instead</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-19</td>
+<td>Owner</td>
+<td>Same</td>
+<td>Approve (or try to approve) a closed-shift entry and choose "record it as late cash" for a shift that was closed <strong>without a count</strong></td>
+<td>Refused with "That shift was closed without a count…". Choose the other answer instead</td>
+<td><strong>D6 fix</strong> (script <code>20261106</code>). Not proved on the screen</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-20</td>
+<td>Owner</td>
+<td><strong>Orders</strong>, a paper sale that is awaiting payment</td>
+<td>Press <strong>Confirm transfer</strong>. Type proof of <code>UBA ref 123456</code> and a reason <code>Customer paid at 3pm</code>. Confirm</td>
+<td>The order becomes <strong>paid</strong>. The Orders screen and <strong>Audit trail</strong> show who confirmed it, the proof and the reason. Pressing it a second time changes nothing</td>
+<td>Screen not built yet. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-21</td>
+<td>Owner</td>
+<td>Same</td>
+<td>Try proof <code>abc</code>, then a reason <code>abc</code></td>
+<td>Both are refused, and the order stays awaiting payment</td>
+<td>Screen not built yet</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-22</td>
+<td>Cashier</td>
+<td><strong>Orders</strong></td>
+<td>Open a paper sale that is awaiting payment</td>
+<td>There is no Confirm transfer button. A cashier cannot confirm</td>
+<td>Screen not built yet</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-23</td>
+<td>Cashier, then Owner</td>
+<td><strong>Enter paper sale</strong>, then <strong>Waiting</strong></td>
+<td>Enter a paper sale whose time is outside every shift. As owner, try to approve it with no choice, then reject it, then (with another) approve it as <strong>cash outside any shift</strong> with a reason</td>
+<td>No choice: refused. Reject: works with a reason. Cash outside any shift: posts, and the cash appears in no drawer</td>
+<td>Screen not built yet. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-24</td>
+<td>Owner</td>
+<td><strong>Orders</strong></td>
+<td>Cancel a <strong>transfer-only</strong> paper sale that never arrived. Then try to cancel a <strong>split</strong> paper sale whose cash was taken</td>
+<td>The transfer-only one cancels. The split one is refused with "Cash was already taken for this paper sale…"</td>
+<td><strong>L1</strong> is an open decision for the split one. Database rehearsed 6 October</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-25</td>
+<td>Cashier</td>
+<td><strong>Enter paper sale</strong></td>
+<td>Enter a paper sale for a dish that has no price on record at the sale time</td>
+<td>Refused, naming the dish. It is never priced at ₦1,500.00</td>
+<td><strong>D7</strong> closed (check read live). <strong>D9:</strong> a sale before the dish's first recorded price is still priced at the earliest price until D9 is built</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-LATE-16</td>
+<td>Owner</td>
+<td><strong>Oversight</strong>, then <strong>Audit trail</strong></td>
+<td>Look for the lines for the entries above</td>
+<td>"Late entry submitted", "Late entry rejected" and "Late entry posted" lines with the paper reference and amounts</td>
+<td></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 25. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4, D6 and D9 fixed and re-tested: yes / no.</p>
+<h2>Module F. Dish price history (after release)</h2>
+<p>Do not run this module until the price-history screen is released. Owner only, except UAT-PRICE-08.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>ID</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+<th>Blocked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UAT-PRICE-01</td>
+<td>Home, then <strong>Kitchen</strong>, then <strong>Recipes</strong>. Press <strong>Edit</strong> on a saved dish. Scroll to <strong>Price history</strong></td>
+<td>Read the list</td>
+<td>One row marked <strong>In use</strong> (set by "Starting price") with today's start time, and the explanation that a started price can't be changed</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-02</td>
+<td>Same</td>
+<td>Under <strong>Set new price (₦)</strong> type today's price plus <code>50</code>. Keep <strong>Start now</strong>. Press <strong>Use this price now</strong></td>
+<td>The message "New price is now in use." The old row says <strong>Ended</strong>, the new row <strong>In use</strong></td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-03</td>
+<td>Home, then <strong>Sell</strong>, then <strong>Till</strong></td>
+<td>Add that dish and press Cash</td>
+<td>The Till shows the new price and a cash sale at the new total saves. The earlier sale in <strong>Orders</strong> keeps the old price</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-04</td>
+<td>Back on the dish's <strong>Price history</strong></td>
+<td>Choose <strong>Start on…</strong>, pick tomorrow 09:00, type a price, press <strong>Schedule price</strong></td>
+<td>"New price scheduled for …". A row marked <strong>Scheduled</strong> with a <strong>Cancel</strong> button. The Till still charges today's price</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-05</td>
+<td>Same</td>
+<td>Choose <strong>Start on…</strong> and pick a time in the past</td>
+<td>A red message: "Pick a future date and time."</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-06</td>
+<td>Same</td>
+<td>Press <strong>Cancel</strong> on the scheduled row. Look at the <strong>In use</strong> and <strong>Ended</strong> rows</td>
+<td>"Scheduled price cancelled." The row is gone. The rows that have started have no Cancel button and no way to edit them</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-07</td>
+<td><strong>Oversight</strong>, <strong>Pricing review</strong></td>
+<td>Publish a price on a dish, then open that dish's <strong>Price history</strong></td>
+<td>A new row appears, set by "Recipe or pricing change". Reversing the decision (Part 5) adds another</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-08</td>
+<td>Cook, then Cashier</td>
+<td>Open <strong>Recipes</strong> and edit a dish</td>
+<td>No <strong>Price history</strong> panel is shown to a cook or a cashier</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-PRICE-09</td>
+<td>Owner</td>
+<td><strong>Oversight</strong>, <strong>Audit trail</strong></td>
+<td>"Dish price started", "Dish price scheduled" and "Dish price cancelled" lines with the dish, the price and the time (Lagos)</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Owner sign-off (Module F):</strong> I (name) <span class="blank"></span> ran Module F on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 9. Failed <span class="blank"></span>. Blocked <span class="blank"></span>.</p>
+<h2>Module G. Ingredient price history (after release)</h2>
+<p>Do not run this module until the ingredient screens are released. Run it as the Owner, except UAT-ING-07. Use one test ingredient (for example Rice) and write down its price before you start.</p>
+<table class="pf">
+<thead>
+<tr>
+<th>ID</th>
+<th>Sign in as</th>
+<th>Go to</th>
+<th>Do</th>
+<th>You should see</th>
+<th>Pass</th>
+<th>Fail</th>
+<th>Blocked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UAT-ING-01</td>
+<td>Owner</td>
+<td><strong>Ingredients</strong></td>
+<td>Press <strong>Price timeline</strong> on your test ingredient</td>
+<td>A list, newest first. Rows from before today carry the grey tag <strong>from earlier records</strong>. The line "Before the oldest row, the price is not known" is shown. No Edit or Delete on any row</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-02</td>
+<td>Owner</td>
+<td><strong>Ingredients</strong></td>
+<td>Change the price of the ingredient by hand (new price, grade, season) and save. Reopen <strong>Price timeline</strong></td>
+<td>A new top row <strong>Price changed by hand</strong> with the new price, grade and today's time. The older row is still there</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-03</td>
+<td>Purchaser</td>
+<td><strong>Purchases</strong></td>
+<td>Log a purchase of that ingredient that sets a new price. Reopen <strong>Price timeline</strong></td>
+<td>A row <strong>Purchase</strong> with the price worked out from the total and quantity</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-04</td>
+<td>Owner</td>
+<td><strong>Purchases</strong></td>
+<td>Reverse that purchase with a reason. Reopen <strong>Price timeline</strong></td>
+<td>A row <strong>Purchase reversed</strong> showing the price going back to what it was. The two earlier rows are unchanged</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-05</td>
+<td>Owner</td>
+<td>The owner's profit and loss report</td>
+<td>Pick a period that straddles your price change in UAT-ING-02</td>
+<td>Older sales without a saved cost use the price in force when they were sold, and later sales the new price. For a period before the first known price, the report falls back to today's prices and shows a warning that those sales are estimates. Write down the exact warning wording</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-06</td>
+<td>Owner</td>
+<td><strong>Ingredients</strong></td>
+<td>Try to delete the test ingredient and to change its unit</td>
+<td>Both are refused: an ingredient with price history keeps its unit and cannot be deleted</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-07</td>
+<td>Cook, then Cashier</td>
+<td><strong>Ingredients</strong></td>
+<td>Look for <strong>Price timeline</strong></td>
+<td>The button is not shown to a cook or a cashier</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>UAT-ING-08</td>
+<td>Owner</td>
+<td><strong>Oversight</strong>, <strong>Audit trail</strong></td>
+<td>Look for the line about the hand price change in UAT-ING-02</td>
+<td>"… changed the price of … from … to … kobo per …" with who and when</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Owner sign-off (Module G):</strong> I (name) <span class="blank"></span> ran Module G on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 8. Failed <span class="blank"></span>. Blocked <span class="blank"></span>.</p>
+<h2>Part 8. Final tidy-up</h2>
+<table class="pf">
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>Pass</th>
+<th>Fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8.1</td>
+<td>If you opened a shift and did not close it, close it now</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>8.2</td>
+<td>When the first-time user has finished, go to <strong>Oversight</strong>, then <strong>Staff</strong>, find UAT Tester and press <strong>Deactivate</strong></td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+</tbody>
+</table>
+<h2>What to send me</h2>
+<p>For every Fail: the step number, what you did, what you saw, and the exact words of any message. Also send the outputs of steps 0.1 and 0.2 (and 0.5 once it applies). I will check the database side before changing anything.</p>
+<p><strong>Sign-off:</strong> I (name) <span class="blank"></span> ran this script on (date) <span class="blank"></span>. Steps passed <span class="blank"></span> of <span class="blank"></span>. Steps failed <span class="blank"></span>.</p>
+</body></html>

@@ -29,3 +29,18 @@
 - [x] Step 5: Paper sales screen (cashier entry, owner approve/reject/shift review), Late entry label on Orders
 - [ ] Steps 6-9: UAT-LATE-01..10 run, rehearsal, pilot (blocker: owner/tester)
 - Blocked for Phase 1 start: Phase 0 real-device UAT (owner/tester)
+
+## Paper-sale food cost at the actual sale time (plan approved with 4 refinements, 5 Oct 2026)
+- [x] Live definitions received (5 Oct 2026)
+- [x] 20261105_late_entry_cost_at (+check, rehearsal 14/14, rollback) verified on practice copy
+- [ ] Owner runs script 1, check, rehearsal on live (blocker: owner)
+- [x] Owner screen (cost status, hold, estimate with reason), Orders label, UAT-OWN-08
+- [ ] Release to main after live check + rehearsal are clean (blocker: owner)
+- [x] Accountant CSV exports (/exports) — built; check totals against Report/Drawer pages on live data after release
+
+## Receipt and photo capture (approved 5 Oct 2026)
+- [x] SQL 20261106_receipts_a (+check, rollback) written and syntax-checked
+- [x] Photo helper, tests, photo button; on Paper sales, Cash taken out, Purchases, Supplier payments
+- [ ] Owner runs SQL + check (expected true,false,true,0,0,4,3,1) (blocker: owner)
+- [ ] Receipt columns in accountant exports with version bump (blocker: SQL live first)
+- [ ] Module F real-phone test (blocker: tester on a phone)

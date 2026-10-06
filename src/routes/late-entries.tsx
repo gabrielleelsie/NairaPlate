@@ -2,8 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
 import { useStaffSession } from "@/lib/staff-session";
+import { ReceiptPhotos } from "@/components/ReceiptPhotos";
 import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { lagosLocalToIso } from "@/lib/dish-prices";
+import { reasonLabel, type CostPreview } from "@/lib/late-entry-cost";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,28 +80,42 @@ function LateEntriesScreen() {
         <TabsContent value="review" className="space-y-2">
           {by(["submitted", "needs_shift_review"]).length === 0 && <p className="text-muted-foreground">Nothing waiting.</p>}
           {by(["needs_shift_review", "submitted"]).sort((a, b) => (a.status === "needs_shift_review" ? -1 : 1) - (b.status === "needs_shift_review" ? -1 : 1))
-            .map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={isOwner} onDone={load} />)}
+            .map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={isOwner} onDone={load} biz={session.businessId} role={session.role} />)}
         </TabsContent>
         <TabsContent value="done" className="space-y-2">
           {by(["posted", "rejected", "approved"]).length === 0 && <p className="text-muted-foreground">None yet.</p>}
-          {by(["posted", "rejected", "approved"]).map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={false} onDone={load} />)}
+          {by(["posted", "rejected", "approved"]).map((e) => <EntryCard key={e.id} e={e} who={who} isOwner={false} onDone={load} biz={session.businessId} role={session.role} />)}
         </TabsContent>
       </Tabs>
     </main>
   );
 }
 
-function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | null) => string; isOwner: boolean; onDone: () => void }) {
+function EntryCard({ e, who, isOwner, onDone, biz, role }: { e: Entry; who: (id: string | null) => string; isOwner: boolean; onDone: () => void; biz: string; role: string }) {
   const [open, setOpen] = useState(false);
   const [res, setRes] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [preview, setPreview] = useState<CostPreview | null>(null);
+  const [useEstimate, setUseEstimate] = useState(false);
+  const [estReason, setEstReason] = useState("");
   const needsShift = e.status === "needs_shift_review";
+  const pending = isOwner && (e.status === "submitted" || needsShift);
+
+  useEffect(() => {
+    if (!open || !pending) return;
+    supabase.rpc("late_entry_cost_preview", { p_id: e.id }).then(({ data, error }) => { if (!error) setPreview(data as CostPreview); });
+  }, [open, pending, e.id]);
+
+  const unknown = preview != null && !preview.is_complete;
+  const estimateOk = !unknown || (useEstimate && estReason.trim().length >= 5);
 
   async function approve() {
     setBusy(true); setMsg("");
-    const { error } = await supabase.rpc("approve_and_post_late_entry", { p_id: e.id, p_shift_resolution: needsShift ? res : null });
+    const args: Record<string, unknown> = { p_id: e.id, p_shift_resolution: needsShift ? res : null };
+    if (unknown && useEstimate) { args["p_cost_decision"] = "estimate_current_price"; args["p_estimate_reason"] = estReason.trim(); }
+    const { error } = await supabase.rpc("approve_and_post_late_entry", args as never);
     setBusy(false);
     if (error) setMsg(error.message); else onDone();
   }
@@ -135,8 +151,36 @@ function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | n
           <p>Cash {formatNaira(Number(e.cash_kobo))} · Transfer {formatNaira(Number(e.transfer_kobo))}{Number(e.transfer_kobo) > 0 && e.status !== "rejected" ? " (stays pending until confirmed — never marked paid from paper)" : ""}</p>
           {e.status === "posted" && <p>Approved by {who(e.approved_by)} · order #{e.posted_order_id?.slice(0, 8)} · {e.shift_resolution === "open_shift_direct" ? "posted into the open shift" : e.shift_resolution === "closed_shift_included" ? "cash was already in the closed shift's count" : "late cash recorded against the closed shift"}</p>}
           {e.status === "rejected" && <p className="text-destructive">Rejected by {who(e.rejected_by)}: "{e.rejection_reason}". No sale, stock or cash change was made.</p>}
-          {isOwner && (e.status === "submitted" || needsShift) && (
+          <ReceiptPhotos type="late_entry" recordId={e.id} businessId={biz} role={role} />
+          {pending && (
             <div className="space-y-3">
+              {preview && preview.is_complete && (
+                <div className="rounded border p-2">
+                  {preview.lines.map((l, i) => (
+                    <p key={i} className="font-medium">{l.dish_name}: food cost {formatNaira(Math.round(Number(l.cost.total_cost_per_plate_kobo)))} per plate</p>
+                  ))}
+                  <p className="text-xs text-muted-foreground">{preview.overall_status === "sale_time_backfilled"
+                    ? "Costed at the sale time using reconstructed purchase history."
+                    : "Costed using ingredient prices active at the sale time."}</p>
+                </div>
+              )}
+              {unknown && preview && (
+                <div className="space-y-2 rounded border-2 border-destructive/40 p-2">
+                  <p className="font-semibold">Food cost unknown at sale time</p>
+                  <p>NairaPlate could not find a historical cost for:{" "}
+                    {[...new Map(preview.lines.flatMap((l) => l.cost.unresolved_ingredients).map((u) => [u.ingredient_name ?? "recipe", u])).values()]
+                      .map((u) => `${u.ingredient_name ?? "the recipe"} (${reasonLabel(u.reason)})`).join(", ")}.</p>
+                  <p className="text-xs text-muted-foreground">This paper sale cannot be posted with a historical food cost. To hold it for review, leave it here; nothing is saved.</p>
+                  <label className="flex gap-2"><input type="checkbox" checked={useEstimate} onChange={(ev) => setUseEstimate(ev.target.checked)} />Use today's cost as an estimate</label>
+                  {useEstimate && (
+                    <div className="space-y-1">
+                      <p className="text-xs"><strong>Estimated cost, not historical cost.</strong> This freezes today's calculated cost on the approved sale and labels it "Estimated — today's prices".</p>
+                      <Label htmlFor={`est-${e.id}`}>Reason (at least 5 letters)</Label>
+                      <Input id={`est-${e.id}`} value={estReason} onChange={(ev) => setEstReason(ev.target.value)} placeholder="e.g. No historical oil cost" />
+                    </div>
+                  )}
+                </div>
+              )}
               {needsShift && (
                 <fieldset className="space-y-1 rounded border-2 border-destructive/40 p-2">
                   <legend className="px-1 font-medium">The shift at that time is closed (or none was open). Was this cash counted at close?</legend>
@@ -145,7 +189,9 @@ function EntryCard({ e, who, isOwner, onDone }: { e: Entry; who: (id: string | n
                   <p className="text-xs text-muted-foreground">Not sure? Reject it instead. The closed shift's count is never changed and cash is never moved to another shift.</p>
                 </fieldset>
               )}
-              <Button disabled={busy || (needsShift && !res)} onClick={approve}>Approve & post {formatNaira(Number(e.total_kobo))}</Button>
+              <Button disabled={busy || (needsShift && !res) || !estimateOk} onClick={approve}>
+                {unknown && useEstimate ? "Approve with estimated cost" : "Approve & post"} {formatNaira(Number(e.total_kobo))}
+              </Button>
               <div className="space-y-1">
                 <Label htmlFor={`rej-${e.id}`}>Reject reason (at least 5 letters)</Label>
                 <Textarea id={`rej-${e.id}`} value={reason} onChange={(ev) => setReason(ev.target.value)} />

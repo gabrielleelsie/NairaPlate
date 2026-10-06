@@ -198,6 +198,22 @@ export const UAT_CASES: UatCase[] = [
       { action: "Open the Audit screen.", expected: "Entries show for price started, scheduled and cancelled, with who and when." },
     ],
   },
+  {
+    id: "UAT-OWN-08",
+    title: "Paper-sale food cost at the actual sale time",
+    module: "B",
+    area: "Costing",
+    preconditions: ["Signed in to Demo Kitchen as the Owner.", "Script 20261105_late_entry_cost_at.sql applied and its rehearsal ALL CLEAR."],
+    steps: [
+      { action: "Enter a paper sale dated after today's price-history start, then open it under Waiting.", expected: "Food cost per plate shows with \"Costed using ingredient prices active at the sale time\"." },
+      { action: "Approve it and open Orders.", expected: "The order shows Late entry and \"Food cost: Costed at sale time\"." },
+      { action: "Enter a paper sale dated before price history began, open it.", expected: "\"Food cost unknown at sale time\" lists the missing ingredients; Approve is disabled." },
+      { action: "Leave it (hold) and reload the page.", expected: "It is still Waiting; no order was created." },
+      { action: "Tick \"Use today's cost as an estimate\" and type a 3-letter reason.", expected: "Approve stays disabled until the reason has at least 5 letters." },
+      { action: "Give a proper reason and approve.", expected: "Orders shows \"Food cost: Estimated — today's prices\"; Audit shows the estimate with the reason." },
+      { action: "Sign in as a cashier and open Paper sales.", expected: "No approve, estimate or food-cost controls are shown." },
+    ],
+  },
   ...OFFLINE_CASES,
 ];
 

@@ -3,6 +3,7 @@
 // Tier 2 actions (suspend a business, emergency owner PIN reset) also ask for the admin's
 // own PIN, because a stolen session must never be enough to shut down or take over a kitchen.
 import { PlatformSettingsPanel } from "@/components/PlatformSettingsPanel";
+import { OPERATING_MODES, OVERRIDABLE, asMode, hasFeature } from "@/lib/features";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/external-supabase";
@@ -54,6 +55,8 @@ type Detail = {
   payments: Payment[];
   staff: StaffRow[]; audit: AuditRow[]; flags: FlagRow[];
   features?: { catering: boolean };
+  overrides?: Record<string, boolean>;
+  operating_mode?: string | null;
 };
 
 const ENDPOINT = "/api/public/platform-admin";
@@ -436,17 +439,44 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
         <RecordPayment businessId={detail.business.id} businessName={detail.business.name} suspended={detail.business.status === "suspended"} busy={busy} act={act} />
       )}
 
-      <section className="space-y-2 rounded-xl border border-border bg-card p-4" data-testid="features-panel">
-        <h2 className="font-semibold text-card-foreground">Features</h2>
-        <p className="text-sm text-muted-foreground">Catering orders: bookings, orders from the menu and the day-before reminders. Off by default so a plain kitchen is not shown them.</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${detail.features?.catering ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700"}`}>Catering orders: {detail.features?.catering ? "On" : "Off"}</span>
-          <Button size="sm" variant="outline" disabled={busy}
-            onClick={() => act({ action: "set_feature", business_id: detail.business.id, feature: "catering", enabled: !detail.features?.catering },
-              (d) => `Catering orders are now ${d["enabled"] ? "on" : "off"} for ${detail.business.name}.`)}>
-            {detail.features?.catering ? "Switch off" : "Switch on"}
-          </Button>
-        </div>
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="features-panel">
+        <h2 className="font-semibold text-card-foreground">Kitchen profile & tools</h2>
+        {detail.operating_mode == null ? (
+          <p className="text-sm text-muted-foreground">Kitchen profiles are not switched on in the database yet, so this kitchen sees every tool.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Kitchen profile">
+            {OPERATING_MODES.map((m) => (
+              <Button key={m.value} size="sm" variant={detail.operating_mode === m.value ? "default" : "outline"} disabled={busy || detail.operating_mode === m.value}
+                onClick={() => act({ action: "set_operating_mode", business_id: detail.business.id, mode: m.value }, () => `${detail.business.name} is now on ${m.label}.`)}>
+                {m.label}
+              </Button>
+            ))}
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground">Buka shows only the basics. Each tool below follows the profile unless you switch it on or off for this kitchen. Catering is off unless switched on.</p>
+        <ul className="space-y-2">
+          {OVERRIDABLE.map(({ feature, label }) => {
+            const mode = asMode(detail.operating_mode);
+            const o = detail.overrides?.[feature];
+            const on = hasFeature(mode, feature, detail.overrides);
+            return (
+              <li key={feature} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${on ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700"}`}>{label}: {on ? "On" : "Off"}</span>
+                <span className="text-xs text-muted-foreground">{o === undefined ? "from profile" : "set for this kitchen"}</span>
+                <Button size="sm" variant="outline" disabled={busy}
+                  onClick={() => act({ action: "set_feature", business_id: detail.business.id, feature, enabled: !on }, () => `${label} is now ${!on ? "on" : "off"} for ${detail.business.name}.`)}>
+                  {on ? "Switch off" : "Switch on"}
+                </Button>
+                {o !== undefined && (
+                  <Button size="sm" variant="ghost" disabled={busy}
+                    onClick={() => act({ action: "set_feature", business_id: detail.business.id, feature, enabled: null }, () => `${label} now follows the profile for ${detail.business.name}.`)}>
+                    Use profile default
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section className="space-y-2 rounded-xl border border-border bg-card p-4">

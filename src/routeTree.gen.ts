@@ -21,10 +21,13 @@ import { Route as CostCheckRouteImport } from './routes/cost-check'
 import { Route as CreditRouteImport } from './routes/credit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DrawerRouteImport } from './routes/drawer'
+import { Route as ExportsRouteImport } from './routes/exports'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as FlagsRouteImport } from './routes/flags'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as IngredientsRouteImport } from './routes/ingredients'
 import { Route as LateEntriesRouteImport } from './routes/late-entries'
+import { Route as MarginDiagnosticRouteImport } from './routes/margin-diagnostic'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OurStoryRouteImport } from './routes/our-story'
 import { Route as PaymentsRouteImport } from './routes/payments'
@@ -123,6 +126,11 @@ const DrawerRoute = DrawerRouteImport.update({
   path: '/drawer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExportsRoute = ExportsRouteImport.update({
+  id: '/exports',
+  path: '/exports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
@@ -133,6 +141,11 @@ const FlagsRoute = FlagsRouteImport.update({
   path: '/flags',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IngredientsRoute = IngredientsRouteImport.update({
   id: '/ingredients',
   path: '/ingredients',
@@ -141,6 +154,11 @@ const IngredientsRoute = IngredientsRouteImport.update({
 const LateEntriesRoute = LateEntriesRouteImport.update({
   id: '/late-entries',
   path: '/late-entries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarginDiagnosticRoute = MarginDiagnosticRouteImport.update({
+  id: '/margin-diagnostic',
+  path: '/margin-diagnostic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -347,10 +365,13 @@ export interface FileRoutesByFullPath {
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/exports': typeof ExportsRoute
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
+  '/inbox': typeof InboxRoute
   '/ingredients': typeof IngredientsRoute
   '/late-entries': typeof LateEntriesRoute
+  '/margin-diagnostic': typeof MarginDiagnosticRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -402,10 +423,13 @@ export interface FileRoutesByTo {
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/exports': typeof ExportsRoute
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
+  '/inbox': typeof InboxRoute
   '/ingredients': typeof IngredientsRoute
   '/late-entries': typeof LateEntriesRoute
+  '/margin-diagnostic': typeof MarginDiagnosticRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -458,10 +482,13 @@ export interface FileRoutesById {
   '/credit': typeof CreditRoute
   '/dashboard': typeof DashboardRoute
   '/drawer': typeof DrawerRoute
+  '/exports': typeof ExportsRoute
   '/faq': typeof FaqRoute
   '/flags': typeof FlagsRoute
+  '/inbox': typeof InboxRoute
   '/ingredients': typeof IngredientsRoute
   '/late-entries': typeof LateEntriesRoute
+  '/margin-diagnostic': typeof MarginDiagnosticRoute
   '/orders': typeof OrdersRoute
   '/our-story': typeof OurStoryRoute
   '/payments': typeof PaymentsRoute
@@ -515,10 +542,13 @@ export interface FileRouteTypes {
     | '/credit'
     | '/dashboard'
     | '/drawer'
+    | '/exports'
     | '/faq'
     | '/flags'
+    | '/inbox'
     | '/ingredients'
     | '/late-entries'
+    | '/margin-diagnostic'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -570,10 +600,13 @@ export interface FileRouteTypes {
     | '/credit'
     | '/dashboard'
     | '/drawer'
+    | '/exports'
     | '/faq'
     | '/flags'
+    | '/inbox'
     | '/ingredients'
     | '/late-entries'
+    | '/margin-diagnostic'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -625,10 +658,13 @@ export interface FileRouteTypes {
     | '/credit'
     | '/dashboard'
     | '/drawer'
+    | '/exports'
     | '/faq'
     | '/flags'
+    | '/inbox'
     | '/ingredients'
     | '/late-entries'
+    | '/margin-diagnostic'
     | '/orders'
     | '/our-story'
     | '/payments'
@@ -681,10 +717,13 @@ export interface RootRouteChildren {
   CreditRoute: typeof CreditRoute
   DashboardRoute: typeof DashboardRoute
   DrawerRoute: typeof DrawerRoute
+  ExportsRoute: typeof ExportsRoute
   FaqRoute: typeof FaqRoute
   FlagsRoute: typeof FlagsRoute
+  InboxRoute: typeof InboxRoute
   IngredientsRoute: typeof IngredientsRoute
   LateEntriesRoute: typeof LateEntriesRoute
+  MarginDiagnosticRoute: typeof MarginDiagnosticRoute
   OrdersRoute: typeof OrdersRoute
   OurStoryRoute: typeof OurStoryRoute
   PaymentsRoute: typeof PaymentsRoute
@@ -810,6 +849,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DrawerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exports': {
+      id: '/exports'
+      path: '/exports'
+      fullPath: '/exports'
+      preLoaderRoute: typeof ExportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/faq': {
       id: '/faq'
       path: '/faq'
@@ -824,6 +870,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FlagsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ingredients': {
       id: '/ingredients'
       path: '/ingredients'
@@ -836,6 +889,13 @@ declare module '@tanstack/react-router' {
       path: '/late-entries'
       fullPath: '/late-entries'
       preLoaderRoute: typeof LateEntriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/margin-diagnostic': {
+      id: '/margin-diagnostic'
+      path: '/margin-diagnostic'
+      fullPath: '/margin-diagnostic'
+      preLoaderRoute: typeof MarginDiagnosticRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -1113,10 +1173,13 @@ const rootRouteChildren: RootRouteChildren = {
   CreditRoute: CreditRoute,
   DashboardRoute: DashboardRoute,
   DrawerRoute: DrawerRoute,
+  ExportsRoute: ExportsRoute,
   FaqRoute: FaqRoute,
   FlagsRoute: FlagsRoute,
+  InboxRoute: InboxRoute,
   IngredientsRoute: IngredientsRoute,
   LateEntriesRoute: LateEntriesRoute,
+  MarginDiagnosticRoute: MarginDiagnosticRoute,
   OrdersRoute: OrdersRoute,
   OurStoryRoute: OurStoryRoute,
   PaymentsRoute: PaymentsRoute,

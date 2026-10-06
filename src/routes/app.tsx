@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/Logo";
 import { CostCheckCard } from "@/components/CostCheckCard";
 import { OrdersTodayCard } from "@/components/OrdersTodayCard";
-import { useCateringEnabled } from "@/lib/features";
+import { useBusinessProfile, type FeatureName } from "@/lib/features";
 import {
-  AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
-  CreditCard, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
+  AlertCircle, AlertTriangle, BarChart3, BookOpen, CalendarDays, ChefHat, ClipboardList,
+  CreditCard, FileSpreadsheet, HandCoins, History, Landmark, LogOut, PackageSearch, ReceiptText,
   Scale, ShoppingBasket, Store, Truck, Users, UtensilsCrossed, WalletCards,
+  TrendingDown,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app")({
@@ -270,53 +271,69 @@ const ROLE_NAMES: Record<string, string> = {
   cook: "Kitchen Staff", platform_admin: "Platform Admin",
 };
 
-type AppLink = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type AppLink = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; feature?: FeatureName };
 const SELL: AppLink[] = [
   { to: "/pos", label: "Till", icon: Store },
   { to: "/drawer", label: "Cash drawer", icon: WalletCards },
   { to: "/orders", label: "Orders", icon: ReceiptText },
   { to: "/late-entries", label: "Paper sales", icon: ReceiptText },
-  { to: "/credit", label: "Customer credit", icon: CreditCard },
-  { to: "/catering", label: "Catering", icon: CalendarDays },
+  { to: "/credit", label: "Customer credit", icon: CreditCard, feature: "customer_credit" },
+  { to: "/catering", label: "Catering", icon: CalendarDays, feature: "catering" },
 ];
 const STOCK: AppLink[] = [
   { to: "/purchases", label: "Purchases", icon: ShoppingBasket },
   { to: "/suppliers", label: "Suppliers", icon: Truck },
   { to: "/shopping-list", label: "Shopping list", icon: ClipboardList },
   { to: "/ingredients", label: "Ingredients", icon: PackageSearch },
-  { to: "/stock-take", label: "Stock take", icon: ClipboardList },
+  { to: "/stock-take", label: "Stock take", icon: ClipboardList, feature: "stock_take" },
   { to: "/flags", label: "Alerts", icon: AlertTriangle },
 ];
 const KITCHEN: AppLink[] = [
   { to: "/recipes", label: "Recipes", icon: BookOpen },
   { to: "/batches", label: "Log a batch", icon: ChefHat },
-  { to: "/wastage", label: "Wastage", icon: UtensilsCrossed },
-  { to: "/stock-take", label: "Stock take", icon: ClipboardList },
+  { to: "/wastage", label: "Wastage", icon: UtensilsCrossed, feature: "wastage" },
+  { to: "/stock-take", label: "Stock take", icon: ClipboardList, feature: "stock_take" },
 ];
 const OVERSIGHT: AppLink[] = [
+  { to: "/inbox", label: "Attention inbox", icon: AlertCircle },
   { to: "/dashboard", label: "P&L", icon: BarChart3 },
-  { to: "/cashflow", label: "7-day cashflow", icon: Landmark },
-  { to: "/cost-check", label: "Today's cost check", icon: Scale },
+  { to: "/margin-diagnostic", label: "Why did my margin change?", icon: TrendingDown, feature: "margin_diagnostic" },
+  { to: "/cashflow", label: "7-day cashflow", icon: Landmark, feature: "cashflow" },
+  { to: "/cost-check", label: "Today's cost check", icon: Scale, feature: "cost_check" },
   { to: "/flags", label: "Alerts", icon: AlertTriangle },
-  { to: "/audit", label: "Audit log", icon: History },
-  { to: "/payouts", label: "Channel payouts", icon: HandCoins },
+  { to: "/audit", label: "Audit log", icon: History, feature: "audit_log" },
+  { to: "/payouts", label: "Channel payouts", icon: HandCoins, feature: "channel_payouts" },
   { to: "/payments", label: "Payments & transfers", icon: Landmark },
-  { to: "/recipes", label: "Pricing review", icon: Scale },
+  { to: "/recipes", label: "Pricing review", icon: Scale, feature: "pricing_review" },
   { to: "/staff", label: "Staff", icon: Users },
   { to: "/report", label: "Print report", icon: ClipboardList },
+  { to: "/exports", label: "Accountant exports", icon: FileSpreadsheet, feature: "accountant_exports" },
+];
+
+// Buka owners see only these four, in plain words; switched-on extras are added after them.
+const BUKA_OVERSIGHT: AppLink[] = [
+  { to: "/dashboard", label: "Today's cash & sales", icon: BarChart3 },
+  { to: "/inbox", label: "Things to check", icon: AlertCircle },
+  { to: "/staff", label: "Staff & PINs", icon: Users },
+  { to: "/report", label: "Print daily summary", icon: ClipboardList },
 ];
 
 function HomeScreen({ name, role, onSignOut }: { name: string; role: string | null; onSignOut: () => Promise<void> }) {
   const isOwner = role === "owner" || role === "supa_admin";
-  const catering = useCateringEnabled().enabled;
-  const sellLinks = catering ? SELL : SELL.filter((l) => l.to !== "/catering");
+  const profile = useBusinessProfile();
+  const on = (l: AppLink) => !l.feature || (!profile.loading && profile.has(l.feature));
+  const catering = !profile.loading && profile.has("catering");
+  const sellLinks = SELL.filter(on);
+  const oversight = profile.mode === "buka"
+    ? [...BUKA_OVERSIGHT, ...OVERSIGHT.filter((l) => l.feature && on(l))]
+    : OVERSIGHT.filter(on);
   const groups = role === "platform_admin"
     ? [{ title: "Platform operations", links: [{ to: "/approvals", label: "Platform console", icon: ClipboardList }] }]
     : [
         ...(role === "cashier" || isOwner ? [{ title: "Sell", links: sellLinks }] : []),
-        ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: isOwner ? STOCK.filter((l) => l.to !== "/flags") : STOCK }] : []),
-        ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: isOwner ? KITCHEN.filter((l) => l.to !== "/stock-take") : KITCHEN }] : []),
-        ...(isOwner ? [{ title: "Oversight", links: OVERSIGHT }] : []),
+        ...(role === "purchaser" || isOwner ? [{ title: "Buy & Stock", links: (isOwner || profile.mode === "buka" ? STOCK.filter((l) => l.to !== "/flags") : STOCK).filter(on) }] : []),
+        ...(role === "cook" || isOwner ? [{ title: "Kitchen", links: (isOwner ? KITCHEN.filter((l) => l.to !== "/stock-take") : KITCHEN).filter(on) }] : []),
+        ...(isOwner ? [{ title: "Oversight", links: oversight }] : []),
       ];
 
   return (
