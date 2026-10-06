@@ -1,13 +1,24 @@
 ---
 title: "NairaPlate: Master Business Rules and Audit Specification"
-version: "1.5"
+version: "1.6"
 date: "6 October 2026"
-status: "Reference manual. Describes the system as it stands on 6 October 2026. Cash paid out of the drawer, catering deposit methods and supplier payment methods are live and have been used by a person. Save-once sales, dish price and ingredient price history, and paper (late) entries are applied on the database and their screens were released to the live site on 6 October 2026 (the paper-sales screen at 02:47 UTC); they have not yet been tried by a person."
+status: "Reference manual. Describes the system as it stands on 6 October 2026 (evening). Version 1.6 adds plans, prices, the free trial, recording payments and expiry reminders (3.13). Cash paid out of the drawer, catering deposit methods and supplier payment methods are live and have been used by a person. Save-once sales, dish price and ingredient price history, and paper (late) entries are applied on the database and their screens were released to the live site on 6 October 2026 (the paper-sales screen at 02:47 UTC); they have not yet been tried by a person."
 ---
 
 # NairaPlate: Master Business Rules and Audit Specification
 
-**Version 1.5, 6 October 2026**
+**Version 1.6, 6 October 2026**
+
+**What is new in version 1.6.**
+
+1. **Plans, prices, the free trial, recording payments and expiry reminders are now described** in a new section, 3.13. Before this version the document did not mention them (the operating profiles, the price list and the payment record were all added or changed on 4 to 6 October).
+2. **Three plan types.** Buka, Restaurant and Full Suite (the code names are `buka`, `standard` and `advanced`). A platform admin picks one for each kitchen. The plan type decides which screens a kitchen sees. It is applied by the screens, not by a database rule (3.13). [C]
+3. **A price list for each plan** (monthly, 3 months, 12 months and a setup fee), kept in the platform settings and changed by a platform admin with their PIN. The agreed list is built in. [C]
+4. **Recording a payment now checks the amount against the price list.** A different amount needs a reason (5 or more characters). The plan type, the setup fee part and the reason are saved on the payment (`20261114`, applied 6 October; check read live; rehearsal all clear, 6 of 6). [C][R]
+5. **Expiry reminder emails are now scheduled** (`20261113`, applied 6 October; job read live). They are still **off**: nothing is sent until an admin switches them on, and the log has no rows. [C]
+6. **Items from version 1.5 that are now closed:** the expected-cash change was released on 6 October (item 2 of 1.5 said it was not), and the "transfer never arrives" decision (L1, item 4 of 1.5) was made and built as the **transfer lost** status (`20261110`; see 3.11 and Part 9). D9, D4, S5 and S6 are closed as listed in Part 9.
+7. **A limit found on 6 October and left as it is by decision:** a signed-out visitor cannot read the saved prices (the function that hands them out is for signed-in people only). The public pricing page and FAQ therefore show the built-in agreed list, not what an admin has typed into the price boxes. The two lists are the same today. See 3.13 and Part 9. [C]
+8. **Automated checks:** 379 checks across 41 test files pass on the source branch. [L]
 
 **What is new in version 1.5.**
 
@@ -333,6 +344,62 @@ Added in version 1.4. Applied on the database (`20261103_ingredient_prices_a.sql
 - **Profit report.** Read in `src/lib/pnl.ts`: sales with a saved cost use it; older sales without one are costed from the ingredient price in force at the sale time, and from **today's** price, with a warning, where no earlier price is known. Not yet seen on a screen. [C]
 - **Limits.** Sales before 25 September 2026 cannot be costed at their sale time and will need the owner's estimate. No grade prices exist yet (0 rows). Batch and wastage costs are still worked out in the browser and sent to the database (read in `src/routes/batches.tsx`) (see Part 9, S4). [C]
 
+## 3.13 Plans, prices, the free trial, payments and reminders
+
+This section describes how a kitchen gets access to NairaPlate and how that is recorded. It is about NairaPlate's own billing, not a kitchen's sales. Read from the code and the live database on 6 October 2026. [C]
+
+**Plan types (operating profiles).**
+
+- There are three: **Buka** (Simple, code `buka`), **Restaurant** (Standard, `standard`) and **Full Suite** (Advanced, `advanced`). A platform admin picks one for each kitchen on the approvals screen. Only the server (the service role) can change it: a database guard (`businesses_operating_mode_guard`) refuses a change from anyone else. New kitchens start as Buka. Kitchens that existed before the change were set to Full Suite so nothing was taken away. [C]
+- The plan type decides which screens a kitchen sees. This is done by the screens (`src/lib/features.ts` and the home screen), not by a database rule: the tables and who can write to them are the same for every plan. A kitchen on a smaller plan is hidden from a screen, not locked out of its own data by the database. [C]
+- Switched on by plan (everything else in the app is on for every plan):
+
+| Feature | Buka | Restaurant | Full Suite |
+|---|---|---|---|
+| Till, cash drawer, orders, paper sales, purchases, suppliers, ingredients, recipes | Yes | Yes | Yes |
+| Customer credit, wastage, stock take, receipt capture | No | Yes | Yes |
+| Cost check, 7-day cashflow, audit log, pricing review | No | Yes | Yes |
+| "Why did my margin change?" | No | Top 2 reasons | All reasons |
+| Channel payouts | No | No | Yes |
+| Accountant exports | No | 3 core | All 8 |
+| Catering | Off | Off | Off |
+| Home screen | 4 buttons | 12 tiles | 13 tiles |
+
+- The 3 core exports are the Sales Day Book, the Cash Drawer Summary and the Cash Paid-Out Register. Full Suite adds the Supplier Ledger, Customer Ledger, Refund and Reversal Register, Wastage Log and Batch Production. [C]
+- A platform admin can switch five features on or off for one kitchen, on top of its plan: customer credit, receipt capture, catering, accountant exports and "why did my margin change?" (table `business_features`). **Decision on 6 October:** Buka keeps accountant exports off. It was considered and left as it is. [C]
+
+**The free trial.**
+
+- A new business signs up and waits for approval. The 7-day trial starts on the approval day, on the plan type the admin chose, and ends at 11:59 pm Nigeria time on day 7. [C]
+- During the trial a kitchen may have 2 recipes, 12 ingredients in each recipe and 20 ingredients in total (enforced by three database triggers on `recipes`, `recipe_items` and `ingredients`, read live on 6 October from `20261001_trial_limits.sql`; the screens only show the database's message, `src/lib/trial-limits.ts`; also stated on the public FAQ). A paid plan removes the limits. [C] **Not tried by a person on the live site.** [S]
+- There is no setup fee during the trial. The trial is a try-out: the team shows the owner how it works. When the owner starts a paid plan, the team sets up the full menu with them and the setup fee is paid once, together with the first plan payment. Setup is done by the team only. **These are business rules agreed on 6 October; nothing in the app enforces them** (a kitchen could still set itself up). [C]
+- When a trial or plan ends, access pauses at that moment. Nothing is charged automatically, there is no grace period, and the records stay. A locked screen shows the plans and prices and how to pay. [C]
+
+**The price list.**
+
+- Kept in the platform settings under the key `prices`: for each of the three plans, a monthly, a 3-month and a 12-month price, a setup fee, and a tick to show the setup fee as "from" (used for Full Suite, "from ₦25,000"). A blank box shows no price. [C]
+- The built-in list (the agreed list), in naira: Buka 5,000 / 13,500 / 48,000, setup 10,000. Restaurant 10,000 / 27,000 / 96,000, setup 15,000. Full Suite 20,000 / 54,000 / 192,000, setup from 25,000. The 3-month price is three months less 10% and the 12-month price is twelve months less 20% (for Buka 5,000 x 3 = 15,000, less 10% = 13,500; 5,000 x 12 = 60,000, less 20% = 48,000). The "save 10%" and "save 20%" words on the website are worked out from the prices, so they cannot be wrong after an edit. [C][L]
+- Only a platform admin can save or reset the list, and saving needs the admin's PIN. A change is written to the audit trail as `platform_setting_changed`. Reset returns to the built-in list. [C]
+- **Who sees the saved list.** Signed-in people see it (the locked screen, and the amount on Record payment). **Signed-out visitors do not**: the function that hands out the saved settings (`public_settings`) can be run by signed-in people only, which was read on the live database on 6 October (visitors: no; signed-in: yes). The public pricing page and the FAQ therefore show the built-in list. Today the saved and built-in lists are identical, so nothing looks wrong. **If an admin changes a price, the public page and FAQ will not change until the code is edited or visitors are allowed to read that function.** Allowing it was proposed and **declined by the owner on 6 October 2026**; this is a known limit, not a defect. [C]
+
+**Recording a payment (by hand).**
+
+- Payments are bank transfers recorded by a platform admin on the business's page. There is no card payment and no automatic renewal. [C]
+- The server refuses: a date in the future; a business that is not approved or suspended; and a payment reference already recorded for that business (so a double click or a re-sent form cannot add a second term). [C]
+- **The amount is checked against the price list** (`src/lib/payment-check.ts`). The expected amount is the price of the kitchen's own plan type and period, plus the setup fee when the admin ticks "this payment includes the setup fee". An exact match saves. Any other amount is refused unless the admin gives a reason of 5 or more characters. Nothing is checked when the kitchen has no plan type yet or the price is blank. [C][L]
+- A saved payment extends access by the plan's period and sets the kitchen's plan. Recording a payment does not reactivate a suspended business. The owner is emailed a confirmation; if it cannot be sent, `email_undelivered` is logged for the platform admin. [C]
+- **What is saved** (table `subscription_payments`, server only): the plan (monthly, quarterly or yearly), the amount paid (`amount_kobo`, the total), the reference, the date, the period covered, who recorded it and, since `20261114`: the **plan type** (`operating_mode`), the **setup fee part** (`setup_fee_kobo`, 0 or more and never more than the amount) and the **reason** the amount differed (`difference_reason`). The plan part of a payment is the amount minus the setup fee. A payment recorded before 6 October has no plan type, a setup fee of 0 and no reason. [C][R]
+- The audit event `subscription_payment_recorded` carries the plan, amount, reference, date, access end, and, since 6 October, the plan type, "setup fee included" and any difference from the price list with its reason. [C]
+
+**Expiry reminder emails.**
+
+- The code, the log table (`subscription_reminder_log`, one row per business, period, kind and day, claimed before sending so a retry can never email twice) and the hourly job are in place. The job `nairaplate-expiry-reminders` runs at the top of every hour; it was created on 6 October 2026 (`20261113`) and read live. [C]
+- **Reminders are switched off.** The saved setting does not exist, so the default applies (off). Nothing is sent until an admin sends a test email, reads it and switches reminders on in the platform settings. The log has 0 rows. [C]
+- When on, the defaults are: paid plans 7, 3 and 1 days before the end and 1 day after; free trials 2 and 1 days before; sent at 9 am Nigeria time; wording editable. The trial reminder asks for the plan (Buka, Restaurant or Full Suite) and the period. A missed day is not made up later. [C]
+- The daily summary email (8 pm on days with sales, switch-off in the Staff screen) is a separate email and is already live. [C]
+
+---
+
 # Part 4. How the key numbers are worked out
 
 ## 4.1 Expected cash in a drawer
@@ -505,7 +572,7 @@ Events that do not fit the table: staff changes and PIN resets (server routes, a
 
 ## 8.1 Automated tests
 
-- **290 automated checks across 28 test files** pass on the released code (`main`, 4 October 2026). **302 checks across 30 test files** pass on the source branch, which also holds the offline, price history and paper-entry code. They cover the shared calculations (balances, reversals, expected cash, adjustments, calendar entries, payment methods, labels and rules shown on screens). [L]
+- **379 checks across 41 test files** pass on the source branch (6 October 2026, evening); the released code holds the same code. Earlier counts: **290 automated checks across 28 test files** on the released code (`main`, 4 October 2026). **302 checks across 30 test files** pass on the source branch, which also holds the offline, price history and paper-entry code. They cover the shared calculations (balances, reversals, expected cash, adjustments, calendar entries, payment methods, labels and rules shown on screens). [L]
 - For every step of the ledger programme, the database changes were tested on a local copy of the database before release: the loophole shown first, then every allowed action, every refusal, other businesses, every role, repeated runs, and the rollback. [L]
 
 ## 8.2 The live rehearsal, 2 and 3 October 2026
@@ -588,6 +655,16 @@ This is evidence, not a new business rule. The rules are in 3.9.
 
 ---
 
+## 8.7 Plans, prices, payments and reminders: evidence, 6 October 2026
+
+- **Read from the live database (read-only):** `subscription_payments` has the three new columns, both checks, row security on and no read access for signed-in people; 1 payment row before and after; no rehearsal rows left. The hourly job `nairaplate-expiry-reminders` is active, runs at minute 0 of every hour, calls `/api/public/expiry-reminders` with the scheduler secret (the same pattern as the daily summary and news watch jobs); the log table exists with 0 rows; no reminders setting is saved. `public_settings` can be run by signed-in people and not by visitors. [C]
+- **Rehearsal on the live database** (`20261114_payment_columns_a_rehearsal.sql`, run by the owner, result read): ALL CLEAR, 6 passed, 0 failed (a normal payment with a plan type; setup fee with a reason; unknown plan type refused; setup fee above the amount refused; negative setup fee refused; an old-style payment with no plan type still saves). Nothing was saved. [R]
+- **Local tests:** the same script on a local copy applied, re-ran without effect, passed its check and rehearsal, and rolled back cleanly. The payment amount rule (7 checks), the price list (savings, sentences, schema) and the plan and export switches are covered by automated tests. [L]
+- **Released and read in the deployed code** on 6 October: the pricing page, the price boxes, the amount check and the reason box, the new payment columns being written, the trial wording on the FAQ and home page, and the new trial reminder wording. [C]
+- **Not proved:** no person has used the price boxes, the amount check, the new payment list or the pricing page on a phone; the server payment route has not been run against the live database with a real payment (a test payment on the Demo Kitchen with a wrong amount, then with a reason, would prove it); no reminder email has ever been sent. [S]
+
+---
+
 # Part 9. Known gaps and open items
 
 Ranked by what matters most. Each says what it is, what could go wrong, and the status.
@@ -637,11 +714,14 @@ Ranked by what matters most. Each says what it is, what could go wrong, and the 
 - **Correction limits.** The six batches logged before 3 October 2026 cannot be reversed (no stock trail). A payout's mismatch alert is not linked to the payout and must be dismissed by hand. A dish price edited by hand is not timestamped, so the price guard on reversing a decision compares prices only.
 - **Stale shift.** The 25 September shift in Demo Kitchen was closed by the owner on 3 October 2026. The shift opened in the 3 October test was also closed by the owner the same day; the database shows no open shifts. [C]
 - **Test data in the Demo Kitchen.** The 3 October shift holds ₦39,000 of test payouts (including an unreversed ₦20,000 test entry) and a forced close. They stay as test records.
-- **Release state.** The live site is `main` at the release of 6 October 2026 (merge commit `8f050c8`), deployed at 02:47 UTC. It holds the offline, price-history, receipts, operating-mode, accountant-report and paper-entry code. The paper-entry screens match the database rules. Two changes are written and not released: the strict-price preview on the entry screen (`ccr-d9-strict`) and nothing else. Not yet tried by a person: every screen released on 6 October. [C][S]
+- **Release state.** The live site is `main` at the last release of 6 October 2026 (05:00 UTC; the earlier release, merge commit `8f050c8`, was deployed at 02:47 UTC). It holds the offline, price-history, receipts, operating-mode, accountant-report and paper-entry code. The paper-entry screens match the database rules. Since then the strict-price preview, the transfer lost screens, the report alignment, the brochure cards, the pricing page, the price boxes, the payment amount check and the payment columns were released; the last release was run 61 of "Release to main" at 05:00 UTC on 6 October 2026, and the deployed code was read afterwards. Nothing is written and waiting. Not yet tried by a person: every screen released on 6 October. [C][S]
 
 - **PIN hashing.** The upgrade (a stronger scheme with a secret pepper and re-hashing at sign-in) is planned and not built.
-- **Public prices for visitors.** Prices are shown to signed-in people only. Showing them to signed-out visitors needs a decision.
-- **Expiry reminder emails** exist but are switched off and not scheduled.
+- **Public prices for visitors.** Signed-out visitors cannot read the saved prices, so the public pricing page and FAQ show the built-in list, not what an admin saves (3.13). Allowing visitors to read it was proposed on 6 October 2026 and **declined by the owner**. If a price changes, the page text must be edited in the code.
+- **Expiry reminder emails** are scheduled hourly since 6 October 2026 and are **switched off**. No email has been sent. The owner has to send a test email and switch them on (3.13).
+- **Buka and the 3 core exports.** Considered on 6 October and left off for Buka by decision (3.13).
+- **The free-trial limits and assisted setup.** The limits (2 recipes, 12 ingredients per recipe, 20 in total) stay during the trial; the full menu is set up after the first payment. The database enforces the limits (3 triggers, read live); the app does not stop a kitchen setting itself up inside them, and the limits have not been tried by a person. [C][S]
+- **Payments before 6 October** have no plan type, setup fee or reason (one payment exists).
 - **Backups.** Database backups and point-in-time recovery should be confirmed in the Supabase dashboard. This document cannot confirm them.
 - **No staging environment.** Changes are tested locally and then run on the live database.
 - **Older sales are costed at today's prices.** Sold lines from before 1 October 2026 have no frozen cost (Part 4.5). Sales since then are frozen.
@@ -756,7 +836,7 @@ All appendices were read from the live database and the code on 2, 3 and 4 Octob
 | stock_count_lines | Stock | cook, owner, purchaser, supa_admin | - | - | - |
 | stock_counts | Stock | cook, owner, purchaser, supa_admin | - | - | - |
 | stock_movements | Ledger | owner, purchaser, supa_admin | - | - | - |
-| subscription_payments | Platform | nobody (server only) | - | - | - |
+| subscription_payments | Platform | nobody (server only). Columns added 6 Oct: operating_mode, setup_fee_kobo, difference_reason | - | - | - |
 | subscription_reminder_log | System log | nobody (server only) | - | - | - |
 | supplier_transactions | Ledger | owner, purchaser, supa_admin | - | - | - |
 | suppliers | Configuration | owner, purchaser, supa_admin | owner, purchaser, supa_admin | owner, purchaser, supa_admin | owner, supa_admin |
@@ -936,9 +1016,11 @@ All 17 routes run on the server with the service key. Each one checks the caller
 | ping | Connection check for the Till: answers with nothing; no database work | Visitor (the Till) | Public by design; read-only; no data in or out |
 | summary-unsubscribe | "Stop these emails" link | Owner (from email) | Link signed with the summary secret; two steps (view, then confirm) |
 
-**Scheduled jobs (database scheduler):** daily summary 19:00 UTC daily; news watch at minute 20 every hour; catering alerts, catering morning email 05:30 UTC daily; catering evening email 17:30 UTC daily. **Vault secrets:** the site address and the scheduler secret. Expiry reminders are not scheduled.
+**Scheduled jobs (database scheduler):** daily summary 19:00 UTC daily; news watch at minute 20 every hour; catering alerts, catering morning email 05:30 UTC daily; catering evening email 17:30 UTC daily. **Vault secrets:** the site address and the scheduler secret. Expiry reminders: top of every hour since 6 October 2026 (created by `20261113`; the emails stay off until an admin switches them on).
 
 # Appendix F. Audit events
+
+**Changed on 6 October 2026:** `subscription_payment_recorded` now also states the plan type, "setup fee included" and, when the amount differed from the price list, the difference and the reason. `platform_setting_changed` is written when a price list, wording or reminder setting is saved or reset.
 
 **Seen in the live audit trail to 3 October 2026** (153 lines, 29 types; the cash payout events, drawer_limit_changed, drawer_force_closed, batch_reversed, payout_reversed and price_decision_reversed are new since 2 October): login_success 87, login_failed 17, business_created 5, pin_reset 4, cash_payout_recorded 3, cash_payout_requested 3, cost_changed 3, business_approved 3, cash_payout_declined 2, drawer_limit_changed 2, drawer_discrepancy 2, role_changed 2, business_rejected 2, price_published 2, stock_count_submitted 2, and one each of account_locked, batch_reversed, cash_payout_approved, catering_order_created, contact_message_handled, drawer_force_closed, drawer_opened, email_undelivered, payout_reversed, platform_setting_changed, price_decision_reversed, security_alert_undelivered, staff_created, supplier_payment_recorded. **Earlier count (to 2 October 2026):** login_success 76, login_failed 15, business_created 5, business_approved 3, cost_changed 3, pin_reset 2, role_changed 2, business_rejected 2, price_published 2, stock_count_submitted 2, security_alert_undelivered 1, account_locked 1, email_undelivered 1, platform_setting_changed 1, contact_message_handled 1, staff_created 1.
 
@@ -989,6 +1071,8 @@ All files are in `supabase/external/`. Each step has the change, a check query a
 | snapshot_live_late_entry_functions_20261006 | Reference snapshot of five live functions (S5), each checked by hash. Not a migration |
 | 20261111_resolve_late_entry_recipe_hygiene | Closes S6 (live-only function open to other businesses). Applied; check read live 6 Oct |
 | 20261112_late_line_price_link_a | Paper sale order lines link the price row of the sale time (D4). Applied; check read live 6 Oct; rehearsal all clear (4 of 4) |
+| 20261113_expiry_reminders_schedule | Creates the hourly expiry reminder job. Applied by the owner 6 Oct; job read live (active, minute 0 every hour). Emails stay off until switched on |
+| 20261114_payment_columns_a | Adds plan type, setup fee part and difference reason to `subscription_payments`. Applied 6 Oct; check read live; rehearsal all clear (6 of 6) |
 | rehearsal_phase0_prices.sql | Self-undoing rehearsal for save-once sales and dish price history. Written, **not run** |
 | rehearsal_demo_kitchen.sql | The self-undoing rehearsal used in Part 8 (200 steps on 3 Oct) |
 
@@ -1012,4 +1096,7 @@ All files are in `supabase/external/`. Each step has the change, a check query a
 | Sale code | A random identifier the Till makes for each sale attempt, so the database can tell a repeat from a new sale. |
 | Paper (late) entry | A sale written on paper during an outage, entered later and posted as a sale only when an owner approves it. |
 | Dish price history | The list of every price a dish has had, with when each started. |
+| Plan type (operating profile) | Buka, Restaurant or Full Suite. Chosen by a platform admin for each kitchen. Decides which screens the kitchen sees. |
+| Price list | The monthly, 3-month, 12-month and setup prices for each plan type, kept in the platform settings. |
+| Setup fee | A one-off fee for the team setting up a kitchen's full menu, paid with the first plan payment. Not charged in the free trial. |
 | Legacy (payment method) | The label on a supplier payment saved by the older screen, which could not say how it was paid. |
