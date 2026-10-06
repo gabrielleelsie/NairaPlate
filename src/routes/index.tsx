@@ -760,8 +760,8 @@ function LiveCalculator() {
 }
 
 const TRIAL_POINTS = [
-  "7 days free, every feature switched on, with up to 2 recipes.",
-  "We help you set up your 2 recipes and market-unit conversions so you're not starting from a blank screen.",
+  "7 days free on the plan that suits your kitchen.",
+  "Our team sets up your recipes and market-unit conversions with you, so you're not starting from a blank screen.",
   "See today's sales, food cost and profit on your owner dashboard any time during the trial, so you see the value before you're asked to pay.",
 ];
 

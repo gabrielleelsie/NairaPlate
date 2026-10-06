@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { usePublicSettings } from "@/lib/use-public-settings";
 
 import {
   C,
@@ -130,11 +129,11 @@ const GROUPS: Group[] = [
     items: [
       {
         q: "How does the free trial work?",
-        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day with every feature switched on. You can set up your 2 recipes and your market-unit conversions yourself, with our step-by-step setup guide, and we can help if you ask.",
+        a: "You sign up, we review your details and approve your account, and your 7-day free trial starts from that day. We choose the plan that suits your kitchen (Buka, Restaurant or Full Suite) and our team sets it up with you.",
       },
       {
         q: "Is there a limit during the trial?",
-        a: "Yes. Every feature is on, but a trial includes up to 2 recipes, with up to 12 ingredients in each recipe, and up to 20 ingredients in your list. A paid plan removes these limits.",
+        a: "Yes. Your trial includes the features of your plan, with up to 2 recipes, with up to 12 ingredients in each recipe, and up to 20 ingredients in your list. A paid plan removes these limits.",
       },
       {
         q: "Why do you approve accounts first?",
@@ -142,7 +141,7 @@ const GROUPS: Group[] = [
       },
       {
         q: "What happens after the 7 days?",
-        a: "To carry on, choose a Monthly, Quarterly or Yearly plan. When a trial or plan ends, access pauses until we confirm your payment and switch your account back on. Nothing is charged automatically, and your records are kept safe in the meantime.",
+        a: "To carry on, choose a monthly, 3-month or 12-month period on your plan. When a trial or plan ends, access pauses until we confirm your payment and switch your account back on. Nothing is charged automatically, and your records are kept safe in the meantime.",
       },
       {
         q: "Can the till check that a bank transfer really arrived?",
@@ -158,11 +157,11 @@ const GROUPS: Group[] = [
       },
       {
         q: "Is there a setup fee?",
-        a: "Setup is free if you do it yourself. The setup guide takes you through it step by step. If you would like help, guided setup is optional and paid. Message us on WhatsApp.",
+        a: "Yes. Our team sets up your kitchen with you, and you pay the setup fee once: Buka ₦10,000, Restaurant ₦15,000, Full Suite from ₦25,000. Message us on WhatsApp.",
       },
       {
         q: "How much does it cost?",
-        a: "{prices} Every plan has every feature. Message us on WhatsApp to pay, and we will give you the payment details. Setup is free if you do it yourself.",
+        a: "There are three plans: Buka, Restaurant and Full Suite. Buka is ₦5,000 a month, Restaurant ₦10,000 and Full Suite ₦20,000. Pay for 3 months and save 10%, or for 12 months and save 20%. See the pricing page for the full list. Message us on WhatsApp to pay, and we will give you the payment details.",
       },
       {
         q: "How do I pay?",
@@ -182,22 +181,13 @@ const GROUPS: Group[] = [
   },
 ];
 
-const PRICES_FALLBACK = "Message us on WhatsApp for current prices.";
-const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
-/** The visible answer shows the prices an admin has set, so it never goes stale. The structured data uses the generic line. */
-function pricesText(p: { monthly_kobo: number | null; quarterly_kobo: number | null; yearly_kobo: number | null }): string {
-  const parts = [["Monthly", p.monthly_kobo], ["Quarterly", p.quarterly_kobo], ["Yearly", p.yearly_kobo]]
-    .filter((x): x is [string, number] => typeof x[1] === "number").map(([n, v]) => `${n} ${naira(v)}`);
-  return parts.length === 0 ? PRICES_FALLBACK : `${parts.join(", ")}.`;
-}
-
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: GROUPS.flatMap((g) => g.items).map((i) => ({
     "@type": "Question",
     name: i.q,
-    acceptedAnswer: { "@type": "Answer", text: i.a.replace("{prices}", PRICES_FALLBACK) },
+    acceptedAnswer: { "@type": "Answer", text: i.a },
   })),
 });
 
@@ -217,7 +207,6 @@ export const Route = createFileRoute("/faq")({
 });
 
 function FaqPage() {
-  const { prices } = usePublicSettings();
   return (
     <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
@@ -297,7 +286,7 @@ function FaqPage() {
                           +
                         </span>
                       </summary>
-                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{item.a.replace("{prices}", pricesText(prices))}</p>
+                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{item.a}</p>
                     </details>
                   ))}
                 </div>
