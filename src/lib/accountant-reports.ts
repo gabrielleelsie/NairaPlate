@@ -1,6 +1,7 @@
 // Accountant reports: read-only views of existing ledgers. Builders are pure (tested); fetchers read only the business's own rows.
 // Costs are never recalculated here: sales use the food-cost label stored on each line, batches use the cost locked in when logged.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { lostTransferKobo } from "@/lib/order-revenue";
 import { koboInt, koboToNaira, lagosDate, lagosDateTime, lagosTime, daysBetween, type CsvRow, type ReportId } from "@/lib/csv-export";
 import { SHIFT_COLUMNS, normaliseShifts, normaliseAdjustments, adjustedCount, adjustedDiscrepancy, type ShiftRow, type ShiftAdjustment } from "@/lib/cash-drawer";
 import { PAYOUT_COLUMNS, normalisePayouts, payoutViews, categoryLabel, type PayoutRow } from "@/lib/cash-payouts";
@@ -30,7 +31,7 @@ const ageingCols = (a: Ageing) => ({
 });
 
 // ---------- 1. Sales Day Book ----------
-export type SaleOrder = { id: string; subtotal_kobo: unknown; total_kobo: unknown; status: string; payment_method: string | null; channel: string | null; created_by: string | null; created_at: string; is_late_entry?: boolean | null; actual_sold_at?: string | null; paper_reference?: string | null };
+export type SaleOrder = { id: string; subtotal_kobo: unknown; total_kobo: unknown; cash_amount_kobo?: unknown; transfer_amount_kobo?: unknown; status: string; payment_method: string | null; channel: string | null; created_by: string | null; created_at: string; is_late_entry?: boolean | null; actual_sold_at?: string | null; paper_reference?: string | null };
 export type OrderAdj = { id: string; order_id: string; type: string; original_amount_kobo?: unknown; adjustment_amount_kobo: unknown; reason?: string | null; actor_id?: string | null; created_at: string };
 
 export function costConfidence(isLate: boolean, bases: (string | null)[]): string {
@@ -60,11 +61,12 @@ export function buildSalesDayBook(orders: SaleOrder[], adjs: OrderAdj[], bases: 
   const byOrder = new Map<string, OrderAdj[]>();
   for (const a of adjs) byOrder.set(a.order_id, [...(byOrder.get(a.order_id) ?? []), a]);
   return [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((o) => {
-    const gross = n(o.total_kobo), refunded = refundedKobo(o, byOrder.get(o.id) ?? []), net = gross - refunded;
+    // A "transfer lost" paper sale: the unpaid transfer is shown on its own and is not net sales (the cash kept is).
+    const gross = n(o.total_kobo), refunded = refundedKobo(o, byOrder.get(o.id) ?? []), lost = lostTransferKobo(o), net = gross - refunded - lost;
     return {
       lagos_date: lagosDate(o.created_at), lagos_time: lagosTime(o.created_at), order_ref: `#${o.id.slice(0, 8)}`, order_id: o.id,
       status: STATUS_OUT[o.status] ?? o.status, channel: o.channel ?? "", payment_method: o.payment_method ?? "",
-      subtotal_naira: koboToNaira(n(o.subtotal_kobo)), gross_sales_naira: koboToNaira(gross), refunded_naira: koboToNaira(refunded),
+      subtotal_naira: koboToNaira(n(o.subtotal_kobo)), gross_sales_naira: koboToNaira(gross), refunded_naira: koboToNaira(refunded), lost_transfer_naira: koboToNaira(lost),
       net_sales_naira: koboToNaira(net), net_sales_kobo: koboInt(net),
       cost_confidence: costConfidence(!!o.is_late_entry, bases.get(o.id) ?? []), is_late_entry: !!o.is_late_entry,
       actual_sold_at_lagos: o.is_late_entry ? lagosDateTime(o.actual_sold_at) : "", paper_reference: o.paper_reference ?? "",
@@ -268,7 +270,7 @@ async function staffNames(ctx: Ctx) {
 
 const FETCHERS: Record<ReportId, (ctx: Ctx) => Promise<CsvRow[]>> = {
   async sales_day_book(ctx) {
-    const orders = await all<SaleOrder>(within(ctx, "orders", "id,subtotal_kobo,total_kobo,status,payment_method,channel,created_by,created_at,is_late_entry,actual_sold_at,paper_reference"));
+    const orders = await all<SaleOrder>(within(ctx, "orders", "id,subtotal_kobo,total_kobo,cash_amount_kobo,transfer_amount_kobo,status,payment_method,channel,created_by,created_at,is_late_entry,actual_sold_at,paper_reference"));
     const ids = orders.map((o) => o.id), lateIds = orders.filter((o) => o.is_late_entry).map((o) => o.id);
     const [adjs, items, names] = await Promise.all([
       inChunks<OrderAdj>(ids, (c) => ctx.supabase.from("order_adjustments").select("id,order_id,type,adjustment_amount_kobo,created_at").in("order_id", c) as unknown as Q),

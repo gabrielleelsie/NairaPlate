@@ -1382,6 +1382,17 @@ td .blank { min-width: 40mm; }
 <td>☐</td>
 </tr>
 <tr>
+<td>UAT-LATE-29</td>
+<td>Owner</td>
+<td><strong>Reports</strong>, the profit report; the accountant CSV <strong>Sales Day Book</strong>; the cost check card</td>
+<td>After UAT-LATE-26, pick the day of that paper sale. Compare the profit report, the Sales Day Book row for it and the cost check</td>
+<td><strong>Profit report:</strong> sales include only the cash kept; food cost is the full cost; a warning says 1 paper sale had a transfer that never arrived with both amounts. <strong>Sales Day Book:</strong> status <code>transfer_lost</code>, gross is the full sale, <code>lost_transfer_naira</code> is the unpaid transfer, net is the cash kept; the file version reads <code>sales_day_book_v3</code>. <strong>Cost check:</strong> the dish's plates are counted, its sales only for the part received</td>
+<td>Reports aligned 6 October, not yet released or tried by a person</td>
+<td>☐</td>
+<td>☐</td>
+<td>☐</td>
+</tr>
+<tr>
 <td>UAT-LATE-16</td>
 <td>Owner</td>
 <td><strong>Oversight</strong>, then <strong>Audit trail</strong></td>
@@ -1394,7 +1405,7 @@ td .blank { min-width: 40mm; }
 </tr>
 </tbody>
 </table>
-<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 28. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4 and D6 fixed and re-tested: yes / no.</p>
+<p><strong>Owner sign-off (Module E):</strong> I (name) <span class="blank"></span> ran Module E on (date) <span class="blank"></span>. Passed <span class="blank"></span> of 29. Failed <span class="blank"></span>. Blocked <span class="blank"></span>. Defects D1 to D4 and D6 fixed and re-tested: yes / no.</p>
 <h2>Module F. Dish price history (after release)</h2>
 <p>Do not run this module until the price-history screen is released. Owner only, except UAT-PRICE-08.</p>
 <table class="pf">

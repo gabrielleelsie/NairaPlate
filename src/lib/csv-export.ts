@@ -46,9 +46,9 @@ export type ReportId =
   | "customer_ledger" | "refund_reversal_register" | "wastage_log" | "batch_production";
 
 export const REPORT_SCHEMAS: Record<ReportId, { version: string; columns: readonly string[] }> = {
-  sales_day_book: { version: "sales_day_book_v2", columns: [
+  sales_day_book: { version: "sales_day_book_v3", columns: [
     "lagos_date", "lagos_time", "order_ref", "order_id", "status", "channel", "payment_method",
-    "subtotal_naira", "gross_sales_naira", "refunded_naira", "net_sales_naira", "net_sales_kobo",
+    "subtotal_naira", "gross_sales_naira", "refunded_naira", "lost_transfer_naira", "net_sales_naira", "net_sales_kobo",
     "cost_confidence", "is_late_entry", "actual_sold_at_lagos", "paper_reference", "receipt_attached", "receipt_count", "cashier_name", "created_at_utc"] },
   cash_drawer_summary: { version: "cash_drawer_summary_v1", columns: [
     "shift_id", "lagos_date", "shift_number", "opened_at_lagos", "closed_at_lagos", "opened_by", "closed_by", "status",
