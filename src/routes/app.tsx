@@ -315,7 +315,7 @@ const BUKA_OVERSIGHT: AppLink[] = [
   { to: "/dashboard", label: "Today's cash & sales", icon: BarChart3 },
   { to: "/inbox", label: "Things to check", icon: AlertCircle },
   { to: "/staff", label: "Staff & PINs", icon: Users },
-  { to: "/report", label: "Print daily summary", icon: ClipboardList },
+  { to: "/report", label: "Print weekly or monthly report", icon: ClipboardList },
 ];
 
 function HomeScreen({ name, role, onSignOut }: { name: string; role: string | null; onSignOut: () => Promise<void> }) {
