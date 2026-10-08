@@ -41,11 +41,11 @@ export const DEFAULT_REMINDERS: ReminderSettings = {
     },
     trial_before: {
       subject: "Your NairaPlate free trial ends {when}",
-      body: "Hello,\n\nThe free trial for {business} ends on {date} at 11:59 pm. To keep using NairaPlate after that, start a paid plan.\n\nMessage us on WhatsApp and tell us whether you want to pay monthly, every 3 months or every 12 months. Your plan is the one we assigned to {business}.",
+      body: "Hello,\n\nYour 7-day NairaPlate trial for {business} ends on {date} at 11:59 pm. To continue, reply with the billing period you want: monthly, every 3 months or every 12 months.\n\nWe will confirm your first payment amount, including the one-off setup fee, then set up your full menu with you.",
     },
     trial_after: {
       subject: "Your NairaPlate free trial has ended",
-      body: "Hello,\n\nThe free trial for {business} ended on {date}. Your records are safe. Message us on WhatsApp to start a paid plan and we will switch the account back on.",
+      body: "Hello,\n\nYour NairaPlate trial for {business} ended on {date} and access is paused. Your records are safe.\n\nMessage us on WhatsApp to continue. We will confirm your plan, billing period and first payment amount, including the one-off setup fee. Once payment is recorded, we will set up your full menu with you and switch your account back on.",
     },
   },
 };
