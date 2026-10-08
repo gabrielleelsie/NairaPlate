@@ -23,7 +23,7 @@ export function LockedScreen({ businessName, endedAt, onSignOut }: { businessNam
           </p>
         </div>
         <div className="space-y-2">
-          <h2 className="font-semibold text-brand-navy">Choose a plan</h2>
+          <h2 className="font-semibold text-brand-navy">Plans and prices</h2>
           <ul className="grid gap-2 sm:grid-cols-3">
             {PLAN_MODES.map((m) => (
               <li key={m} className="rounded-lg border border-border p-3 text-center font-medium">
