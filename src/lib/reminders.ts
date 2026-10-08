@@ -29,7 +29,7 @@ export type ReminderSettings = {
 export const DEFAULT_REMINDERS: ReminderSettings = {
   enabled: false, // off until an admin switches it on, after a test email has arrived
   send_hour: 9,
-  paid_days_before: [7, 3, 1], paid_days_after: [1], trial_days_before: [2, 1], trial_days_after: [],
+  paid_days_before: [7, 3, 1], paid_days_after: [1], trial_days_before: [2, 1], trial_days_after: [1],
   templates: {
     paid_before: {
       subject: "Your NairaPlate plan ends {when}",
@@ -41,11 +41,11 @@ export const DEFAULT_REMINDERS: ReminderSettings = {
     },
     trial_before: {
       subject: "Your NairaPlate free trial ends {when}",
-      body: "Hello,\n\nThe free trial for {business} ends on {date} at 11:59 pm. To keep using NairaPlate after that, choose a plan.\n\nMessage us on WhatsApp and tell us which plan you want (Buka, Restaurant or Full Suite) and whether you want to pay monthly, every 3 months or every 12 months.",
+      body: "Hello,\n\nYour 7-day NairaPlate trial for {business} ends on {date} at 11:59 pm. Your business has already been assigned the NairaPlate profile that fits it.\n\nTo continue, message us on WhatsApp and tell us the billing period you want: monthly, every 3 months or every 12 months.\n\nWe will confirm your first payment amount, including the one-off setup fee. Once payment is recorded, we will set up your full menu with you.",
     },
     trial_after: {
       subject: "Your NairaPlate free trial has ended",
-      body: "Hello,\n\nThe free trial for {business} ended on {date}. Your records are safe. Choose a plan and we will switch the account back on.",
+      body: "Hello,\n\nYour NairaPlate trial for {business} ended on {date} and access is paused. Your records are safe.\n\nTo continue, message us on WhatsApp and tell us whether you want to pay monthly, every 3 months or every 12 months.\n\nWe will confirm your billing period and first payment amount, including the one-off setup fee. Once payment is recorded, we will switch your account back on and set up your full menu with you.",
     },
   },
 };

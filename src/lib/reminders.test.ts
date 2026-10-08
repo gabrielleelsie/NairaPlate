@@ -31,11 +31,12 @@ describe("dueReminder: paid plan, defaults 7, 3, 1 before and 1 after", () => {
 
 describe("dueReminder: trial and exclusions", () => {
   const trial = { status: "approved", plan: "trial", access_ends_at: END };
-  it("uses the trial days (2 and 1 before, none after)", () => {
+  it("uses the trial days (2 and 1 before, 1 after)", () => {
     expect(dueReminder(trial, at("2026-10-08T08:00:00Z"), S)).toMatchObject({ kind: "trial_before", offset: 2 });
     expect(dueReminder(trial, at("2026-10-09T08:00:00Z"), S)).toMatchObject({ kind: "trial_before", offset: 1 });
     expect(dueReminder(trial, at("2026-10-07T08:00:00Z"), S)).toBeNull(); // 3 days: a paid day, not a trial day
-    expect(dueReminder(trial, at("2026-10-11T08:00:00Z"), S)).toBeNull();
+    expect(dueReminder(trial, at("2026-10-11T08:00:00Z"), S)).toMatchObject({ kind: "trial_after", offset: 1 }); // the day after the trial ended
+    expect(dueReminder(trial, at("2026-10-12T08:00:00Z"), S)).toBeNull(); // only the day after, not every day
   });
   it("skips pending, suspended and rejected businesses and ones with no plan or end date", () => {
     for (const status of ["pending", "suspended", "rejected"]) expect(dueReminder({ ...paid, status }, at("2026-10-09T08:00:00Z"), S)).toBeNull();
