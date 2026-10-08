@@ -89,7 +89,7 @@ const STEPS = [
   "Message us on WhatsApp and tell us whether you want to pay monthly, every 3 months or every 12 months.",
   "We send you our bank details and the exact amount. For your first payment, that is your plan price plus the one-off setup fee.",
   "You pay by bank transfer and send us the proof.",
-  "A NairaPlate administrator records your payment and activates your plan.",
+  "After we confirm your bank transfer, a NairaPlate administrator records your payment and activates your plan.",
 ];
 
 function PricingPage() {
