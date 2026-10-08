@@ -86,10 +86,10 @@ const PLANS: Plan[] = [
 ];
 
 const STEPS = [
-  "Message us on WhatsApp.",
-  "We send you our bank details and the exact amount.",
+  "Message us on WhatsApp and tell us whether you want to pay monthly, every 3 months or every 12 months.",
+  "We send you our bank details and the exact amount. For your first payment, that is your plan price plus the one-off setup fee.",
   "You pay by bank transfer and send us the proof.",
-  "We record your payment and your plan is active.",
+  "After we confirm your bank transfer, a NairaPlate administrator records your payment and activates your plan.",
 ];
 
 function PricingPage() {
@@ -108,10 +108,10 @@ function PricingPage() {
             </Link>
             <div className="np-section-label" style={{ color: C.onNavy }}>Pricing</div>
             <h1 className="np-h1" style={{ color: C.white, margin: "18px 0 0", maxWidth: 760 }}>
-              Simple pricing for your kitchen.
+              Plans for different kinds of food businesses.
             </h1>
             <p className="np-sub" style={{ color: C.onNavy, lineHeight: 1.6, margin: "20px 0 0", maxWidth: 640 }}>
-              Choose the plan that fits the way your kitchen works. Start with 7 days free. Pay by bank transfer.
+              When we approve your account, we assign the Buka, Restaurant or Full Suite profile that fits your business. Start with 7 days free. Pay by bank transfer.
             </p>
           </div>
         </section>
@@ -156,14 +156,17 @@ function PricingPage() {
 
         <section className="np-section" style={{ background: C.white }}>
           <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px" }}>
-            <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "0 0 12px" }}>7 days free</h2>
+            <p style={{ color: C.muted, fontSize: 16, lineHeight: 1.7, margin: "0 0 32px" }}>
+              Every 3 months is the monthly price × 3, less 10%. Every 12 months is the monthly price × 12, less 20%.
+            </p>
+            <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "0 0 12px" }}>Try NairaPlate free for 7 days</h2>
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
-              Your free trial starts the day we approve your account. We put you on the plan that suits your kitchen and show you how to use it. The trial has limits on recipes and ingredients. It ends at 11:59 pm (Nigeria time) on day 7.
+              We assign the Buka, Restaurant or Full Suite profile that fits your business when we approve your account. Your trial includes the features in that profile. During the trial, you can add up to 2 recipes, up to 12 ingredients per recipe and 20 ingredients in total. It starts the day we approve your account and ends at 11:59 pm (Nigeria time) on day 7.
             </p>
 
             <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "40px 0 12px" }}>Setup</h2>
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
-              There is no setup fee during the free trial. When you start a paid plan, our team sets up your kitchen with you: your market units, ingredients, recipes, dishes and staff. You pay the setup fee once.
+              There is no setup fee during your trial. If you decide to continue, you pay your first plan payment plus a one-off setup fee. Our team then sets up your full menu with you: your market units, ingredients, recipes, dishes and staff.
             </p>
 
             <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "40px 0 12px" }}>How to pay</h2>
@@ -175,7 +178,7 @@ function PricingPage() {
 
             <h2 style={{ color: C.navy, fontSize: 28, fontWeight: 800, margin: "40px 0 12px" }}>When your plan ends</h2>
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
-              Your plan runs to 11:59 pm on its last day. Your records stay safe. Pay again to continue.
+              Your plan runs to 11:59 pm on its last day. There is no automatic renewal. When your plan ends, access pauses and your records stay safe. You can pay again to continue.
             </p>
           </div>
         </section>
