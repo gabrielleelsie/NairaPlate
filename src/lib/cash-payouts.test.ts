@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_PAYOUT_LIMIT_KOBO, canReversePayout, cashierDirectTotalKobo, categoryLabel, classifyPayout, friendlyPayoutError, netPayoutsKobo, noteOk,
+  DEFAULT_PAYOUT_LIMIT_KOBO, STATUS_LABEL, canReversePayout, cashierDirectTotalKobo, categoryLabel, classifyPayout, friendlyPayoutError, netPayoutsKobo, noteOk, reverseTargetId,
   payoutViews, pendingRequests, remainingAllowanceKobo, type PayoutRow,
 } from "./cash-payouts";
 
@@ -90,6 +90,54 @@ describe("how entries are listed", () => {
     expect(canReversePayout("cashier", views.find((v) => v.id === "p3")!)).toBe(false);
     expect(canReversePayout("owner", views.find((v) => v.id === "q1")!)).toBe(false);
   });
+});
+
+describe("reversing an approved request (G5)", () => {
+  const q = row({ id: "q5", kind: "request", amount_kobo: 900000, recorded_by_role: "cashier", recorded_by_name: "Cash" });
+  const ap = row({ id: "a5", kind: "payout", amount_kobo: 900000, approves_id: "q5", recorded_by_role: "owner", recorded_by_name: "Boss" });
+  const rev = row({ id: "r5", kind: "reversal", amount_kobo: -900000, reverses_id: "a5", note: "approved by mistake", recorded_by_role: "owner", recorded_by_name: "Boss" });
+  const before = payoutViews([q, ap]), after = payoutViews([q, ap, rev]);
+  const viewOf = (views: ReturnType<typeof payoutViews>, id: string) => views.find((v) => v.id === id)!;
+
+  it("lists an approved request once, with the approved entry behind it", () => {
+    expect(before.map((v) => `${v.id}:${v.status}`)).toEqual(["q5:approved"]);
+    expect(viewOf(before, "q5").settleId).toBe("a5");
+  });
+  it("lets an owner or supa admin reverse it, and nobody else", () => {
+    expect(canReversePayout("owner", viewOf(before, "q5"))).toBe(true);
+    expect(canReversePayout("supa_admin", viewOf(before, "q5"))).toBe(true);
+    for (const r of ["cashier", "cook", "purchaser", null, undefined]) expect(canReversePayout(r, viewOf(before, "q5"))).toBe(false);
+  });
+  it("reverses the approved entry behind the request, not the request itself", () => {
+    expect(reverseTargetId(viewOf(before, "q5"))).toBe("a5");
+    expect(reverseTargetId(viewOf(payoutViews([row({ id: "p9" })]), "p9"))).toBe("p9");
+  });
+  it("reads Approved, then reversed afterwards, with who reversed it and why", () => {
+    const v = viewOf(after, "q5");
+    expect(after.map((x) => `${x.id}:${x.status}`)).toEqual(["q5:approved_reversed"]);
+    expect(STATUS_LABEL[v.status]).toBe("Approved, then reversed");
+    expect(v.settledBy).toBe("Boss");
+    expect(v.settledNote).toBe("approved by mistake");
+  });
+  it("cannot be reversed twice", () => expect(canReversePayout("owner", viewOf(after, "q5"))).toBe(false));
+  it("puts the cash back: the shift's net cash out returns to what it was before the approval", () => {
+    expect(netPayoutsKobo([q, ap])).toBe(900000);
+    expect(netPayoutsKobo([q, ap, rev])).toBe(0);
+    expect(netPayoutsKobo([q, ap, rev])).toBe(netPayoutsKobo([q]));
+  });
+  it("leaves the cashier's allowance as it was: approved payouts never counted toward it", () => {
+    expect(cashierDirectTotalKobo([q, ap])).toBe(0);
+    expect(cashierDirectTotalKobo([q, ap, rev])).toBe(0);
+  });
+  it("does not offer Reverse on a waiting request, a declined request or a payout already reversed", () => {
+    const waiting = viewOf(payoutViews([row({ id: "w1", kind: "request", amount_kobo: 900000 })]), "w1");
+    const declined = viewOf(payoutViews([row({ id: "w2", kind: "request", amount_kobo: 900000 }), row({ id: "d2", kind: "decline", reverses_id: "w2", amount_kobo: 900000, recorded_by_role: "owner" })]), "w2");
+    const reversed = viewOf(payoutViews([row({ id: "p8" }), row({ id: "x8", kind: "reversal", amount_kobo: -400000, reverses_id: "p8", recorded_by_role: "owner" })]), "p8");
+    expect(canReversePayout("owner", waiting)).toBe(false);
+    expect(canReversePayout("owner", declined)).toBe(false);
+    expect(canReversePayout("owner", reversed)).toBe(false);
+  });
+  it("a request that was approved and reversed does not count as pending", () => expect(pendingRequests([q, ap, rev])).toEqual([]));
 });
 
 describe("words", () => {
