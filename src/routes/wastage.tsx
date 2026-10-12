@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { costToShow, differingCostNotice } from "@/lib/saved-figures";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -115,13 +116,16 @@ function WastageScreen() {
     if (cost.error || cost.cost_kobo === null) return setMsg({ ok: false, text: cost.error ?? "No conversion set up." });
     setBusy(true); setMsg(null);
     const cost_kobo = Math.round(cost.cost_kobo);
-    const { error } = await supabase.from("wastage_logs").insert({
+    // Ask for the saved row back: after S4 the database works out the cost itself and may replace this screen's figure.
+    const { data: saved, error } = await supabase.from("wastage_logs").insert({
       business_id: session.businessId, ingredient_id: ingId, qty: Number(qty), unit,
       cost_kobo, reason, logged_by: session.userId,
-    });
+    }).select("cost_kobo").maybeSingle();
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Not saved: " + error.message });
-    setMsg({ ok: true, text: `Logged ${qty} ${marketUnitLabel(unit)} of ${ing?.name} — cost ${formatNaira(cost_kobo)}. Stock has been reduced.` });
+    const savedCost = costToShow(saved?.cost_kobo, cost_kobo);
+    const notice = differingCostNotice(saved?.cost_kobo, cost_kobo, formatNaira);
+    setMsg({ ok: true, text: `Logged ${qty} ${marketUnitLabel(unit)} of ${ing?.name} — cost ${formatNaira(savedCost)}. Stock has been reduced.${notice ? " " + notice : ""}` });
     setQty("");
     loadHistory();
   }

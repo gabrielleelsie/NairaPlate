@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CORRECTION_COLUMNS, canReverse, friendlyReversalError, pairReversals, reasonOk, type Correctable } from "@/lib/corrections";
+import { costToShow, differingCostNotice } from "@/lib/saved-figures";
 
 export const Route = createFileRoute("/batches")({
   ssr: false,
@@ -33,6 +34,8 @@ type BatchRow = Correctable & { id: string; recipe_id: string; actual_yield: num
 type Summary = {
   recipe: string; ingredient_cost_kobo: number; packaging_kobo: number; utilities_kobo: number;
   actual_yield: number; theoretical_yield: number; realized_per_plate: number; recipe_per_plate: number; flags: number;
+  // Set when the database saved a different ingredient cost from the one on the screen.
+  costNotice: string | null;
 };
 
 function BatchScreen() {
@@ -126,10 +129,13 @@ function BatchScreen() {
       items: items.filter((it) => it.recipe_id === recipe.id), ingredients, conversions,
       yield_portions: recipe.yield_portions, target_margin_bps: 0,
     });
+    // After S4 the database works out the ingredient cost itself. Show what it saved, not what this screen worked out.
+    const savedCost = costToShow((data as { ingredient_cost_kobo?: unknown } | null)?.ingredient_cost_kobo, plan.ingredient_cost_kobo);
     setSummary({
-      recipe: recipe.name, ingredient_cost_kobo: plan.ingredient_cost_kobo, packaging_kobo, utilities_kobo,
+      recipe: recipe.name, ingredient_cost_kobo: savedCost, packaging_kobo, utilities_kobo,
       actual_yield: actualNum, theoretical_yield: theoretical ?? 0,
-      realized_per_plate: Math.round((plan.ingredient_cost_kobo + packaging_kobo + utilities_kobo) / actualNum),
+      costNotice: differingCostNotice((data as { ingredient_cost_kobo?: unknown } | null)?.ingredient_cost_kobo, plan.ingredient_cost_kobo, formatNaira),
+      realized_per_plate: Math.round((savedCost + packaging_kobo + utilities_kobo) / actualNum),
       recipe_per_plate: recipeCost.cost_per_plate_kobo,
       flags: Number((data as { low_stock_flags?: number } | null)?.low_stock_flags ?? 0),
     });
@@ -183,6 +189,7 @@ function BatchScreen() {
         <div className="rounded-md border p-3 space-y-1" data-testid="summary">
           <p className="font-semibold">Saved: {summary.recipe}</p>
           <p>Ingredients {formatNaira(summary.ingredient_cost_kobo)} + packaging {formatNaira(summary.packaging_kobo)} + gas/power {formatNaira(summary.utilities_kobo)}</p>
+          {summary.costNotice && <p className="text-sm text-destructive" role="alert">{summary.costNotice}</p>}
           <p>{summary.actual_yield} plates made (expected {summary.theoretical_yield})</p>
           <p>Real cost per plate this batch: <strong>{formatNaira(summary.realized_per_plate)}</strong></p>
           <p>Recipe estimate per plate: {formatNaira(summary.recipe_per_plate)}</p>
