@@ -24,6 +24,7 @@ import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings,
 import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
 import { REMINDER_KINDS, REMINDER_LABEL, REMINDER_SCHEMA, dueReminder, mergeReminders, renderReminder, type ReminderKind } from "@/lib/reminders";
+import { hashPin, verifyPin } from "@/lib/pin-hash";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const PLATFORM_BUSINESS = "platform";
@@ -93,32 +94,13 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-async function hashPin(pin: string) {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const pin_salt = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const pin_hash = await sha256Hex(pin_salt + pin);
-  return { pin_salt, pin_hash };
-}
-
 /** Step-up auth: the admin's own current PIN, checked server-side against their own row. */
 async function verifyAdminPin(admin: SupabaseClient, adminId: string, pin: string): Promise<boolean> {
   const { data } = await admin.from("staff_users")
     .select("pin_hash, pin_salt, is_active, role")
     .eq("id", adminId).eq("role", "platform_admin").maybeSingle();
   if (!data || !data.is_active || !data.pin_salt || !data.pin_hash) return false;
-  return timingSafeEqualHex(await sha256Hex(data.pin_salt + pin), String(data.pin_hash).toLowerCase());
+  return (await verifyPin(pin, data.pin_salt, data.pin_hash)).ok;
 }
 
 export const Route = createFileRoute("/api/public/platform-admin")({
