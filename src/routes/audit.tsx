@@ -47,6 +47,11 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   cash_payout_approved: "Cash payout approved",
   cash_payout_declined: "Cash payout declined",
   cash_payout_reversed: "Cash payout reversed",
+  batch_reversed: "Batch reversed",
+  payout_reversed: "Channel payout reversed",
+  price_decision_reversed: "Price decision reversed",
+  batch_figures_recalculated: "Batch figures recalculated by the database",
+  wastage_cost_recalculated: "Wastage cost recalculated by the database",
   cash_payout_left_on_closed_shift: "Cash payout left on a closed shift",
   drawer_limit_changed: "Cash payout limit changed",
 };
