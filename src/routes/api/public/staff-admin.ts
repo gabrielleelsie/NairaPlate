@@ -12,6 +12,7 @@
 //   { action: "set_summary_prefs", email, enabled }            -> saves both ("" clears the email)
 import { createFileRoute } from "@tanstack/react-router";
 import { writeAudit } from "@/lib/audit.server";
+import { hashPin, verifyPin } from "@/lib/pin-hash";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { businessHasAccess, PLAN_ENDED } from "@/lib/subscription.server";
@@ -52,21 +53,6 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-// Same scheme the PIN login checks: pin_hash = lowercase hex SHA-256(salt + pin).
-async function hashPin(pin: string) {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const pin_salt = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const pin_hash = await sha256Hex(pin_salt + pin);
-  return { pin_salt, pin_hash };
-}
-
 export const Route = createFileRoute("/api/public/staff-admin")({
   server: {
     handlers: {
@@ -103,7 +89,7 @@ export const Route = createFileRoute("/api/public/staff-admin")({
             .select("id, role, display_name, is_active, pin_hash, pin_salt")
             .eq("id", callerId).eq("business_id", business_id).maybeSingle();
           if (!me || !me.is_active || !me.pin_salt) return json({ error: "Account not found." }, 403);
-          if ((await sha256Hex(me.pin_salt + p.data.current_pin)) !== String(me.pin_hash).toLowerCase())
+          if (!(await verifyPin(p.data.current_pin, me.pin_salt, me.pin_hash)).ok)
             return json({ error: "Current PIN is wrong." }, 401);
           const { pin_salt, pin_hash } = await hashPin(p.data.new_pin);
           const { error } = await admin.from("staff_users").update({ pin_salt, pin_hash, failed_attempts: 0, locked_until: 0 }).eq("id", me.id);

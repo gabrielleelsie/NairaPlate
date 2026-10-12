@@ -5,6 +5,7 @@
 //   { business_id, staff_id, pin } (default login) -> Supabase session
 import { createFileRoute } from "@tanstack/react-router";
 import { writeAudit } from "@/lib/audit.server";
+import { hashPin, verifyPin } from "@/lib/pin-hash";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -28,20 +29,6 @@ function json(body: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
-}
-
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 export const Route = createFileRoute("/api/public/staff-pin-login")({
@@ -115,8 +102,8 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
           return json({ error: "PIN not set for this account, contact your owner." }, 400);
         }
 
-        const submittedHash = await sha256Hex(staff.pin_salt + pin);
-        const ok = timingSafeEqualHex(submittedHash, String(staff.pin_hash).toLowerCase());
+        const check = await verifyPin(pin, staff.pin_salt, staff.pin_hash);
+        const ok = check.ok;
 
         if (!ok) {
           const attempts = (staff.failed_attempts ?? 0) + 1;
@@ -136,10 +123,15 @@ export const Route = createFileRoute("/api/public/staff-pin-login")({
           return json({ error: `Wrong PIN. Attempt ${attempts}.`, attempts }, 401);
         }
 
-        // Correct PIN: reset counter.
+        // Correct PIN: reset counter. A hash in the old format (or at a lower cost) is rewritten in the current format.
+        // Best effort only: if the rewrite fails the person still signs in and the old hash keeps working.
+        let upgrade: { pin_salt: string; pin_hash: string } | null = null;
+        if (check.needsUpgrade) {
+          try { upgrade = await hashPin(pin); } catch { upgrade = null; }
+        }
         await admin
           .from("staff_users")
-          .update({ failed_attempts: 0, locked_until: 0 })
+          .update({ failed_attempts: 0, locked_until: 0, ...(upgrade ?? {}) })
           .eq("id", staff.id)
           .eq("business_id", business_id);
 

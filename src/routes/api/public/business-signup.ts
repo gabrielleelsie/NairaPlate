@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { sendSignupAlert, logEmailUndelivered, NO_ADMIN_EMAIL_REASON } from "@/lib/email.server";
 import { z } from "zod";
+import { hashPin } from "@/lib/pin-hash";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const RESERVED = new Set(["platform", "admin", "nairaplate"]);
@@ -25,10 +26,6 @@ const SignupSchema = z.object({
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
-}
-async function sha256Hex(input: string) {
-  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export const Route = createFileRoute("/api/public/business-signup")({
@@ -60,9 +57,7 @@ export const Route = createFileRoute("/api/public/business-signup")({
 
         const isEmail = d.contact.includes("@");
         if (isEmail && !z.string().email().safeParse(d.contact).success) return json({ error: "That email doesn't look right." }, 400);
-        const bytes = crypto.getRandomValues(new Uint8Array(16));
-        const pin_salt = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-        const pin_hash = await sha256Hex(pin_salt + d.pin);
+        const { pin_salt, pin_hash } = await hashPin(d.pin);
 
         const { error } = await admin.rpc("signup_business", {
           p_business_id: d.business_id, p_name: d.name, p_owner_name: d.owner_name,
