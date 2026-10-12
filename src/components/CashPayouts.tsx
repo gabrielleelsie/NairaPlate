@@ -4,7 +4,7 @@ import { formatNaira, nairaToKobo } from "@/lib/costing";
 import { entryWhen } from "@/lib/catering-payments";
 import {
   DEFAULT_PAYOUT_LIMIT_KOBO, PAYOUT_CATEGORIES, PAYOUT_COLUMNS, STATUS_LABEL, canDecide, canReversePayout, canTakeCashOut, cashierDirectTotalKobo, categoryLabel,
-  classifyPayout, friendlyPayoutError, netPayoutsKobo, noteOk, normalisePayouts, payoutViews, pendingRequests, remainingAllowanceKobo, type PayoutRow,
+  classifyPayout, friendlyPayoutError, netPayoutsKobo, noteOk, normalisePayouts, payoutViews, pendingRequests, remainingAllowanceKobo, reverseTargetId, type PayoutRow,
 } from "@/lib/cash-payouts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,20 +123,20 @@ export function CashPayouts({ drawerId, role, canRecord, onPending, businessId }
       <ul className="space-y-2" data-testid="payout-list">
         {views.length === 0 && <li className="text-sm text-muted-foreground">Nothing taken out on this shift yet.</li>}
         {views.map((v) => (
-          <li key={v.id} className={`rounded-md border p-2 text-sm space-y-1 ${v.status === "reversed" || v.status === "declined" ? "opacity-60" : ""}`}>
+          <li key={v.id} className={`rounded-md border p-2 text-sm space-y-1 ${v.status === "reversed" || v.status === "approved_reversed" || v.status === "declined" ? "opacity-60" : ""}`}>
             <div className="flex justify-between gap-2">
               <span className="font-medium">{categoryLabel(v.category)} · {formatNaira(v.amount_kobo)}</span>
               <span className="text-xs rounded border px-1.5 py-0.5">{STATUS_LABEL[v.status]}</span>
             </div>
-            <div className={`text-muted-foreground ${v.status === "reversed" ? "line-through" : ""}`}>{v.note} · {v.recorded_by_name ?? "staff"} · {entryWhen(v.created_at)}</div>
-            {(v.status === "reversed" || v.status === "declined") && <div className="text-xs text-muted-foreground">{v.status === "reversed" ? "Reversed" : "Declined"}{v.settledBy ? ` by ${v.settledBy}` : ""}{v.settledNote ? `: ${v.settledNote}` : ""}. It does not count.</div>}
-            {(v.status !== "reversed" && v.status !== "declined") && <ReceiptPhotos type="payout" recordId={v.id} businessId={businessId} role={role} />}
+            <div className={`text-muted-foreground ${v.status === "reversed" || v.status === "approved_reversed" ? "line-through" : ""}`}>{v.note} · {v.recorded_by_name ?? "staff"} · {entryWhen(v.created_at)}</div>
+            {(v.status === "reversed" || v.status === "approved_reversed" || v.status === "declined") && <div className="text-xs text-muted-foreground">{v.status === "declined" ? "Declined" : "Reversed"}{v.settledBy ? ` by ${v.settledBy}` : ""}{v.settledNote ? `: ${v.settledNote}` : ""}. It does not count.</div>}
+            {(v.status !== "reversed" && v.status !== "approved_reversed" && v.status !== "declined") && <ReceiptPhotos type="payout" recordId={v.id} businessId={businessId} role={role} />}
             {canReversePayout(role, v) && (reverseFor === v.id ? (
               <div className="space-y-2 rounded-md bg-muted p-2">
                 <Label htmlFor={`rev-${v.id}`}>Reason (at least 5 characters)</Label>
                 <Input id={`rev-${v.id}`} value={reason} onChange={(e) => setReason(e.target.value)} />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="destructive" disabled={busy || !noteOk(reason)} onClick={async () => { if (await call("reverse_cash_payout", { p_payout_id: v.id, p_reason: reason.trim() }, "Reversed. The cash counts as back in the drawer.")) { setReverseFor(null); setReason(""); } }}>Reverse this payout</Button>
+                  <Button size="sm" variant="destructive" disabled={busy || !noteOk(reason)} onClick={async () => { if (await call("reverse_cash_payout", { p_payout_id: reverseTargetId(v), p_reason: reason.trim() }, "Reversed. The cash counts as back in the drawer.")) { setReverseFor(null); setReason(""); } }}>Reverse this payout</Button>
                   <Button size="sm" variant="ghost" onClick={() => { setReverseFor(null); setReason(""); }}>Cancel</Button>
                 </div>
               </div>

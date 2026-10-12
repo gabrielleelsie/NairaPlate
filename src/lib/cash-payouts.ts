@@ -63,8 +63,9 @@ export function classifyPayout(o: { role: string | null | undefined; limitKobo: 
 /** How much a cashier can still take out without asking. */
 export const remainingAllowanceKobo = (limitKobo: number, directTotalKobo: number) => Math.max(0, limitKobo - directTotalKobo);
 
-export type PayoutStatus = "recorded" | "reversed" | "waiting" | "approved" | "declined";
-export type PayoutView = PayoutRow & { status: PayoutStatus; settledBy: string | null; settledNote: string | null; settledAt: string | null };
+export type PayoutStatus = "recorded" | "reversed" | "waiting" | "approved" | "approved_reversed" | "declined";
+// `settleId` is the id of the row that settled this entry. For an approved request it is the approved payout entry behind it, which is the entry that gets reversed.
+export type PayoutView = PayoutRow & { status: PayoutStatus; settledBy: string | null; settledNote: string | null; settledAt: string | null; settleId: string | null };
 
 /** Entries as the owner reads them: payouts and requests, each with what happened to it. Decline, approval and reversal rows are not listed on their own. */
 export function payoutViews(rows: PayoutRow[]): PayoutView[] {
@@ -74,13 +75,26 @@ export function payoutViews(rows: PayoutRow[]): PayoutView[] {
     const s = settle.get(r.id);
     let status: PayoutStatus = r.kind === "payout" ? "recorded" : "waiting";
     if (s) status = r.kind === "payout" ? "reversed" : s.kind === "decline" ? "declined" : "approved";
-    return { ...r, status, settledBy: s?.recorded_by_name ?? null, settledNote: s?.kind === "payout" ? null : s?.note ?? null, settledAt: s?.created_at ?? null };
+    // An approved request is settled by an approved payout entry. If an owner reversed that entry, the request reads "approved, then reversed".
+    const approvedEntry = r.kind === "request" && s && s.kind === "payout" ? s : null;
+    const reversalOfApproval = approvedEntry ? settle.get(approvedEntry.id) : undefined;
+    if (approvedEntry && reversalOfApproval?.kind === "reversal") status = "approved_reversed";
+    const by = status === "approved_reversed" ? reversalOfApproval : s;
+    return { ...r, status, settledBy: by?.recorded_by_name ?? null, settledNote: by?.kind === "payout" ? null : by?.note ?? null, settledAt: by?.created_at ?? null, settleId: s?.id ?? null };
   });
 }
 
-export const canReversePayout = (role: string | null | undefined, v: { kind: string; status: PayoutStatus }) => canDecide(role) && v.kind === "payout" && v.status === "recorded";
+/**
+ * Owners can reverse a recorded payout, and an approved request that has not been reversed (the entry behind it is the one that is reversed).
+ * A waiting or declined request, and anything already reversed, cannot be. The database also needs the shift to be open.
+ */
+export const canReversePayout = (role: string | null | undefined, v: { kind: string; status: PayoutStatus; settleId?: string | null }) =>
+  canDecide(role) && ((v.kind === "payout" && v.status === "recorded") || (v.kind === "request" && v.status === "approved" && !!v.settleId));
 
-export const STATUS_LABEL: Record<PayoutStatus, string> = { recorded: "Recorded", reversed: "Reversed", waiting: "Waiting for the owner", approved: "Approved", declined: "Declined" };
+/** The id to send to reverse_cash_payout: the entry itself, or for an approved request the approved entry behind it. */
+export const reverseTargetId = (v: { id: string; kind: string; settleId?: string | null }): string => (v.kind === "request" && v.settleId ? v.settleId : v.id);
+
+export const STATUS_LABEL: Record<PayoutStatus, string> = { recorded: "Recorded", reversed: "Reversed", waiting: "Waiting for the owner", approved: "Approved", approved_reversed: "Approved, then reversed", declined: "Declined" };
 
 /** Plain sentences for what the database says when it refuses. */
 export function friendlyPayoutError(message: string): string {
