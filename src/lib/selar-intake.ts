@@ -1,6 +1,4 @@
 // Selar payment messages. Pure helpers shared by the receiver and its tests.
-import type { OperatingMode } from "@/lib/features";
-import type { Prices } from "@/lib/platform-settings";
 
 /** Largest message the receiver reads. */
 export const SELAR_MAX_BYTES = 100_000;
@@ -62,8 +60,6 @@ export function logLine(raw: string, parsed: ParsedMessage): string {
 // Selar's real field names are not known yet, so each field is looked for under several likely names. Anything not found is left empty.
 // Nothing here activates anyone: every staged payment waits for a platform admin, who sees the whole message.
 
-export type PlanTerm = "monthly" | "quarterly" | "yearly";
-
 export type SelarPayment = {
   orderRef: string | null;
   buyerName: string | null;
@@ -112,13 +108,6 @@ export function extractPayment(fields: Record<string, unknown>): SelarPayment {
 
 /** True for the setup service (its name contains "setup"). */
 export const isSetupProduct = (productName: string | null): boolean => /\bsetup\b|set-up|set up/i.test(productName ?? "");
-
-/** The plan term whose price (in the kitchen's own price list) equals the amount paid. Null when nothing matches. */
-export function termForAmount(prices: Prices | null | undefined, mode: OperatingMode | null | undefined, kobo: number | null): PlanTerm | null {
-  const p = mode ? prices?.plans?.[mode] : null;
-  if (!p || kobo === null || kobo <= 0) return null;
-  return (["monthly", "quarterly", "yearly"] as const).find((t) => p[`${t}_kobo` as const] === kobo) ?? null;
-}
 
 /** An email address tidied for matching. Null when it is not a plain address. */
 export function normalizeEmail(email: string | null | undefined): string | null {

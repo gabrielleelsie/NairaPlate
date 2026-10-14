@@ -16,6 +16,7 @@ import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BatchesRouteImport } from './routes/batches'
 import { Route as CashflowRouteImport } from './routes/cashflow'
 import { Route as CateringRouteImport } from './routes/catering'
+import { Route as ChoosePlanRouteImport } from './routes/choose-plan'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CostCheckRouteImport } from './routes/cost-check'
 import { Route as CreditRouteImport } from './routes/credit'
@@ -61,6 +62,7 @@ import { Route as ApiPublicPaymentStartRouteImport } from './routes/api/public/p
 import { Route as ApiPublicPaymentTestRouteImport } from './routes/api/public/payment-test'
 import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
 import { Route as ApiPublicPingRouteImport } from './routes/api/public/ping'
+import { Route as ApiPublicPlanChoiceRouteImport } from './routes/api/public/plan-choice'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
 import { Route as ApiPublicSelarWebhookRouteImport } from './routes/api/public/selar-webhook'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
@@ -100,6 +102,11 @@ const CashflowRoute = CashflowRouteImport.update({
 const CateringRoute = CateringRouteImport.update({
   id: '/catering',
   path: '/catering',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChoosePlanRoute = ChoosePlanRouteImport.update({
+  id: '/choose-plan',
+  path: '/choose-plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -331,6 +338,11 @@ const ApiPublicPingRoute = ApiPublicPingRouteImport.update({
   path: '/api/public/ping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPlanChoiceRoute = ApiPublicPlanChoiceRouteImport.update({
+  id: '/api/public/plan-choice',
+  path: '/api/public/plan-choice',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   id: '/api/public/platform-admin',
   path: '/api/public/platform-admin',
@@ -366,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
+  '/choose-plan': typeof ChoosePlanRoute
   '/contact': typeof ContactRoute
   '/cost-check': typeof CostCheckRoute
   '/credit': typeof CreditRoute
@@ -411,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/ping': typeof ApiPublicPingRoute
+  '/api/public/plan-choice': typeof ApiPublicPlanChoiceRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -425,6 +439,7 @@ export interface FileRoutesByTo {
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
+  '/choose-plan': typeof ChoosePlanRoute
   '/contact': typeof ContactRoute
   '/cost-check': typeof CostCheckRoute
   '/credit': typeof CreditRoute
@@ -470,6 +485,7 @@ export interface FileRoutesByTo {
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/ping': typeof ApiPublicPingRoute
+  '/api/public/plan-choice': typeof ApiPublicPlanChoiceRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -485,6 +501,7 @@ export interface FileRoutesById {
   '/batches': typeof BatchesRoute
   '/cashflow': typeof CashflowRoute
   '/catering': typeof CateringRoute
+  '/choose-plan': typeof ChoosePlanRoute
   '/contact': typeof ContactRoute
   '/cost-check': typeof CostCheckRoute
   '/credit': typeof CreditRoute
@@ -530,6 +547,7 @@ export interface FileRoutesById {
   '/api/public/payment-test': typeof ApiPublicPaymentTestRoute
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/ping': typeof ApiPublicPingRoute
+  '/api/public/plan-choice': typeof ApiPublicPlanChoiceRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
   '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
@@ -546,6 +564,7 @@ export interface FileRouteTypes {
     | '/batches'
     | '/cashflow'
     | '/catering'
+    | '/choose-plan'
     | '/contact'
     | '/cost-check'
     | '/credit'
@@ -591,6 +610,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
     | '/api/public/ping'
+    | '/api/public/plan-choice'
     | '/api/public/platform-admin'
     | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
@@ -605,6 +625,7 @@ export interface FileRouteTypes {
     | '/batches'
     | '/cashflow'
     | '/catering'
+    | '/choose-plan'
     | '/contact'
     | '/cost-check'
     | '/credit'
@@ -650,6 +671,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
     | '/api/public/ping'
+    | '/api/public/plan-choice'
     | '/api/public/platform-admin'
     | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
@@ -664,6 +686,7 @@ export interface FileRouteTypes {
     | '/batches'
     | '/cashflow'
     | '/catering'
+    | '/choose-plan'
     | '/contact'
     | '/cost-check'
     | '/credit'
@@ -709,6 +732,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-test'
     | '/api/public/payment-webhook'
     | '/api/public/ping'
+    | '/api/public/plan-choice'
     | '/api/public/platform-admin'
     | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
@@ -724,6 +748,7 @@ export interface RootRouteChildren {
   BatchesRoute: typeof BatchesRoute
   CashflowRoute: typeof CashflowRoute
   CateringRoute: typeof CateringRoute
+  ChoosePlanRoute: typeof ChoosePlanRoute
   ContactRoute: typeof ContactRoute
   CostCheckRoute: typeof CostCheckRoute
   CreditRoute: typeof CreditRoute
@@ -769,6 +794,7 @@ export interface RootRouteChildren {
   ApiPublicPaymentTestRoute: typeof ApiPublicPaymentTestRoute
   ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
   ApiPublicPingRoute: typeof ApiPublicPingRoute
+  ApiPublicPlanChoiceRoute: typeof ApiPublicPlanChoiceRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
   ApiPublicSelarWebhookRoute: typeof ApiPublicSelarWebhookRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
@@ -825,6 +851,13 @@ declare module '@tanstack/react-router' {
       path: '/catering'
       fullPath: '/catering'
       preLoaderRoute: typeof CateringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/choose-plan': {
+      id: '/choose-plan'
+      path: '/choose-plan'
+      fullPath: '/choose-plan'
+      preLoaderRoute: typeof ChoosePlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -1142,6 +1175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/plan-choice': {
+      id: '/api/public/plan-choice'
+      path: '/api/public/plan-choice'
+      fullPath: '/api/public/plan-choice'
+      preLoaderRoute: typeof ApiPublicPlanChoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/platform-admin': {
       id: '/api/public/platform-admin'
       path: '/api/public/platform-admin'
@@ -1188,6 +1228,7 @@ const rootRouteChildren: RootRouteChildren = {
   BatchesRoute: BatchesRoute,
   CashflowRoute: CashflowRoute,
   CateringRoute: CateringRoute,
+  ChoosePlanRoute: ChoosePlanRoute,
   ContactRoute: ContactRoute,
   CostCheckRoute: CostCheckRoute,
   CreditRoute: CreditRoute,
@@ -1233,6 +1274,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentTestRoute: ApiPublicPaymentTestRoute,
   ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
   ApiPublicPingRoute: ApiPublicPingRoute,
+  ApiPublicPlanChoiceRoute: ApiPublicPlanChoiceRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
   ApiPublicSelarWebhookRoute: ApiPublicSelarWebhookRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,

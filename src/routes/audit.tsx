@@ -32,7 +32,6 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   selar_payment_unmatched: "Selar payment could not be matched",
   selar_payment_assigned: "Selar payment matched to a business by an admin",
   selar_payment_approved: "Selar payment approved",
-  selar_payment_rejected: "Selar payment rejected",
   account_locked: "Account locked",
   staff_created: "Staff added",
   role_changed: "Role changed",

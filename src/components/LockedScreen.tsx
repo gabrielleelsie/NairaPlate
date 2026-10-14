@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { formatLagosDate } from "@/lib/subscription";
 import { PLAN_MODES, PLAN_NAME, formatPrice, renderTemplate } from "@/lib/platform-settings";
 import { usePublicSettings } from "@/lib/use-public-settings";
-import { SELAR_SETUP_URL, SELAR_SUBSCRIBE_URL } from "@/lib/selar-links";
+import { SELAR_SETUP_URL } from "@/lib/selar-links";
+import { Link } from "@tanstack/react-router";
 
 const WHATSAPP_NUMBER = "2349124766666";
 
@@ -40,7 +41,7 @@ export function LockedScreen({ businessName, endedAt, onSignOut }: { businessNam
         </ol>
         <div className="flex flex-wrap gap-2">
           <Button asChild className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">
-            <a href={SELAR_SUBSCRIBE_URL} target="_blank" rel="noreferrer">Subscribe</a>
+            <Link to="/choose-plan">Subscribe</Link>
           </Button>
           <Button asChild variant="outline">
             <a href={SELAR_SETUP_URL} target="_blank" rel="noreferrer">Pay setup fee</a>
