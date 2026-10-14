@@ -60,7 +60,6 @@ const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("selar_list"), view: z.enum(["open", "done"]) }),
   z.object({ action: z.literal("selar_assign"), id: z.string().uuid(), business_id: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal("selar_approve"), id: z.string().uuid() }),
-  z.object({ action: z.literal("selar_reject"), id: z.string().uuid(), reason: z.string().trim().min(5, "Type a reason of at least 5 characters.").max(300) }),
   z.object({ action: z.literal("get_settings") }),
   z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), value: z.unknown(), admin_pin: PinSchema }),
   z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), admin_pin: PinSchema }),
@@ -510,16 +509,6 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           if (error) return json({ error: "Could not close the payment: " + error.message }, 500);
           await writeAudit(admin, { business_id: row.matched_business_id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_approved",
             entity_type: "selar_payments", entity_id: row.id, details: row.setup_guess ? `${adminName} approved Selar order ${row.order_ref}: setup fee ${row.amount_kobo != null ? "₦" + (row.amount_kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }) : ""} recorded as paid` : `${adminName} approved Selar order ${row.order_ref}` });
-          return json({ ok: true });
-        }
-
-        if (body.action === "selar_reject") {
-          const { data: row, error } = await admin.from("selar_payments")
-            .update({ status: "rejected", decided_by: adminId, decided_at: new Date().toISOString(), decision_reason: body.reason })
-            .eq("id", body.id).in("status", ["awaiting_approval", "unmatched"]).select("id, order_ref, matched_business_id").maybeSingle();
-          if (error || !row) return json({ error: "That payment could not be rejected. It may already be decided." }, 409);
-          await writeAudit(admin, { business_id: row.matched_business_id ?? PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_rejected",
-            entity_type: "selar_payments", entity_id: row.id, details: `${adminName} rejected Selar order ${row.order_ref}: ${body.reason}` });
           return json({ ok: true });
         }
 

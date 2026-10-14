@@ -72,7 +72,6 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
   const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">(row.plan_guess ?? "monthly");
   const [diff, setDiff] = useState("");
   const [code, setCode] = useState("");
-  const [reason, setReason] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const today = lagosDateKey(new Date());
   const paidOn = /^\d{4}-\d{2}-\d{2}/.test(row.paid_at ?? "") && (row.paid_at as string).slice(0, 10) <= today ? (row.paid_at as string).slice(0, 10) : today;
@@ -103,11 +102,6 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
     const r = await callApi({ action: "selar_assign", id: row.id, business_id: code.trim().toLowerCase() });
     return r.status === 200 ? null : String(r.data["error"] ?? "Could not match.");
   });
-  const reject = () => run("Rejected.", async () => {
-    const r = await callApi({ action: "selar_reject", id: row.id, reason: reason.trim() });
-    return r.status === 200 ? null : String(r.data["error"] ?? "Could not reject.");
-  });
-
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -123,7 +117,6 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
         {row.operating_mode && <div>Kitchen plan type: {PLAN_NAME[row.operating_mode as keyof typeof PLAN_NAME] ?? row.operating_mode}</div>}
       </div>
       {row.note && <p className="rounded bg-amber-50 p-2 text-amber-900">{row.note}</p>}
-      {row.decision_reason && <p className="text-muted-foreground">Reason: {row.decision_reason}</p>}
       <button type="button" className="text-xs underline" onClick={() => setShowRaw((v) => !v)}>{showRaw ? "Hide" : "Show"} the whole message from Selar</button>
       {showRaw && <pre className="max-h-64 overflow-auto rounded bg-muted p-2 text-xs">{JSON.stringify(row.raw, null, 2)}</pre>}
 
@@ -151,12 +144,6 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
           </div>
           <Input placeholder="Reason, only if the amount differs from the price list" value={diff} onChange={(e) => setDiff(e.target.value)} />
           <Button disabled={busy || !(kobo > 0) || !row.matched_business_id} onClick={approve}>Record payment and approve</Button>
-        </div>
-      )}
-      {open && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
-          <Input className="max-w-sm" placeholder="Reason to reject (at least 5 characters)" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <Button variant="outline" disabled={busy || reason.trim().length < 5} onClick={reject}>Reject</Button>
         </div>
       )}
     </div>
