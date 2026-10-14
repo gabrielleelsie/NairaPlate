@@ -143,6 +143,28 @@ function PricingPage() {
                   <Row label={`Every 12 months${y ? ` (save ${y}%)` : ""}`} value={formatPrice(pr.yearly_kobo) ?? ask} />
                   <Row label="Setup with our team, paid once" value={setupText(pr) ?? ask} />
                 </dl>
+                {p.mode === "buka" && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
+                    {[
+                      { href: SELAR_SUBSCRIBE_URL, label: "Subscribe", fill: true },
+                      { href: SELAR_SETUP_URL, label: "Pay setup fee", fill: false },
+                    ].map((b) => (
+                      <a
+                        key={b.label}
+                        href={b.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", minHeight: 48, padding: "12px 28px",
+                          borderRadius: 12, fontSize: 17, fontWeight: 700, textDecoration: "none",
+                          background: b.fill ? C.blue : "transparent", color: b.fill ? C.white : C.navy, border: `2px solid ${b.fill ? C.blue : C.navy}`,
+                        }}
+                      >
+                        {b.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {p.intro && <p style={{ color: C.navy, fontWeight: 700, margin: "20px 0 8px" }}>{p.intro}</p>}
                 <ul style={{ color: C.muted, fontSize: 16, lineHeight: 1.6, margin: p.intro ? 0 : "20px 0 0", paddingLeft: 20, listStyle: "disc" }}>
                   {p.includes.map((i) => (
@@ -181,26 +203,6 @@ function PricingPage() {
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
               Your plan runs to 11:59 pm on its last day. There is no automatic renewal. When your plan ends, access pauses and your records stay safe. You can pay again to continue.
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
-              {[
-                { href: SELAR_SUBSCRIBE_URL, label: "Subscribe", fill: true },
-                { href: SELAR_SETUP_URL, label: "Pay setup fee", fill: false },
-              ].map((b) => (
-                <a
-                  key={b.label}
-                  href={b.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", minHeight: 48, padding: "12px 28px",
-                    borderRadius: 12, fontSize: 17, fontWeight: 700, textDecoration: "none",
-                    background: b.fill ? C.blue : "transparent", color: b.fill ? C.white : C.navy, border: `2px solid ${b.fill ? C.blue : C.navy}`,
-                  }}
-                >
-                  {b.label}
-                </a>
-              ))}
-            </div>
           </div>
         </section>
 

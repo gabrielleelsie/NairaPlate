@@ -3,6 +3,7 @@
 // Tier 2 actions (suspend a business, emergency owner PIN reset) also ask for the admin's
 // own PIN, because a stolen session must never be enough to shut down or take over a kitchen.
 import { PlatformSettingsPanel } from "@/components/PlatformSettingsPanel";
+import { SelarPayments } from "@/components/SelarPayments";
 import { OPERATING_MODES, OVERRIDABLE, asMode, hasFeature, type OperatingMode } from "@/lib/features";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
@@ -55,6 +56,7 @@ type FlagRow = { id: string; flag_type: string; severity: string | null; message
 type Detail = {
   business: { id: string; name: string; status: string; reason: string | null; plan: string | null; access_ends_at: string | null; has_access: boolean };
   payments: Payment[];
+  setup_payments?: { order_ref: string; amount_kobo: number | null; decided_at: string | null }[];
   staff: StaffRow[]; audit: AuditRow[]; flags: FlagRow[];
   features?: { catering: boolean };
   overrides?: Record<string, boolean>;
@@ -104,7 +106,7 @@ function PlanBadge({ status, plan, access_ends_at }: { status: string; plan: str
 const isExpired = (b: Biz) => b.status === "approved" && !b.has_access;
 const endsSoon = (b: Biz) => { const st = accessState(b); return st.kind === "active" && st.daysLeft <= 3; };
 
-type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "settings" | "security";
+type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "selar" | "settings" | "security";
 
 type Watch = { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] };
 type Health = {
@@ -146,6 +148,7 @@ function PlatformConsole() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [auditBiz, setAuditBiz] = useState<string>("");
   const [unhandled, setUnhandled] = useState(0);
+  const [selarWaiting, setSelarWaiting] = useState(0);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -201,6 +204,7 @@ function PlatformConsole() {
     { key: "diagnostics", label: "Troubleshoot", count: lockedTotal },
     { key: "audit", label: "Audit trail" },
     { key: "messages", label: "Messages", count: unhandled },
+    { key: "selar", label: "Selar payments", count: selarWaiting },
     { key: "settings", label: "Settings" },
     { key: "security", label: "My account" },
   ];
@@ -244,6 +248,7 @@ function PlatformConsole() {
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "messages" && <Messages onCount={setUnhandled} />}
+        {tab === "selar" && <SelarPayments onCount={setSelarWaiting} />}
         {tab === "settings" && <PlatformSettingsPanel callApi={callApi} />}
         {tab === "security" && <MyAccount />}
       </div>
@@ -483,6 +488,18 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
 
       <section className="space-y-2 rounded-xl border border-border bg-card p-4">
         <h2 className="font-semibold text-card-foreground">Payments history</h2>
+        {(() => {
+          const viaSelar = detail.setup_payments ?? [];
+          const viaPayment = (detail.payments ?? []).filter((p) => Number(p.setup_fee_kobo ?? 0) > 0);
+          if (viaSelar.length === 0 && viaPayment.length === 0) return <p className="text-sm font-medium text-card-foreground">Setup fee: not recorded as paid</p>;
+          return (
+            <p className="text-sm font-medium text-card-foreground">
+              Setup fee paid
+              {viaSelar.map((x) => ` · ${x.amount_kobo != null ? naira(Number(x.amount_kobo)) : ""}${x.decided_at ? ` on ${formatLagosDate(x.decided_at)}` : ""} (Selar ${x.order_ref})`).join("")}
+              {viaPayment.map((p) => ` · ${naira(Number(p.setup_fee_kobo))} with the payment of ${formatLagosDate(p.paid_on + "T12:00:00Z")}`).join("")}
+            </p>
+          );
+        })()}
         {(detail.payments ?? []).length === 0 && <p className="text-sm text-muted-foreground">No payments recorded yet.</p>}
         <ul className="space-y-1 text-sm">
           {(detail.payments ?? []).map((p) => (

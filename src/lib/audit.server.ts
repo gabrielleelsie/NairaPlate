@@ -15,7 +15,9 @@ export type AuditEntry = {
     | "emergency_reset_blocked" | "security_alert_undelivered" | "email_undelivered"
     | "business_approved" | "business_rejected" | "business_suspended" | "business_reactivated"
     | "contact_message_handled" | "subscription_payment_recorded" | "platform_setting_changed"
-    | "payment_provider_connected" | "feature_switched" | "operating_mode_changed";
+    | "payment_provider_connected" | "feature_switched" | "operating_mode_changed"
+    | "selar_payload_received" | "selar_payment_staged" | "selar_payment_unmatched"
+    | "selar_payment_assigned" | "selar_payment_approved" | "selar_payment_rejected";
   entity_type?: string | null;
   entity_id?: string | null;
   details?: string | null;
