@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { formatLagosDate } from "@/lib/subscription";
 import { PLAN_MODES, PLAN_NAME, formatPrice, renderTemplate } from "@/lib/platform-settings";
 import { usePublicSettings } from "@/lib/use-public-settings";
+import { SELAR_SETUP_URL, SELAR_SUBSCRIBE_URL } from "@/lib/selar-links";
 
 const WHATSAPP_NUMBER = "2349124766666";
 
@@ -37,6 +38,14 @@ export function LockedScreen({ businessName, endedAt, onSignOut }: { businessNam
         <ol className="list-decimal space-y-1 pl-5 text-sm text-foreground">
           {text.steps.map((s, i) => <li key={i}>{s}</li>)}
         </ol>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">
+            <a href={SELAR_SUBSCRIBE_URL} target="_blank" rel="noreferrer">Subscribe</a>
+          </Button>
+          <Button asChild variant="outline">
+            <a href={SELAR_SETUP_URL} target="_blank" rel="noreferrer">Pay setup fee</a>
+          </Button>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90">
             <a href={whatsapp} target="_blank" rel="noreferrer">Message us on WhatsApp</a>

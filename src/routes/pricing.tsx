@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SELAR_SETUP_URL, SELAR_SUBSCRIBE_URL } from "@/lib/selar-links";
 
 import { formatPrice, PLAN_NAME, savingPercent, setupText } from "@/lib/platform-settings";
 import { usePublicSettings } from "@/lib/use-public-settings";
@@ -180,6 +181,26 @@ function PricingPage() {
             <p style={{ color: C.muted, fontSize: 17, lineHeight: 1.7, margin: 0 }}>
               Your plan runs to 11:59 pm on its last day. There is no automatic renewal. When your plan ends, access pauses and your records stay safe. You can pay again to continue.
             </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
+              {[
+                { href: SELAR_SUBSCRIBE_URL, label: "Subscribe", fill: true },
+                { href: SELAR_SETUP_URL, label: "Pay setup fee", fill: false },
+              ].map((b) => (
+                <a
+                  key={b.label}
+                  href={b.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", minHeight: 48, padding: "12px 28px",
+                    borderRadius: 12, fontSize: 17, fontWeight: 700, textDecoration: "none",
+                    background: b.fill ? C.blue : "transparent", color: b.fill ? C.white : C.navy, border: `2px solid ${b.fill ? C.blue : C.navy}`,
+                  }}
+                >
+                  {b.label}
+                </a>
+              ))}
+            </div>
           </div>
         </section>
 
