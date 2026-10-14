@@ -29,6 +29,8 @@ export const Route = createFileRoute("/choose-plan")({
 function ChoosePlanPage() {
   const { prices } = usePublicSettings();
   const search = Route.useSearch();
+  // Coming from one plan's own Subscribe button (for example Buka), only that plan is shown.
+  const shown: OperatingMode[] = search.type ? [search.type] : PLAN_MODES;
   const [mode, setMode] = useState<OperatingMode | null>(search.type ?? null);
   const [term, setTerm] = useState<PlanTerm | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,7 +86,7 @@ function ChoosePlanPage() {
           <div style={{ maxWidth: 1140, margin: "0 auto", padding: "0 24px" }}>
             <h2 style={{ color: C.navy, fontSize: 24, fontWeight: 800, margin: "0 0 16px" }}>1. Plan</h2>
             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-              {PLAN_MODES.map((m) => (
+              {shown.map((m) => (
                 <button key={m} type="button" onClick={() => setMode(m)} aria-pressed={mode === m} style={choiceStyle(mode === m)}>
                   <div style={{ fontSize: 22, fontWeight: 800 }}>{PLAN_NAME[m]}</div>
                   <div style={{ color: C.muted, marginTop: 6 }}>{formatPrice(amountFor(prices, m, "monthly")) ?? "Ask us"} a month</div>
