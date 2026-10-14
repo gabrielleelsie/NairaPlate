@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendSignupAlert, logEmailUndelivered, NO_ADMIN_EMAIL_REASON } from "@/lib/email.server";
 import { z } from "zod";
 import { hashPin } from "@/lib/pin-hash";
+import { escapeLike } from "@/lib/selar-intake";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const RESERVED = new Set(["platform", "admin", "nairaplate"]);
@@ -57,6 +58,15 @@ export const Route = createFileRoute("/api/public/business-signup")({
 
         const isEmail = d.contact.includes("@");
         if (isEmail && !z.string().email().safeParse(d.contact).success) return json({ error: "That email doesn't look right." }, 400);
+
+        // One email, one store; one store name, one store. Checked here for a clear message, and enforced by the database as well.
+        if (isEmail) {
+          const { data: sameEmail } = await admin.from("staff_users").select("id").ilike("email", escapeLike(d.contact.trim())).limit(1).maybeSingle();
+          if (sameEmail) return json({ error: "That email is already registered to a store." }, 409);
+        }
+        const { data: sameName } = await admin.from("businesses").select("id").ilike("name", escapeLike(d.name.trim())).limit(1).maybeSingle();
+        if (sameName) return json({ error: "A store with that name already exists." }, 409);
+
         const { pin_salt, pin_hash } = await hashPin(d.pin);
 
         const { error } = await admin.rpc("signup_business", {
@@ -65,7 +75,11 @@ export const Route = createFileRoute("/api/public/business-signup")({
           p_pin_hash: pin_hash, p_pin_salt: pin_salt,
         });
         if (error) {
-          if (error.code === "23505") return json({ error: "That business code is taken." }, 409);
+          if (error.code === "23505") {
+            if (error.message.includes("staff_users_email_unique")) return json({ error: "That email is already registered to a store." }, 409);
+            if (error.message.includes("businesses_name_unique")) return json({ error: "A store with that name already exists." }, 409);
+            return json({ error: "That business code is taken." }, 409);
+          }
           return json({ error: "Could not register the business." }, 500);
         }
 
