@@ -20,7 +20,7 @@ import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPayme
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
-import { isMode, isTerm, planDifferences, planFromAmount, type PlanPick } from "@/lib/plan-choice";
+import { canSkipTrial, isMode, isTerm, planDifferences, planFromAmount, type PlanPick } from "@/lib/plan-choice";
 import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
 import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
@@ -61,6 +61,7 @@ const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("selar_list"), view: z.enum(["open", "done"]) }),
   z.object({ action: z.literal("selar_assign"), id: z.string().uuid(), business_id: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal("selar_approve"), id: z.string().uuid() }),
+  z.object({ action: z.literal("skip_trial"), business_id: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal("get_settings") }),
   z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), value: z.unknown(), admin_pin: PinSchema }),
   z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), admin_pin: PinSchema }),
@@ -511,13 +512,29 @@ export const Route = createFileRoute("/api/public/platform-admin")({
 
         if (body.action === "selar_assign") {
           const { data: biz } = await admin.from("businesses").select("id, name, status").eq("id", body.business_id).maybeSingle();
-          if (!biz || (biz.status !== "approved" && biz.status !== "suspended")) return json({ error: "That business code is not an approved or suspended business." }, 400);
+          if (!biz || (biz.status !== "pending" && biz.status !== "approved" && biz.status !== "suspended")) return json({ error: "That business code is not a waiting, approved or suspended business." }, 400);
           const { data: row, error } = await admin.from("selar_payments")
             .update({ matched_business_id: biz.id, status: "awaiting_approval", note: `Matched to ${biz.name} by ${adminName}.` })
             .eq("id", body.id).in("status", ["unmatched", "awaiting_approval"]).select("id, order_ref").maybeSingle();
           if (error || !row) return json({ error: "That payment could not be matched. It may already be decided." }, 409);
           await writeAudit(admin, { business_id: biz.id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_assigned",
             entity_type: "selar_payments", entity_id: row.id, details: `${adminName} matched Selar order ${row.order_ref} to ${biz.name} (${biz.id})` });
+          return json({ ok: true });
+        }
+
+        // ---------- skip_trial: a store that paid first starts on the day it is approved, with no trial ----------
+        // Allowed only for an approved store still on its automatic trial, with no payment recorded yet and a Selar payment waiting for it.
+        if (body.action === "skip_trial") {
+          const { data: biz } = await admin.from("businesses").select("id, name, status, plan, access_ends_at").eq("id", body.business_id).maybeSingle();
+          if (!biz) return json({ error: "Business not found." }, 404);
+          const { count: paidCount } = await admin.from("subscription_payments").select("id", { count: "exact", head: true }).eq("business_id", biz.id);
+          const { data: waiting } = await admin.from("selar_payments").select("id").eq("matched_business_id", biz.id).eq("status", "awaiting_approval").limit(1);
+          if (!canSkipTrial({ status: biz.status, plan: biz.plan, paymentCount: paidCount ?? 0, hasWaitingSelarPayment: (waiting ?? []).length > 0 }))
+            return json({ error: "The trial can only be skipped for a newly approved store that has paid first." }, 409);
+          const { error } = await admin.from("businesses").update({ access_ends_at: new Date(Date.now() - 1000).toISOString() }).eq("id", biz.id);
+          if (error) return json({ error: "Could not skip the trial: " + error.message }, 500);
+          await writeAudit(admin, { business_id: biz.id, actor_id: adminId, actor_role: "platform_admin", action: "paid_store_trial_skipped",
+            entity_type: "businesses", entity_id: null, details: `${adminName} started ${biz.name} from the day of approval: it paid first, so no trial was given` });
           return json({ ok: true });
         }
 

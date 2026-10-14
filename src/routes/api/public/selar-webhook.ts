@@ -52,14 +52,14 @@ export const Route = createFileRoute("/api/public/selar-webhook")({
         const setup = isSetupProduct(pay?.productName ?? null);
         const email = normalizeEmail(pay?.buyerEmail ?? null);
 
-        // Match the buyer to a kitchen by the owner email NairaPlate holds. Exactly one approved or suspended kitchen, or it stays unmatched.
+        // Match the buyer to a kitchen by the owner email NairaPlate holds. Exactly one waiting, approved or suspended kitchen, or it stays unmatched.
         let matched: { id: string; name: string } | null = null;
         if (email) {
           const { data: owners } = await admin.from("staff_users").select("business_id").eq("role", "owner").eq("is_active", true).ilike("email", escapeLike(email));
           const ids = [...new Set((owners ?? []).map((o) => o.business_id as string))];
           if (ids.length === 1) {
             const { data: biz } = await admin.from("businesses").select("id, name, status").eq("id", ids[0]!).maybeSingle();
-            if (biz && (biz.status === "approved" || biz.status === "suspended")) matched = { id: biz.id, name: biz.name };
+            if (biz && (biz.status === "pending" || biz.status === "approved" || biz.status === "suspended")) matched = { id: biz.id, name: biz.name };
           }
         }
         const notNaira = !!pay?.currency && pay.currency !== "NGN";

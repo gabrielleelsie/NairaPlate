@@ -76,6 +76,7 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
   const [switchOk, setSwitchOk] = useState(false);
   const needsSwitch = !!row.paid_mode && !!row.operating_mode && row.paid_mode !== row.operating_mode;
   const suspended = row.business_status === "suspended";
+  const pending = row.business_status === "pending";
   const [code, setCode] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const today = lagosDateKey(new Date());
@@ -112,6 +113,25 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
       if (re.status !== 200) return "Payment recorded, but the kitchen could not be reactivated: " + String(re.data["error"] ?? "");
     }
     // 4. Close the Selar entry.
+    const ap = await callApi({ action: "selar_approve", id: row.id });
+    return ap.status === 200 ? null : String(ap.data["error"] ?? "Could not approve.");
+  });
+  // A store that registered through the payment page: approve the store, start it today with no trial, set the plan it paid for,
+  // record the payment, then close the Selar entry. Each step stops on the first failure and says which one.
+  const approvePending = () => run("Store approved and payment recorded. The owner has been emailed.", async () => {
+    const st = await callApi({ action: "set_status", business_id: row.matched_business_id, status: "approved" });
+    if (st.status !== 200) return "Could not approve the store: " + String(st.data["error"] ?? "");
+    const sk = await callApi({ action: "skip_trial", business_id: row.matched_business_id });
+    if (sk.status !== 200) return "Store approved, but the trial could not be skipped: " + String(sk.data["error"] ?? "");
+    if (row.paid_mode && row.operating_mode !== row.paid_mode) {
+      const sw = await callApi({ action: "set_operating_mode", business_id: row.matched_business_id, mode: row.paid_mode });
+      if (sw.status !== 200) return "Store approved, but its plan type could not be set: " + String(sw.data["error"] ?? "");
+    }
+    const rec = await callApi({
+      action: "record_payment", business_id: row.matched_business_id, plan, amount_kobo: kobo, payment_reference: row.order_ref, paid_on: paidOn,
+      includes_setup: false, ...(diff.trim() ? { difference_reason: diff.trim() } : {}),
+    });
+    if (rec.status !== 200 && rec.status !== 409) return "Store approved, but the payment could not be recorded: " + String(rec.data["error"] ?? "");
     const ap = await callApi({ action: "selar_approve", id: row.id });
     return ap.status === 200 ? null : String(ap.data["error"] ?? "Could not approve.");
   });
@@ -170,9 +190,12 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
             </label>
           )}
           {suspended && <p className="rounded bg-amber-50 p-2 text-amber-900">This kitchen is suspended. Do you want to reactivate it with this payment?</p>}
+          {pending && <p className="rounded bg-amber-50 p-2 text-amber-900">This store is still waiting for approval. It paid first, so it starts today with no trial.</p>}
           <Input placeholder="Reason, only if the amount differs from the price list" value={diff} onChange={(e) => setDiff(e.target.value)} />
           <div className="flex flex-wrap gap-2">
-            {suspended ? (
+            {pending ? (
+              <Button disabled={busy || !(kobo > 0) || !row.matched_business_id || !row.paid_mode} onClick={approvePending}>Approve the store and record the payment</Button>
+            ) : suspended ? (
               <>
                 <Button disabled={busy || !(kobo > 0) || !row.matched_business_id || (needsSwitch && !switchOk)} onClick={() => approve(true)}>Approve and reactivate</Button>
                 <Button variant="outline" disabled={busy || !(kobo > 0) || !row.matched_business_id || (needsSwitch && !switchOk)} onClick={() => approve(false)}>Approve, keep suspended</Button>

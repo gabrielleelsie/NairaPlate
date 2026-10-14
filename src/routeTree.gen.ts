@@ -67,6 +67,7 @@ import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/
 import { Route as ApiPublicSelarWebhookRouteImport } from './routes/api/public/selar-webhook'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
+import { Route as ApiPublicSubscribeIntakeRouteImport } from './routes/api/public/subscribe-intake'
 import { Route as ApiPublicSummaryUnsubscribeRouteImport } from './routes/api/public/summary-unsubscribe'
 
 const IndexRoute = IndexRouteImport.update({
@@ -363,6 +364,12 @@ const ApiPublicStaffPinLoginRoute = ApiPublicStaffPinLoginRouteImport.update({
   path: '/api/public/staff-pin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSubscribeIntakeRoute =
+  ApiPublicSubscribeIntakeRouteImport.update({
+    id: '/api/public/subscribe-intake',
+    path: '/api/public/subscribe-intake',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSummaryUnsubscribeRoute =
   ApiPublicSummaryUnsubscribeRouteImport.update({
     id: '/api/public/summary-unsubscribe',
@@ -429,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/subscribe-intake': typeof ApiPublicSubscribeIntakeRoute
   '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
 }
 export interface FileRoutesByTo {
@@ -490,6 +498,7 @@ export interface FileRoutesByTo {
   '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/subscribe-intake': typeof ApiPublicSubscribeIntakeRoute
   '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
 }
 export interface FileRoutesById {
@@ -552,6 +561,7 @@ export interface FileRoutesById {
   '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
+  '/api/public/subscribe-intake': typeof ApiPublicSubscribeIntakeRoute
   '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
 }
 export interface FileRouteTypes {
@@ -615,6 +625,7 @@ export interface FileRouteTypes {
     | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/subscribe-intake'
     | '/api/public/summary-unsubscribe'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/subscribe-intake'
     | '/api/public/summary-unsubscribe'
   id:
     | '__root__'
@@ -737,6 +749,7 @@ export interface FileRouteTypes {
     | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
+    | '/api/public/subscribe-intake'
     | '/api/public/summary-unsubscribe'
   fileRoutesById: FileRoutesById
 }
@@ -799,6 +812,7 @@ export interface RootRouteChildren {
   ApiPublicSelarWebhookRoute: typeof ApiPublicSelarWebhookRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
+  ApiPublicSubscribeIntakeRoute: typeof ApiPublicSubscribeIntakeRoute
   ApiPublicSummaryUnsubscribeRoute: typeof ApiPublicSummaryUnsubscribeRoute
 }
 
@@ -1210,6 +1224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStaffPinLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/subscribe-intake': {
+      id: '/api/public/subscribe-intake'
+      path: '/api/public/subscribe-intake'
+      fullPath: '/api/public/subscribe-intake'
+      preLoaderRoute: typeof ApiPublicSubscribeIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/summary-unsubscribe': {
       id: '/api/public/summary-unsubscribe'
       path: '/api/public/summary-unsubscribe'
@@ -1279,6 +1300,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSelarWebhookRoute: ApiPublicSelarWebhookRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
+  ApiPublicSubscribeIntakeRoute: ApiPublicSubscribeIntakeRoute,
   ApiPublicSummaryUnsubscribeRoute: ApiPublicSummaryUnsubscribeRoute,
 }
 export const routeTree = rootRouteImport
