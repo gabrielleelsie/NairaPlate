@@ -62,6 +62,7 @@ import { Route as ApiPublicPaymentTestRouteImport } from './routes/api/public/pa
 import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
 import { Route as ApiPublicPingRouteImport } from './routes/api/public/ping'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
+import { Route as ApiPublicSelarWebhookRouteImport } from './routes/api/public/selar-webhook'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 import { Route as ApiPublicSummaryUnsubscribeRouteImport } from './routes/api/public/summary-unsubscribe'
@@ -335,6 +336,11 @@ const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   path: '/api/public/platform-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSelarWebhookRoute = ApiPublicSelarWebhookRouteImport.update({
+  id: '/api/public/selar-webhook',
+  path: '/api/public/selar-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStaffAdminRoute = ApiPublicStaffAdminRouteImport.update({
   id: '/api/public/staff-admin',
   path: '/api/public/staff-admin',
@@ -406,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
+  '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
   '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
@@ -464,6 +471,7 @@ export interface FileRoutesByTo {
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
+  '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
   '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
@@ -523,6 +531,7 @@ export interface FileRoutesById {
   '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
   '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
+  '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
   '/api/public/summary-unsubscribe': typeof ApiPublicSummaryUnsubscribeRoute
@@ -583,6 +592,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-webhook'
     | '/api/public/ping'
     | '/api/public/platform-admin'
+    | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
     | '/api/public/summary-unsubscribe'
@@ -641,6 +651,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-webhook'
     | '/api/public/ping'
     | '/api/public/platform-admin'
+    | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
     | '/api/public/summary-unsubscribe'
@@ -699,6 +710,7 @@ export interface FileRouteTypes {
     | '/api/public/payment-webhook'
     | '/api/public/ping'
     | '/api/public/platform-admin'
+    | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
     | '/api/public/summary-unsubscribe'
@@ -758,6 +770,7 @@ export interface RootRouteChildren {
   ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
   ApiPublicPingRoute: typeof ApiPublicPingRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
+  ApiPublicSelarWebhookRoute: typeof ApiPublicSelarWebhookRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
   ApiPublicSummaryUnsubscribeRoute: typeof ApiPublicSummaryUnsubscribeRoute
@@ -1136,6 +1149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPlatformAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/selar-webhook': {
+      id: '/api/public/selar-webhook'
+      path: '/api/public/selar-webhook'
+      fullPath: '/api/public/selar-webhook'
+      preLoaderRoute: typeof ApiPublicSelarWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/staff-admin': {
       id: '/api/public/staff-admin'
       path: '/api/public/staff-admin'
@@ -1214,6 +1234,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
   ApiPublicPingRoute: ApiPublicPingRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
+  ApiPublicSelarWebhookRoute: ApiPublicSelarWebhookRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
   ApiPublicSummaryUnsubscribeRoute: ApiPublicSummaryUnsubscribeRoute,

@@ -27,6 +27,7 @@ const ROLES = new Set(["owner", "supa_admin"]);
 export const AUDIT_ACTIONS: Record<string, string> = {
   login_success: "Signed in",
   login_failed: "Wrong PIN",
+  selar_payload_received: "Selar payment message received (test mode)",
   account_locked: "Account locked",
   staff_created: "Staff added",
   role_changed: "Role changed",
