@@ -42,3 +42,8 @@ export const choiceLine = (prices: Prices | null | undefined, p: PlanPick): stri
   const amt = formatPrice(amountFor(prices, p.mode, p.term));
   return `${planText(p)}${amt ? `, ${amt}` : ""}`;
 };
+
+/** A store that paid first may skip its automatic trial only while it is newly approved: still on trial, nothing recorded, and a Selar payment waiting. */
+export function canSkipTrial(a: { status: string; plan: string | null; paymentCount: number; hasWaitingSelarPayment: boolean }): boolean {
+  return a.status === "approved" && a.plan === "trial" && a.paymentCount === 0 && a.hasWaitingSelarPayment;
+}

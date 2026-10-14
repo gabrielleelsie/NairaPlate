@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "./platform-settings";
-import { amountFor, planDifferences, planFromAmount, planText } from "./plan-choice";
+import { amountFor, canSkipTrial, planDifferences, planFromAmount, planText } from "./plan-choice";
 
 const prices = DEFAULT_SETTINGS.prices;
 
@@ -43,4 +43,17 @@ describe("planText and planDifferences", () => {
     ]));
   it("says when the amount matches no plan", () =>
     expect(planDifferences({ paid: null, kitchenMode: "buka", chosen: null })).toEqual(["The amount paid matches no plan on the price list."]));
+});
+
+describe("canSkipTrial", () => {
+  const ok = { status: "approved", plan: "trial", paymentCount: 0, hasWaitingSelarPayment: true };
+  it("allows a newly approved store that paid first", () => expect(canSkipTrial(ok)).toBe(true));
+  it("refuses every other case", () => {
+    expect(canSkipTrial({ ...ok, status: "pending" })).toBe(false);
+    expect(canSkipTrial({ ...ok, status: "suspended" })).toBe(false);
+    expect(canSkipTrial({ ...ok, plan: "monthly" })).toBe(false);
+    expect(canSkipTrial({ ...ok, plan: null })).toBe(false);
+    expect(canSkipTrial({ ...ok, paymentCount: 1 })).toBe(false);
+    expect(canSkipTrial({ ...ok, hasWaitingSelarPayment: false })).toBe(false);
+  });
 });
