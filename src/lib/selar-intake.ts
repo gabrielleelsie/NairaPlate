@@ -110,9 +110,7 @@ export function extractPayment(fields: Record<string, unknown>): SelarPayment {
   const currencyFromAmount = amountText ? (amountText.match(/\b([A-Za-z]{3})\b/)?.[1] ?? (amountText.includes("₦") ? "NGN" : null)) : null;
   return {
     orderRef: pick(fields, ["order_id", "orderid", "order_ref", "order_reference", "reference", "transaction_reference", "transaction_id", "sale_id", "id"]),
-    businessCode:
-      pick(fields, ["business_code", "business_id", "nairaplate_business_code", "payment_code"]) ??
-      pickContaining(fields, ["businesscode", "paymentcode", "nairaplate"]),
+    businessCode: pick(fields, [BUSINESS_CODE_QUESTION, "business_code"]) ?? pickContaining(fields, ["nairaplatebusinesscode"]),
     buyerName: pick(fields, ["customer_name", "buyer_name", "name", "full_name"]),
     buyerEmail: pick(fields, ["customer_email", "buyer_email", "email"]),
     productName: pick(fields, ["product_name", "product", "product_title", "item", "title"]),
@@ -122,15 +120,21 @@ export function extractPayment(fields: Record<string, unknown>): SelarPayment {
   };
 }
 
-/** The plan term and whether setup is included, read from the product name. Null term when the name does not say. */
-export function guessPlan(productName: string | null): { term: PlanTerm | null; setup: boolean } {
-  const n = (productName ?? "").toLowerCase();
-  const setup = /\bsetup\b|set-up|set up/.test(n);
-  if (/\b(12|twelve)\s*(months?|mo)\b|\byear(ly)?\b|\bannual/.test(n)) return { term: "yearly", setup };
-  if (/\b(3|three)\s*(months?|mo)\b|\bquarter(ly)?\b/.test(n)) return { term: "quarterly", setup };
-  if (/\bmonth(ly)?\b|\b1\s*month\b/.test(n)) return { term: "monthly", setup };
-  return { term: null, setup };
-}
+// The one Selar product NairaPlate works with: "Buka as a Service", three price options. The plan is read from the amount paid.
+export const BUKA_PRODUCT_NAME = "Buka as a Service";
+export const BUKA_OPTIONS: { kobo: number; term: PlanTerm; months: number }[] = [
+  { kobo: 500_000, term: "monthly", months: 1 },
+  { kobo: 1_350_000, term: "quarterly", months: 3 },
+  { kobo: 4_800_000, term: "yearly", months: 12 },
+];
+/** The checkout question whose answer is the NairaPlate business code. */
+export const BUSINESS_CODE_QUESTION = "Enter your NairaPlate business code";
+
+/** True only for the Buka as a Service product (compared without case, spaces or punctuation). */
+export const isBukaProduct = (productName: string | null): boolean => norm(productName ?? "") === norm(BUKA_PRODUCT_NAME);
+
+/** ₦5,000 is monthly, ₦13,500 is 3 months, ₦48,000 is 12 months. Null for any other amount. */
+export const bukaTermForAmount = (kobo: number | null): PlanTerm | null => BUKA_OPTIONS.find((o) => o.kobo === kobo)?.term ?? null;
 
 /** A stable stand-in reference when the message carries none, so an identical re-send is still recognised as a duplicate. */
 export async function fallbackRef(raw: string): Promise<string> {

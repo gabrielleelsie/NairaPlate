@@ -222,3 +222,13 @@ export async function sendSelarReceived(to: string, buyerName: string | null, am
   ], "info");
   return send(to, "NairaPlate: payment received, awaiting approval", html);
 }
+
+/** Tells the buyer their NairaPlate Buka subscription is active (sent after a platform admin approves the payment). */
+export async function sendSelarActive(to: string, buyerName: string | null, reference: string): Promise<SendResult> {
+  const html = shell("Your NairaPlate Buka subscription is active", [
+    `Hello ${escHtml(buyerName ?? "there")},`,
+    `Your NairaPlate Buka subscription is now active.`,
+    `Reference: ${escHtml(reference)}`,
+  ], "info");
+  return send(to, "Your NairaPlate Buka subscription is active", html);
+}

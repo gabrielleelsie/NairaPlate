@@ -16,10 +16,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { receivedKobo } from "@/lib/order-revenue";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
-import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation, sendExpiryReminderEmail } from "@/lib/email.server";
+import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation, sendExpiryReminderEmail, sendSelarActive } from "@/lib/email.server";
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
+import { isBukaProduct } from "@/lib/selar-intake";
 import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
 import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
@@ -480,6 +481,8 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         if (body.action === "selar_assign") {
           const { data: biz } = await admin.from("businesses").select("id, name, status").eq("id", body.business_id).maybeSingle();
           if (!biz || (biz.status !== "approved" && biz.status !== "suspended")) return json({ error: "That business code is not an approved or suspended business." }, 400);
+          const { data: cand } = await admin.from("selar_payments").select("product_name, plan_guess").eq("id", body.id).maybeSingle();
+          if (!cand || !isBukaProduct(cand.product_name) || !cand.plan_guess) return json({ error: "Only a Buka as a Service payment at one of its three prices can be matched." }, 409);
           const { data: row, error } = await admin.from("selar_payments")
             .update({ matched_business_id: biz.id, status: "awaiting_approval", note: `Matched to ${biz.name} by ${adminName}.` })
             .eq("id", body.id).in("status", ["unmatched", "awaiting_approval"]).select("id, order_ref").maybeSingle();
@@ -490,7 +493,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         }
 
         if (body.action === "selar_approve") {
-          const { data: row } = await admin.from("selar_payments").select("id, order_ref, status, matched_business_id, amount_kobo").eq("id", body.id).maybeSingle();
+          const { data: row } = await admin.from("selar_payments").select("id, order_ref, status, matched_business_id, amount_kobo, buyer_email, buyer_name").eq("id", body.id).maybeSingle();
           if (!row) return json({ error: "Payment not found." }, 404);
           if (row.status !== "awaiting_approval" || !row.matched_business_id) return json({ error: "Only a matched payment that is waiting for approval can be approved." }, 409);
           const { data: rec } = await admin.from("subscription_payments").select("id").eq("business_id", row.matched_business_id).eq("payment_reference", row.order_ref).limit(1).maybeSingle();
@@ -500,6 +503,13 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           if (error) return json({ error: "Could not close the payment: " + error.message }, 500);
           await writeAudit(admin, { business_id: row.matched_business_id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_approved",
             entity_type: "selar_payments", entity_id: row.id, details: `${adminName} approved Selar order ${row.order_ref}` });
+          // Tell the buyer their NairaPlate Buka subscription is active.
+          if (row.buyer_email) {
+            const r = await sendSelarActive(row.buyer_email, row.buyer_name, row.order_ref);
+            if (!r.sent) await logEmailUndelivered(admin, { businessId: row.matched_business_id, kind: "Selar subscription active", actorId: adminId, subjectOf: `order ${row.order_ref}`, reason: r.reason ?? "email request failed or timed out" });
+          } else {
+            await logEmailUndelivered(admin, { businessId: row.matched_business_id, kind: "Selar subscription active", actorId: adminId, subjectOf: `order ${row.order_ref}`, reason: "the payment has no buyer email address" });
+          }
           return json({ ok: true });
         }
 

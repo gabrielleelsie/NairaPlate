@@ -69,16 +69,11 @@ export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
 
 function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boolean; setBusy: (b: boolean) => void; done: (t: string) => void; fail: (t: string) => void }) {
   const open = row.status === "awaiting_approval" || row.status === "unmatched";
-  const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">(row.plan_guess ?? "monthly");
-  const [setup, setSetup] = useState(row.setup_guess);
-  const [amount, setAmount] = useState(row.amount_kobo !== null ? String(row.amount_kobo / 100) : "");
-  const [diff, setDiff] = useState("");
   const [code, setCode] = useState("");
   const [reason, setReason] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const today = lagosDateKey(new Date());
   const paidOn = /^\d{4}-\d{2}-\d{2}/.test(row.paid_at ?? "") && (row.paid_at as string).slice(0, 10) <= today ? (row.paid_at as string).slice(0, 10) : today;
-  const kobo = Math.round(Number(amount.replace(/[^\d.]/g, "")) * 100);
 
   async function run(label: string, steps: () => Promise<string | null>) {
     setBusy(true);
@@ -89,8 +84,8 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
 
   const approve = () => run("Payment recorded and approved. The owner has been emailed.", async () => {
     const rec = await callApi({
-      action: "record_payment", business_id: row.matched_business_id, plan, amount_kobo: kobo, payment_reference: row.order_ref, paid_on: paidOn,
-      includes_setup: setup, ...(diff.trim() ? { difference_reason: diff.trim() } : {}),
+      action: "record_payment", business_id: row.matched_business_id, plan: row.plan_guess, amount_kobo: row.amount_kobo, payment_reference: row.order_ref, paid_on: paidOn,
+      includes_setup: false,
     });
     // 409 means this reference was already recorded (for example a first click that did not finish): carry on and close it.
     if (rec.status !== 200 && rec.status !== 409) return String(rec.data["error"] ?? "Could not record the payment.");
@@ -133,19 +128,8 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
       )}
       {open && row.status === "awaiting_approval" && (
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1">Plan
-              <select className="rounded border border-border bg-background px-2 py-1" value={plan} onChange={(e) => setPlan(e.target.value as typeof plan)}>
-                {(Object.keys(PLAN_TEXT) as (keyof typeof PLAN_TEXT)[]).map((k) => <option key={k} value={k}>{PLAN_TEXT[k]}</option>)}
-              </select>
-            </label>
-            <label className="flex items-center gap-1"><input type="checkbox" checked={setup} onChange={(e) => setSetup(e.target.checked)} /> Includes setup fee</label>
-            <label className="flex items-center gap-1">Amount (₦)
-              <Input className="w-32" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </label>
-          </div>
-          <Input placeholder="Reason, only if the amount differs from the price list" value={diff} onChange={(e) => setDiff(e.target.value)} />
-          <Button disabled={busy || !(kobo > 0) || !row.matched_business_id} onClick={approve}>Record payment and approve</Button>
+          <p>Plan paid: <strong>{row.plan_guess ? PLAN_TEXT[row.plan_guess] : "not known"}</strong> (read from the amount). Approving extends this kitchen's access by that period.</p>
+          <Button disabled={busy || !row.plan_guess || !row.amount_kobo || !row.matched_business_id} onClick={approve}>Approve and extend access</Button>
         </div>
       )}
       {open && (

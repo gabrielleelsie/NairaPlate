@@ -58,7 +58,7 @@ describe("logLine", () => {
   });
 });
 
-import { cleanCode, extractPayment, fallbackRef, guessPlan, nairaToKobo } from "./selar-intake";
+import { bukaTermForAmount, cleanCode, extractPayment, fallbackRef, isBukaProduct, nairaToKobo } from "./selar-intake";
 
 describe("nairaToKobo", () => {
   it("reads plain amounts in naira", () => {
@@ -92,16 +92,25 @@ describe("extractPayment", () => {
   it("reports a currency other than naira so it can be flagged", () => expect(extractPayment({ amount: "USD 10.00" }).currency).toBe("USD"));
 });
 
-describe("guessPlan", () => {
-  it("reads the term and setup from the product name", () => {
-    expect(guessPlan("NairaPlate Restaurant Monthly")).toEqual({ term: "monthly", setup: false });
-    expect(guessPlan("NairaPlate Restaurant 3 Months + Setup")).toEqual({ term: "quarterly", setup: true });
-    expect(guessPlan("NairaPlate Full Suite 12 Months")).toEqual({ term: "yearly", setup: false });
-    expect(guessPlan("NairaPlate Buka Yearly + Setup")).toEqual({ term: "yearly", setup: true });
+describe("the Buka as a Service product", () => {
+  it("is recognised by name only", () => {
+    expect(isBukaProduct("Buka as a Service")).toBe(true);
+    expect(isBukaProduct("  buka AS a service ")).toBe(true);
+    expect(isBukaProduct("NairaPlate Restaurant Monthly")).toBe(false);
+    expect(isBukaProduct(null)).toBe(false);
   });
-  it("gives no term when the name does not say", () => {
-    expect(guessPlan("NairaPlate Restaurant")).toEqual({ term: null, setup: false });
-    expect(guessPlan(null)).toEqual({ term: null, setup: false });
+  it("reads the plan from the amount paid", () => {
+    expect(bukaTermForAmount(500000)).toBe("monthly");
+    expect(bukaTermForAmount(1350000)).toBe("quarterly");
+    expect(bukaTermForAmount(4800000)).toBe("yearly");
+    for (const k of [0, 499999, 1000000, 5000000, null]) expect(bukaTermForAmount(k)).toBeNull();
+  });
+  it("reads the business code from the exact checkout question", () => {
+    const p = extractPayment({ "Enter your NairaPlate business code": " Ada-Kitchen ", "Product Name": "Buka as a Service" });
+    expect(p.businessCode).toBe("Ada-Kitchen");
+  });
+  it("does not take another answer as the business code", () => {
+    expect(extractPayment({ "Enter your phone number": "0800", "Business name": "Ada" }).businessCode).toBeNull();
   });
 });
 
