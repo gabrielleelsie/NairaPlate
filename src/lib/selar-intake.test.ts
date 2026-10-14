@@ -58,7 +58,7 @@ describe("logLine", () => {
   });
 });
 
-import { escapeLike, extractPayment, fallbackRef, isSetupProduct, nairaToKobo, normalizeEmail } from "./selar-intake";
+import { authorizeSelar, escapeLike, extractPayment, fallbackRef, findSignatureHeader, isSetupProduct, nairaToKobo, normalizeEmail, signatureMatches, signingKeyFromSetting } from "./selar-intake";
 
 describe("nairaToKobo", () => {
   it("reads plain amounts in naira", () => {
@@ -115,5 +115,60 @@ describe("fallbackRef", () => {
     expect(await fallbackRef("abc")).toBe(await fallbackRef("abc"));
     expect(await fallbackRef("abc")).not.toBe(await fallbackRef("abd"));
     expect(await fallbackRef("abc")).toMatch(/^raw:[0-9a-f]{24}$/);
+  });
+});
+
+// ---------- who is allowed to send ----------
+const KEY = "selar-signing-key-1234";
+const BODY = '{"order_id":"SEL-1","amount":"NGN 5,000.00"}';
+async function sign(body: string, key: string, as: "hex" | "base64" | "base64url" = "hex") {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(body)));
+  if (as === "hex") return Array.from(mac, (b) => b.toString(16).padStart(2, "0")).join("");
+  const b64 = btoa(String.fromCharCode(...mac));
+  return as === "base64" ? b64 : b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+describe("signatureMatches", () => {
+  it("accepts the right signature as hex, upper-case hex, base64, base64url, or with a sha256= prefix", async () => {
+    const hex = await sign(BODY, KEY);
+    for (const v of [hex, hex.toUpperCase(), `sha256=${hex}`, await sign(BODY, KEY, "base64"), await sign(BODY, KEY, "base64url")])
+      expect(await signatureMatches(BODY, v, KEY)).toBe(true);
+  });
+  it("refuses a signature made with another key, over another body, or that is unreadable", async () => {
+    expect(await signatureMatches(BODY, await sign(BODY, "another-key-entirely"), KEY)).toBe(false);
+    expect(await signatureMatches(BODY + " ", await sign(BODY, KEY), KEY)).toBe(false);
+    for (const v of ["", "garbage", "sha256=", "abc123", null, undefined]) expect(await signatureMatches(BODY, v as string | null, KEY)).toBe(false);
+  });
+  it("refuses when there is no key", async () => expect(await signatureMatches(BODY, await sign(BODY, KEY), null)).toBe(false));
+});
+
+describe("findSignatureHeader and signingKeyFromSetting", () => {
+  it("finds the first usual signature header", () => {
+    const h: Record<string, string> = { "x-signature": " abc " };
+    expect(findSignatureHeader((n) => h[n] ?? null)).toBe("abc");
+    expect(findSignatureHeader(() => null)).toBeNull();
+  });
+  it("accepts a saved key of 8 or more characters only", () => {
+    expect(signingKeyFromSetting({ signing_key: KEY })).toBe(KEY);
+    for (const v of [null, {}, { signing_key: "short" }, { signing_key: 12345678 }]) expect(signingKeyFromSetting(v)).toBeNull();
+  });
+});
+
+describe("authorizeSelar (unauthorized requests are refused)", () => {
+  const setting = { secret: "s".repeat(30), signing_key: KEY };
+  it("accepts a valid signature", async () =>
+    expect(await authorizeSelar({ rawBody: BODY, signatureHeader: await sign(BODY, KEY), urlToken: null, setting })).toEqual({ ok: true, via: "signature" }));
+  it("accepts the right secret on the address", async () =>
+    expect(await authorizeSelar({ rawBody: BODY, signatureHeader: null, urlToken: "s".repeat(30), setting })).toEqual({ ok: true, via: "token" }));
+  it("refuses a request with neither", async () =>
+    expect(await authorizeSelar({ rawBody: BODY, signatureHeader: null, urlToken: null, setting })).toEqual({ ok: false }));
+  it("refuses a wrong secret and a wrong signature together", async () =>
+    expect(await authorizeSelar({ rawBody: BODY, signatureHeader: await sign(BODY, "wrong-key-wrong-key"), urlToken: "x".repeat(30), setting })).toEqual({ ok: false }));
+  it("refuses a valid signature over a different body (a tampered message)", async () =>
+    expect(await authorizeSelar({ rawBody: BODY + "x", signatureHeader: await sign(BODY, KEY), urlToken: null, setting })).toEqual({ ok: false }));
+  it("refuses everything when nothing is set up", async () => {
+    expect(await authorizeSelar({ rawBody: BODY, signatureHeader: await sign(BODY, KEY), urlToken: "x".repeat(30), setting: null })).toEqual({ ok: false });
+    expect(await authorizeSelar({ rawBody: BODY, signatureHeader: await sign(BODY, KEY), urlToken: "short", setting: { secret: "short" } })).toEqual({ ok: false });
   });
 });

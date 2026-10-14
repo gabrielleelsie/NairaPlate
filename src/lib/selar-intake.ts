@@ -123,3 +123,67 @@ export async function fallbackRef(raw: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
   return "raw:" + Array.from(new Uint8Array(d)).slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// ---------- who is allowed to send a message ----------
+// A message is accepted when it proves one of two things: a valid HMAC-SHA256 signature of the raw body made with the Selar secret key,
+// or the secret NairaPlate put on the end of the web address. Anything else is refused with 401. Selar's own signing details are not
+// known yet, so the signature is read from the usual header names, as hex or base64, with or without a "sha256=" prefix.
+
+/** The header names a signature is looked for under (compared without case). */
+export const SIGNATURE_HEADERS = ["x-selar-signature", "selar-signature", "x-signature", "x-webhook-signature", "x-hub-signature-256", "signature"] as const;
+
+/** The first signature header found, or null. */
+export function findSignatureHeader(get: (name: string) => string | null): string | null {
+  for (const name of SIGNATURE_HEADERS) {
+    const v = get(name);
+    if (v && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+/** The Selar secret key saved in the database, or null when it is missing or too short to trust. */
+export function signingKeyFromSetting(value: unknown): string | null {
+  const k = (value as { signing_key?: unknown } | null | undefined)?.signing_key;
+  return typeof k === "string" && k.length >= 8 ? k : null;
+}
+
+function constantTimeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= (a[i] as number) ^ (b[i] as number);
+  return diff === 0;
+}
+
+function decodeSignature(text: string): Uint8Array | null {
+  const t = text.trim().replace(/^sha256=/i, "");
+  if (/^[0-9a-fA-F]{64}$/.test(t)) return Uint8Array.from(t.match(/.{2}/g) as string[], (h) => parseInt(h, 16));
+  if (/^[A-Za-z0-9+/_-]{43}={0,1}$/.test(t)) {
+    try {
+      const b64 = t.replace(/-/g, "+").replace(/_/g, "/");
+      return Uint8Array.from(atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** True when the header value is the HMAC-SHA256 of the raw body under the key. Anything unreadable is false. */
+export async function signatureMatches(rawBody: string, headerValue: string | null | undefined, key: string | null): Promise<boolean> {
+  if (!headerValue || !key) return false;
+  const given = decodeSignature(headerValue);
+  if (!given) return false;
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(rawBody)));
+  return constantTimeEqualBytes(mac, given);
+}
+
+export type Authorized = { ok: true; via: "signature" | "token" } | { ok: false };
+
+/** Decides whether a message may be accepted: a valid signature, or the right secret in the address. Otherwise it is refused (401). */
+export async function authorizeSelar(args: { rawBody: string; signatureHeader: string | null; urlToken: string | null; setting: unknown }): Promise<Authorized> {
+  const signingKey = signingKeyFromSetting(args.setting);
+  if (await signatureMatches(args.rawBody, args.signatureHeader, signingKey)) return { ok: true, via: "signature" };
+  if (tokenMatches(args.urlToken, secretFromSetting(args.setting))) return { ok: true, via: "token" };
+  return { ok: false };
+}

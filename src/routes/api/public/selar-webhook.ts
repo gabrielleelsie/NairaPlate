@@ -2,14 +2,14 @@
 // A message with the right secret is saved as one audit line (so we can see what Selar really sends) and, when the table exists,
 // staged in selar_payments as "waiting for approval". Only the platform admin is emailed. Buyers and owners get nothing from here.
 // NOTHING here records a subscription payment or activates a kitchen: only a platform admin can, through the normal "record payment" path.
-// The shared secret lives in the database (platform_settings key "selar_webhook"), never in browser code, and is sent as ?token=... on the web address.
+// Accepted only with a valid HMAC-SHA256 signature (Selar secret key, platform_settings key "selar_webhook", field signing_key) or the secret on the web address (?token=, field secret). Otherwise 401.
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
 import { logEmailUndelivered, NO_ADMIN_EMAIL_REASON, sendSelarAdminAlert } from "@/lib/email.server";
 import { mergeSettings } from "@/lib/platform-settings";
 import { planFromAmount } from "@/lib/plan-choice";
-import { SELAR_MAX_BYTES, escapeLike, extractPayment, fallbackRef, isSetupProduct, logLine, normalizeEmail, parseMessage, secretFromSetting, tokenMatches } from "@/lib/selar-intake";
+import { SELAR_MAX_BYTES, authorizeSelar, findSignatureHeader, escapeLike, extractPayment, fallbackRef, isSetupProduct, logLine, normalizeEmail, parseMessage } from "@/lib/selar-intake";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const PLATFORM_BUSINESS = "platform";
@@ -24,14 +24,19 @@ export const Route = createFileRoute("/api/public/selar-webhook")({
         if (!key) return json({ error: "Server is not configured." }, 500);
         const admin = createClient(SUPABASE_URL, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-        // Check the secret before reading anything else. A missing or wrong secret gets the same plain refusal.
+        // Who may send: a valid signature of the raw body (HMAC-SHA256 with the Selar secret key), or the secret on the end of the address.
+        // Anything else gets 401. The body is read first (with a size limit) because the signature is made over the raw body.
         const { data: setting } = await admin.from("platform_settings").select("value").eq("key", "selar_webhook").maybeSingle();
-        const secret = secretFromSetting(setting?.value);
-        const sent = new URL(request.url).searchParams.get("token");
-        if (!tokenMatches(sent, secret)) return json({ error: "Not accepted." }, 401);
-
+        if (Number(request.headers.get("content-length") ?? "0") > SELAR_MAX_BYTES) return json({ error: "Too large." }, 413);
         const raw = await request.text();
         if (raw.length > SELAR_MAX_BYTES) return json({ error: "Too large." }, 413);
+        const auth = await authorizeSelar({
+          rawBody: raw,
+          signatureHeader: findSignatureHeader((n) => request.headers.get(n)),
+          urlToken: new URL(request.url).searchParams.get("token"),
+          setting: setting?.value,
+        });
+        if (!auth.ok) return json({ error: "Not accepted." }, 401);
         const parsed = parseMessage(raw, request.headers.get("content-type"));
 
         const { error } = await admin.from("audit_logs").insert({
@@ -41,7 +46,7 @@ export const Route = createFileRoute("/api/public/selar-webhook")({
           action: "selar_payload_received",
           entity_type: "selar",
           entity_id: null,
-          details: logLine(raw, parsed),
+          details: `Accepted by ${auth.via}. ${logLine(raw, parsed)}`,
         });
         // If the line could not be saved, say so, so the sender shows an error instead of looking successful.
         if (error) { console.error("selar log insert failed", error.message); return json({ error: "Could not save the message." }, 500); }
