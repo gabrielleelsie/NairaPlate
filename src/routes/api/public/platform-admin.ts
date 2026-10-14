@@ -16,10 +16,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { receivedKobo } from "@/lib/order-revenue";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
-import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation, sendExpiryReminderEmail } from "@/lib/email.server";
+import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPaymentConfirmation, sendExpiryReminderEmail, sendSetupFeeReceived } from "@/lib/email.server";
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
+import { isMode, isTerm, planDifferences, planFromAmount, type PlanPick } from "@/lib/plan-choice";
 import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
 import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
@@ -477,9 +478,35 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: rows, error } = await q;
           if (error) return json({ error: error.code === "42P01" || error.code === "PGRST205" ? "The Selar payments table has not been created yet." : "Could not load Selar payments." }, error.code === "42P01" || error.code === "PGRST205" ? 409 : 500);
           const ids = [...new Set((rows ?? []).map((r) => r.matched_business_id).filter((x): x is string => !!x))];
-          const { data: bizRows } = ids.length ? await admin.from("businesses").select("id, name, operating_mode").in("id", ids) : { data: [] as { id: string; name: string; operating_mode: string | null }[] };
+          const { data: bizRows } = ids.length ? await admin.from("businesses").select("id, name, operating_mode, status").in("id", ids) : { data: [] as { id: string; name: string; operating_mode: string | null; status: string }[] };
           const byId = new Map((bizRows ?? []).map((b) => [b.id, b]));
-          return json({ payments: (rows ?? []).map((r) => ({ ...r, business_name: r.matched_business_id ? byId.get(r.matched_business_id)?.name ?? null : null, operating_mode: r.matched_business_id ? byId.get(r.matched_business_id)?.operating_mode ?? null : null })) });
+          const { data: priceRow } = await admin.from("platform_settings").select("value").eq("key", "prices").maybeSingle();
+          const priceList = mergeSettings({ prices: priceRow?.value }).prices;
+          // What each owner chose on the plan page (latest per kitchen). If that table does not exist yet there are simply none.
+          const { data: choiceRows, error: choiceErr } = ids.length
+            ? await admin.from("plan_choices").select("business_id, plan_mode, plan_term, created_at").in("business_id", ids).order("created_at", { ascending: false })
+            : { data: [] as { business_id: string; plan_mode: string; plan_term: string; created_at: string }[], error: null };
+          const chosenBy = new Map<string, PlanPick>();
+          if (!choiceErr) for (const c of choiceRows ?? []) if (!chosenBy.has(c.business_id) && isMode(c.plan_mode) && isTerm(c.plan_term)) chosenBy.set(c.business_id, { mode: c.plan_mode, term: c.plan_term });
+          return json({
+            payments: (rows ?? []).map((r) => {
+              const b = r.matched_business_id ? byId.get(r.matched_business_id) : undefined;
+              const kitchenMode = b?.operating_mode && isMode(b.operating_mode) ? b.operating_mode : null;
+              const paid = r.setup_guess ? null : planFromAmount(priceList, r.amount_kobo);
+              const chosen = r.matched_business_id ? chosenBy.get(r.matched_business_id) ?? null : null;
+              return {
+                ...r,
+                business_name: b?.name ?? null,
+                business_status: b?.status ?? null,
+                operating_mode: kitchenMode,
+                paid_mode: paid?.mode ?? null,
+                paid_term: paid?.term ?? null,
+                chosen_mode: chosen?.mode ?? null,
+                chosen_term: chosen?.term ?? null,
+                differences: r.setup_guess ? [] : planDifferences({ paid, kitchenMode, chosen }),
+              };
+            }),
+          });
         }
 
         if (body.action === "selar_assign") {
@@ -509,6 +536,19 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           if (error) return json({ error: "Could not close the payment: " + error.message }, 500);
           await writeAudit(admin, { business_id: row.matched_business_id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_approved",
             entity_type: "selar_payments", entity_id: row.id, details: row.setup_guess ? `${adminName} approved Selar order ${row.order_ref}: setup fee ${row.amount_kobo != null ? "₦" + (row.amount_kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }) : ""} recorded as paid` : `${adminName} approved Selar order ${row.order_ref}` });
+          // A subscription approval already emails the owner through "record payment". A setup fee approval emails the owner here.
+          if (row.setup_guess) {
+            const { data: biz } = await admin.from("businesses").select("name").eq("id", row.matched_business_id).maybeSingle();
+            const { data: owner } = await admin.from("staff_users").select("email").eq("business_id", row.matched_business_id).eq("role", "owner").not("email", "is", null).limit(1).maybeSingle();
+            const subjectOf = `${biz?.name ?? row.matched_business_id} (setup fee, order ${row.order_ref})`;
+            const amountText = row.amount_kobo != null ? "₦" + (row.amount_kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }) : null;
+            if (owner?.email) {
+              const r = await sendSetupFeeReceived(owner.email, biz?.name ?? "your kitchen", amountText, row.order_ref);
+              if (!r.sent) await logEmailUndelivered(admin, { businessId: row.matched_business_id, kind: "Setup fee received", actorId: adminId, subjectOf, reason: r.reason ?? "email request failed or timed out" });
+            } else {
+              await logEmailUndelivered(admin, { businessId: row.matched_business_id, kind: "Setup fee received", actorId: adminId, subjectOf, reason: "the owner has no email address on file" });
+            }
+          }
           return json({ ok: true });
         }
 

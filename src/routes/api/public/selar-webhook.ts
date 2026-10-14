@@ -8,8 +8,8 @@ import { createClient } from "@supabase/supabase-js";
 import { writeAudit } from "@/lib/audit.server";
 import { logEmailUndelivered, NO_ADMIN_EMAIL_REASON, sendSelarAdminAlert } from "@/lib/email.server";
 import { mergeSettings } from "@/lib/platform-settings";
-import { asMode } from "@/lib/features";
-import { SELAR_MAX_BYTES, escapeLike, extractPayment, fallbackRef, isSetupProduct, logLine, normalizeEmail, parseMessage, secretFromSetting, termForAmount, tokenMatches } from "@/lib/selar-intake";
+import { planFromAmount } from "@/lib/plan-choice";
+import { SELAR_MAX_BYTES, escapeLike, extractPayment, fallbackRef, isSetupProduct, logLine, normalizeEmail, parseMessage, secretFromSetting, tokenMatches } from "@/lib/selar-intake";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const PLATFORM_BUSINESS = "platform";
@@ -53,23 +53,23 @@ export const Route = createFileRoute("/api/public/selar-webhook")({
         const email = normalizeEmail(pay?.buyerEmail ?? null);
 
         // Match the buyer to a kitchen by the owner email NairaPlate holds. Exactly one approved or suspended kitchen, or it stays unmatched.
-        let matched: { id: string; name: string; mode: string | null } | null = null;
+        let matched: { id: string; name: string } | null = null;
         if (email) {
           const { data: owners } = await admin.from("staff_users").select("business_id").eq("role", "owner").eq("is_active", true).ilike("email", escapeLike(email));
           const ids = [...new Set((owners ?? []).map((o) => o.business_id as string))];
           if (ids.length === 1) {
-            const { data: biz } = await admin.from("businesses").select("id, name, status, operating_mode").eq("id", ids[0]!).maybeSingle();
-            if (biz && (biz.status === "approved" || biz.status === "suspended")) matched = { id: biz.id, name: biz.name, mode: biz.operating_mode ?? null };
+            const { data: biz } = await admin.from("businesses").select("id, name, status").eq("id", ids[0]!).maybeSingle();
+            if (biz && (biz.status === "approved" || biz.status === "suspended")) matched = { id: biz.id, name: biz.name };
           }
         }
         const notNaira = !!pay?.currency && pay.currency !== "NGN";
         const note = !email ? "No usable email address in the message." : !matched ? "The email did not match exactly one kitchen." : notNaira ? `The currency is ${pay?.currency}, not NGN.` : null;
 
-        // The plan term is read from the amount against this kitchen's own price list. A setup payment has no term.
+        // The plan is read from the amount paid, against the whole price list (every price is different). A setup payment has no plan.
         let term: "monthly" | "quarterly" | "yearly" | null = null;
-        if (!setup && matched) {
+        if (!setup) {
           const { data: priceRow } = await admin.from("platform_settings").select("value").eq("key", "prices").maybeSingle();
-          term = termForAmount(mergeSettings({ prices: priceRow?.value }).prices, asMode(matched.mode), pay?.amountKobo ?? null);
+          term = planFromAmount(mergeSettings({ prices: priceRow?.value }).prices, pay?.amountKobo ?? null)?.term ?? null;
         }
         const { data: staged, error: stageErr } = await admin.from("selar_payments").insert({
           order_ref: orderRef,

@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { PLAN_NAME } from "@/lib/platform-settings";
+import { TERM_LABEL, planText, type PlanTerm } from "@/lib/plan-choice";
+import type { OperatingMode } from "@/lib/features";
 
 type Row = {
   id: string; created_at: string; order_ref: string; status: "awaiting_approval" | "unmatched" | "approved" | "rejected";
-  matched_business_id: string | null; business_name: string | null; operating_mode: string | null;
+  matched_business_id: string | null; business_name: string | null; business_status: string | null; operating_mode: OperatingMode | null;
+  paid_mode: OperatingMode | null; paid_term: PlanTerm | null; chosen_mode: OperatingMode | null; chosen_term: PlanTerm | null; differences: string[];
   buyer_name: string | null; buyer_email: string | null; product_name: string | null; amount_kobo: number | null;
   plan_guess: "monthly" | "quarterly" | "yearly" | null; setup_guess: boolean; paid_at: string | null;
   raw: unknown; note: string | null; decided_at: string | null; decision_reason: string | null;
@@ -28,7 +31,6 @@ async function callApi(body: unknown) {
 
 const naira = (kobo: number | null) => (kobo === null ? "not read" : "₦" + (kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }));
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Lagos", dateStyle: "medium", timeStyle: "short" });
-const PLAN_TEXT = { monthly: "Monthly", quarterly: "3 months", yearly: "12 months" } as const;
 
 export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
   const [view, setView] = useState<"open" | "done">("open");
@@ -69,8 +71,11 @@ export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
 
 function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boolean; setBusy: (b: boolean) => void; done: (t: string) => void; fail: (t: string) => void }) {
   const open = row.status === "awaiting_approval" || row.status === "unmatched";
-  const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">(row.plan_guess ?? "monthly");
+  const [plan, setPlan] = useState<PlanTerm>(row.plan_guess ?? "monthly");
   const [diff, setDiff] = useState("");
+  const [switchOk, setSwitchOk] = useState(false);
+  const needsSwitch = !!row.paid_mode && !!row.operating_mode && row.paid_mode !== row.operating_mode;
+  const suspended = row.business_status === "suspended";
   const [code, setCode] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const today = lagosDateKey(new Date());
@@ -88,13 +93,25 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
     const ap = await callApi({ action: "selar_approve", id: row.id });
     return ap.status === 200 ? null : String(ap.data["error"] ?? "Could not approve.");
   });
-  const approve = () => run("Payment recorded and approved. The owner has been emailed.", async () => {
+  const approve = (reactivate: boolean) => run(`Payment recorded and approved. The owner has been emailed.${reactivate ? " The kitchen was reactivated." : ""}`, async () => {
+    // 1. If the payment is for another plan type than the kitchen's, switch the kitchen first (the admin confirmed it), so the price check uses the paid plan.
+    if (needsSwitch) {
+      const sw = await callApi({ action: "set_operating_mode", business_id: row.matched_business_id, mode: row.paid_mode });
+      if (sw.status !== 200) return String(sw.data["error"] ?? "Could not switch the kitchen's plan type.");
+    }
+    // 2. Record the payment: this checks the amount and extends access.
     const rec = await callApi({
       action: "record_payment", business_id: row.matched_business_id, plan, amount_kobo: kobo, payment_reference: row.order_ref, paid_on: paidOn,
       includes_setup: false, ...(diff.trim() ? { difference_reason: diff.trim() } : {}),
     });
     // 409 means this reference was already recorded (for example a first click that did not finish): carry on and close it.
     if (rec.status !== 200 && rec.status !== 409) return String(rec.data["error"] ?? "Could not record the payment.");
+    // 3. Reactivate a suspended kitchen only when the admin chose to.
+    if (reactivate) {
+      const re = await callApi({ action: "set_status", business_id: row.matched_business_id, status: "approved" });
+      if (re.status !== 200) return "Payment recorded, but the kitchen could not be reactivated: " + String(re.data["error"] ?? "");
+    }
+    // 4. Close the Selar entry.
     const ap = await callApi({ action: "selar_approve", id: row.id });
     return ap.status === 200 ? null : String(ap.data["error"] ?? "Could not approve.");
   });
@@ -134,16 +151,36 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
       )}
       {open && row.status === "awaiting_approval" && !row.setup_guess && (
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1">Plan
-              <select className="rounded border border-border bg-background px-2 py-1" value={plan} onChange={(e) => setPlan(e.target.value as typeof plan)}>
-                {(Object.keys(PLAN_TEXT) as (keyof typeof PLAN_TEXT)[]).map((k) => <option key={k} value={k}>{PLAN_TEXT[k]}</option>)}
+          <div className="space-y-1">
+            <div>Paid for: <strong>{row.paid_mode && row.paid_term ? planText({ mode: row.paid_mode, term: row.paid_term }) : "no plan on the price list"}</strong></div>
+            <div>Chosen on the plan page: {row.chosen_mode && row.chosen_term ? planText({ mode: row.chosen_mode, term: row.chosen_term }) : "nothing recorded"}</div>
+          </div>
+          {row.differences.map((d) => <p key={d} className="rounded bg-amber-50 p-2 text-amber-900">{d}</p>)}
+          {!row.paid_term && (
+            <label className="flex items-center gap-1">Term
+              <select className="rounded border border-border bg-background px-2 py-1" value={plan} onChange={(e) => setPlan(e.target.value as PlanTerm)}>
+                {(Object.keys(TERM_LABEL) as PlanTerm[]).map((k) => <option key={k} value={k}>{TERM_LABEL[k]}</option>)}
               </select>
             </label>
-            {!row.plan_guess && <span className="text-amber-900">The amount matches no price on this kitchen's list. Choose the plan.</span>}
-          </div>
+          )}
+          {needsSwitch && row.paid_mode && (
+            <label className="flex items-center gap-2 font-medium">
+              <input type="checkbox" checked={switchOk} onChange={(e) => setSwitchOk(e.target.checked)} />
+              Switch this kitchen to {PLAN_NAME[row.paid_mode]}
+            </label>
+          )}
+          {suspended && <p className="rounded bg-amber-50 p-2 text-amber-900">This kitchen is suspended. Do you want to reactivate it with this payment?</p>}
           <Input placeholder="Reason, only if the amount differs from the price list" value={diff} onChange={(e) => setDiff(e.target.value)} />
-          <Button disabled={busy || !(kobo > 0) || !row.matched_business_id} onClick={approve}>Record payment and approve</Button>
+          <div className="flex flex-wrap gap-2">
+            {suspended ? (
+              <>
+                <Button disabled={busy || !(kobo > 0) || !row.matched_business_id || (needsSwitch && !switchOk)} onClick={() => approve(true)}>Approve and reactivate</Button>
+                <Button variant="outline" disabled={busy || !(kobo > 0) || !row.matched_business_id || (needsSwitch && !switchOk)} onClick={() => approve(false)}>Approve, keep suspended</Button>
+              </>
+            ) : (
+              <Button disabled={busy || !(kobo > 0) || !row.matched_business_id || (needsSwitch && !switchOk)} onClick={() => approve(false)}>Record payment and approve</Button>
+            )}
+          </div>
         </div>
       )}
     </div>

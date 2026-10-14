@@ -58,8 +58,7 @@ describe("logLine", () => {
   });
 });
 
-import { DEFAULT_SETTINGS } from "./platform-settings";
-import { escapeLike, extractPayment, fallbackRef, isSetupProduct, nairaToKobo, normalizeEmail, termForAmount } from "./selar-intake";
+import { escapeLike, extractPayment, fallbackRef, isSetupProduct, nairaToKobo, normalizeEmail } from "./selar-intake";
 
 describe("nairaToKobo", () => {
   it("reads plain amounts in naira", () => {
@@ -98,23 +97,6 @@ describe("isSetupProduct", () => {
     expect(isSetupProduct("nairaplate SETUP fee")).toBe(true);
     expect(isSetupProduct("NairaPlate Restaurant")).toBe(false);
     expect(isSetupProduct(null)).toBe(false);
-  });
-});
-
-describe("termForAmount", () => {
-  const prices = DEFAULT_SETTINGS.prices;
-  it("finds the term whose price equals the amount, in the kitchen's own price list", () => {
-    expect(termForAmount(prices, "standard", 1_000_000)).toBe("monthly");
-    expect(termForAmount(prices, "standard", 2_700_000)).toBe("quarterly");
-    expect(termForAmount(prices, "standard", 9_600_000)).toBe("yearly");
-    expect(termForAmount(prices, "buka", 500_000)).toBe("monthly");
-  });
-  it("gives nothing when the amount matches no price, or the kitchen or amount is unknown", () => {
-    expect(termForAmount(prices, "standard", 500_000)).toBeNull();
-    expect(termForAmount(prices, null, 1_000_000)).toBeNull();
-    expect(termForAmount(null, "standard", 1_000_000)).toBeNull();
-    expect(termForAmount(prices, "standard", null)).toBeNull();
-    expect(termForAmount(prices, "standard", 0)).toBeNull();
   });
 });
 
