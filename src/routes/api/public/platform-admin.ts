@@ -57,10 +57,6 @@ const ActionSchema = z.discriminatedUnion("action", [
     includes_setup: z.boolean().optional(),
     difference_reason: z.string().trim().max(300).optional(),
   }),
-  z.object({ action: z.literal("selar_list"), view: z.enum(["open", "done"]) }),
-  z.object({ action: z.literal("selar_assign"), id: z.string().uuid(), business_id: z.string().trim().min(1).max(100) }),
-  z.object({ action: z.literal("selar_approve"), id: z.string().uuid() }),
-  z.object({ action: z.literal("selar_reject"), id: z.string().uuid(), reason: z.string().trim().min(5, "Type a reason of at least 5 characters.").max(300) }),
   z.object({ action: z.literal("get_settings") }),
   z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), value: z.unknown(), admin_pin: PinSchema }),
   z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), admin_pin: PinSchema }),
@@ -458,59 +454,6 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: "the owner has no email address on file" });
           }
           return json({ ok: true, ...result, still_suspended: biz.status === "suspended" });
-        }
-
-        // ---------- Selar payments waiting for approval ----------
-        // A staged payment never extends access by itself. The admin records it with "record_payment" (which checks the amount and
-        // sends the owner's confirmation), then "selar_approve" closes the staged row. Approve refuses until that payment exists.
-        if (body.action === "selar_list") {
-          const open = body.view === "open";
-          const q = admin.from("selar_payments")
-            .select("id, created_at, order_ref, status, business_code, matched_business_id, buyer_name, buyer_email, product_name, amount_kobo, plan_guess, setup_guess, paid_at, raw, note, decided_at, decision_reason")
-            .in("status", open ? ["awaiting_approval", "unmatched"] : ["approved", "rejected"])
-            .order("created_at", { ascending: false }).limit(open ? 200 : 100);
-          const { data: rows, error } = await q;
-          if (error) return json({ error: error.code === "42P01" || error.code === "PGRST205" ? "The Selar payments table has not been created yet." : "Could not load Selar payments." }, error.code === "42P01" || error.code === "PGRST205" ? 409 : 500);
-          const ids = [...new Set((rows ?? []).map((r) => r.matched_business_id).filter((x): x is string => !!x))];
-          const { data: bizRows } = ids.length ? await admin.from("businesses").select("id, name, operating_mode").in("id", ids) : { data: [] as { id: string; name: string; operating_mode: string | null }[] };
-          const byId = new Map((bizRows ?? []).map((b) => [b.id, b]));
-          return json({ payments: (rows ?? []).map((r) => ({ ...r, business_name: r.matched_business_id ? byId.get(r.matched_business_id)?.name ?? null : null, operating_mode: r.matched_business_id ? byId.get(r.matched_business_id)?.operating_mode ?? null : null })) });
-        }
-
-        if (body.action === "selar_assign") {
-          const { data: biz } = await admin.from("businesses").select("id, name, status").eq("id", body.business_id).maybeSingle();
-          if (!biz || (biz.status !== "approved" && biz.status !== "suspended")) return json({ error: "That business code is not an approved or suspended business." }, 400);
-          const { data: row, error } = await admin.from("selar_payments")
-            .update({ matched_business_id: biz.id, status: "awaiting_approval", note: `Matched to ${biz.name} by ${adminName}.` })
-            .eq("id", body.id).in("status", ["unmatched", "awaiting_approval"]).select("id, order_ref").maybeSingle();
-          if (error || !row) return json({ error: "That payment could not be matched. It may already be decided." }, 409);
-          await writeAudit(admin, { business_id: biz.id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_assigned",
-            entity_type: "selar_payments", entity_id: row.id, details: `${adminName} matched Selar order ${row.order_ref} to ${biz.name} (${biz.id})` });
-          return json({ ok: true });
-        }
-
-        if (body.action === "selar_approve") {
-          const { data: row } = await admin.from("selar_payments").select("id, order_ref, status, matched_business_id, amount_kobo").eq("id", body.id).maybeSingle();
-          if (!row) return json({ error: "Payment not found." }, 404);
-          if (row.status !== "awaiting_approval" || !row.matched_business_id) return json({ error: "Only a matched payment that is waiting for approval can be approved." }, 409);
-          const { data: rec } = await admin.from("subscription_payments").select("id").eq("business_id", row.matched_business_id).eq("payment_reference", row.order_ref).limit(1).maybeSingle();
-          if (!rec) return json({ error: "Record the payment first. Approval only closes it after the payment is recorded." }, 409);
-          const { error } = await admin.from("selar_payments")
-            .update({ status: "approved", decided_by: adminId, decided_at: new Date().toISOString() }).eq("id", row.id).eq("status", "awaiting_approval");
-          if (error) return json({ error: "Could not close the payment: " + error.message }, 500);
-          await writeAudit(admin, { business_id: row.matched_business_id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_approved",
-            entity_type: "selar_payments", entity_id: row.id, details: `${adminName} approved Selar order ${row.order_ref}` });
-          return json({ ok: true });
-        }
-
-        if (body.action === "selar_reject") {
-          const { data: row, error } = await admin.from("selar_payments")
-            .update({ status: "rejected", decided_by: adminId, decided_at: new Date().toISOString(), decision_reason: body.reason })
-            .eq("id", body.id).in("status", ["awaiting_approval", "unmatched"]).select("id, order_ref, matched_business_id").maybeSingle();
-          if (error || !row) return json({ error: "That payment could not be rejected. It may already be decided." }, 409);
-          await writeAudit(admin, { business_id: row.matched_business_id ?? PLATFORM_BUSINESS, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_rejected",
-            entity_type: "selar_payments", entity_id: row.id, details: `${adminName} rejected Selar order ${row.order_ref}: ${body.reason}` });
-          return json({ ok: true });
         }
 
         // ---------- list_messages: website contact messages (tier 1, read-only) ----------

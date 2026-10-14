@@ -27,12 +27,7 @@ const ROLES = new Set(["owner", "supa_admin"]);
 export const AUDIT_ACTIONS: Record<string, string> = {
   login_success: "Signed in",
   login_failed: "Wrong PIN",
-  selar_payload_received: "Selar payment message received",
-  selar_payment_staged: "Selar payment waiting for approval",
-  selar_payment_unmatched: "Selar payment could not be matched",
-  selar_payment_assigned: "Selar payment matched to a business by an admin",
-  selar_payment_approved: "Selar payment approved",
-  selar_payment_rejected: "Selar payment rejected",
+  selar_payload_received: "Selar payment message received (test mode)",
   account_locked: "Account locked",
   staff_created: "Staff added",
   role_changed: "Role changed",
