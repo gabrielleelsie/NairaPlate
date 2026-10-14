@@ -10,7 +10,7 @@ import { PLAN_NAME } from "@/lib/platform-settings";
 
 type Row = {
   id: string; created_at: string; order_ref: string; status: "awaiting_approval" | "unmatched" | "approved" | "rejected";
-  business_code: string | null; matched_business_id: string | null; business_name: string | null; operating_mode: string | null;
+  matched_business_id: string | null; business_name: string | null; operating_mode: string | null;
   buyer_name: string | null; buyer_email: string | null; product_name: string | null; amount_kobo: number | null;
   plan_guess: "monthly" | "quarterly" | "yearly" | null; setup_guess: boolean; paid_at: string | null;
   raw: unknown; note: string | null; decided_at: string | null; decision_reason: string | null;
@@ -70,15 +70,13 @@ export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
 function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boolean; setBusy: (b: boolean) => void; done: (t: string) => void; fail: (t: string) => void }) {
   const open = row.status === "awaiting_approval" || row.status === "unmatched";
   const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">(row.plan_guess ?? "monthly");
-  const [setup, setSetup] = useState(row.setup_guess);
-  const [amount, setAmount] = useState(row.amount_kobo !== null ? String(row.amount_kobo / 100) : "");
   const [diff, setDiff] = useState("");
   const [code, setCode] = useState("");
   const [reason, setReason] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const today = lagosDateKey(new Date());
   const paidOn = /^\d{4}-\d{2}-\d{2}/.test(row.paid_at ?? "") && (row.paid_at as string).slice(0, 10) <= today ? (row.paid_at as string).slice(0, 10) : today;
-  const kobo = Math.round(Number(amount.replace(/[^\d.]/g, "")) * 100);
+  const kobo = row.amount_kobo ?? 0;
 
   async function run(label: string, steps: () => Promise<string | null>) {
     setBusy(true);
@@ -87,10 +85,14 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
     if (problem) fail(problem); else done(label);
   }
 
+  const approveSetup = () => run("Setup fee recorded as paid.", async () => {
+    const ap = await callApi({ action: "selar_approve", id: row.id });
+    return ap.status === 200 ? null : String(ap.data["error"] ?? "Could not approve.");
+  });
   const approve = () => run("Payment recorded and approved. The owner has been emailed.", async () => {
     const rec = await callApi({
       action: "record_payment", business_id: row.matched_business_id, plan, amount_kobo: kobo, payment_reference: row.order_ref, paid_on: paidOn,
-      includes_setup: setup, ...(diff.trim() ? { difference_reason: diff.trim() } : {}),
+      includes_setup: false, ...(diff.trim() ? { difference_reason: diff.trim() } : {}),
     });
     // 409 means this reference was already recorded (for example a first click that did not finish): carry on and close it.
     if (rec.status !== 200 && rec.status !== 409) return String(rec.data["error"] ?? "Could not record the payment.");
@@ -109,12 +111,12 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="font-semibold">{row.business_name ? `${row.business_name} (${row.matched_business_id})` : `No kitchen matched${row.business_code ? ` (code typed: ${row.business_code})` : ""}`}</div>
+        <div className="font-semibold">{row.business_name ? `${row.business_name} (${row.matched_business_id})` : "No kitchen matched"}</div>
         <div className="text-muted-foreground">{when(row.created_at)} · {row.status.replace("_", " ")}</div>
       </div>
       <div className="grid gap-1 sm:grid-cols-2">
         <div>Buyer: {row.buyer_name ?? "not read"} {row.buyer_email ? `(${row.buyer_email})` : ""}</div>
-        <div>Product: {row.product_name ?? "not read"}</div>
+        <div>Product: {row.product_name ?? "not read"} ({row.setup_guess ? "setup fee" : "subscription"})</div>
         <div>Amount paid: <strong>{naira(row.amount_kobo)}</strong></div>
         <div>Selar order: {row.order_ref}</div>
         {row.paid_at && <div>Date: {row.paid_at}</div>}
@@ -131,7 +133,13 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
           <Button disabled={busy || code.trim().length < 1} onClick={assign}>Match to this business</Button>
         </div>
       )}
-      {open && row.status === "awaiting_approval" && (
+      {open && row.status === "awaiting_approval" && row.setup_guess && (
+        <div className="space-y-2">
+          <p>Setup fee. Approving records it as paid. Access does not change.</p>
+          <Button disabled={busy || !row.matched_business_id} onClick={approveSetup}>Approve setup fee</Button>
+        </div>
+      )}
+      {open && row.status === "awaiting_approval" && !row.setup_guess && (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-1">Plan
@@ -139,10 +147,7 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
                 {(Object.keys(PLAN_TEXT) as (keyof typeof PLAN_TEXT)[]).map((k) => <option key={k} value={k}>{PLAN_TEXT[k]}</option>)}
               </select>
             </label>
-            <label className="flex items-center gap-1"><input type="checkbox" checked={setup} onChange={(e) => setSetup(e.target.checked)} /> Includes setup fee</label>
-            <label className="flex items-center gap-1">Amount (₦)
-              <Input className="w-32" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </label>
+            {!row.plan_guess && <span className="text-amber-900">The amount matches no price on this kitchen's list. Choose the plan.</span>}
           </div>
           <Input placeholder="Reason, only if the amount differs from the price list" value={diff} onChange={(e) => setDiff(e.target.value)} />
           <Button disabled={busy || !(kobo > 0) || !row.matched_business_id} onClick={approve}>Record payment and approve</Button>

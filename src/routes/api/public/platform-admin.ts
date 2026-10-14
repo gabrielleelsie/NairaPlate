@@ -490,16 +490,20 @@ export const Route = createFileRoute("/api/public/platform-admin")({
         }
 
         if (body.action === "selar_approve") {
-          const { data: row } = await admin.from("selar_payments").select("id, order_ref, status, matched_business_id, amount_kobo").eq("id", body.id).maybeSingle();
+          const { data: row } = await admin.from("selar_payments").select("id, order_ref, status, matched_business_id, amount_kobo, setup_guess").eq("id", body.id).maybeSingle();
           if (!row) return json({ error: "Payment not found." }, 404);
           if (row.status !== "awaiting_approval" || !row.matched_business_id) return json({ error: "Only a matched payment that is waiting for approval can be approved." }, 409);
-          const { data: rec } = await admin.from("subscription_payments").select("id").eq("business_id", row.matched_business_id).eq("payment_reference", row.order_ref).limit(1).maybeSingle();
-          if (!rec) return json({ error: "Record the payment first. Approval only closes it after the payment is recorded." }, 409);
+          // A setup fee payment changes no access: approving it records the fee as paid (the approval and its audit line are the record).
+          // A subscription payment must already be recorded through "record payment", which checks the amount and extends access.
+          if (!row.setup_guess) {
+            const { data: rec } = await admin.from("subscription_payments").select("id").eq("business_id", row.matched_business_id).eq("payment_reference", row.order_ref).limit(1).maybeSingle();
+            if (!rec) return json({ error: "Record the payment first. Approval only closes it after the payment is recorded." }, 409);
+          }
           const { error } = await admin.from("selar_payments")
             .update({ status: "approved", decided_by: adminId, decided_at: new Date().toISOString() }).eq("id", row.id).eq("status", "awaiting_approval");
           if (error) return json({ error: "Could not close the payment: " + error.message }, 500);
           await writeAudit(admin, { business_id: row.matched_business_id, actor_id: adminId, actor_role: "platform_admin", action: "selar_payment_approved",
-            entity_type: "selar_payments", entity_id: row.id, details: `${adminName} approved Selar order ${row.order_ref}` });
+            entity_type: "selar_payments", entity_id: row.id, details: row.setup_guess ? `${adminName} approved Selar order ${row.order_ref}: setup fee ${row.amount_kobo != null ? "₦" + (row.amount_kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }) : ""} recorded as paid` : `${adminName} approved Selar order ${row.order_ref}` });
           return json({ ok: true });
         }
 

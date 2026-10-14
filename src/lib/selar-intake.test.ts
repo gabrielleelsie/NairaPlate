@@ -58,7 +58,8 @@ describe("logLine", () => {
   });
 });
 
-import { cleanCode, extractPayment, fallbackRef, guessPlan, nairaToKobo } from "./selar-intake";
+import { DEFAULT_SETTINGS } from "./platform-settings";
+import { escapeLike, extractPayment, fallbackRef, isSetupProduct, nairaToKobo, normalizeEmail, termForAmount } from "./selar-intake";
 
 describe("nairaToKobo", () => {
   it("reads plain amounts in naira", () => {
@@ -77,43 +78,60 @@ describe("extractPayment", () => {
     const p = extractPayment({
       "Order ID": "SEL-123", "Customer Name": "Ada Kitchen", "Customer Email": "ada@x.com",
       "Product Name": "NairaPlate Restaurant Monthly + Setup", "Amount Paid": "NGN 25,000.00", "Purchase Date": "2026-10-14",
-      "Enter your NairaPlate business code": "ada-kitchen",
     });
     expect(p).toEqual({
-      orderRef: "SEL-123", businessCode: "ada-kitchen", buyerName: "Ada Kitchen", buyerEmail: "ada@x.com",
+      orderRef: "SEL-123", buyerName: "Ada Kitchen", buyerEmail: "ada@x.com",
       productName: "NairaPlate Restaurant Monthly + Setup", amountKobo: 2500000, currency: "NGN", paidAt: "2026-10-14",
     });
   });
   it("leaves missing fields empty instead of guessing", () => {
     const p = extractPayment({ foo: "bar" });
-    expect(p).toEqual({ orderRef: null, businessCode: null, buyerName: null, buyerEmail: null, productName: null, amountKobo: null, currency: null, paidAt: null });
+    expect(p).toEqual({ orderRef: null, buyerName: null, buyerEmail: null, productName: null, amountKobo: null, currency: null, paidAt: null });
   });
   it("reads numbers as well as text", () => expect(extractPayment({ order_id: 5512, amount: 10000 }).amountKobo).toBe(1000000));
   it("reports a currency other than naira so it can be flagged", () => expect(extractPayment({ amount: "USD 10.00" }).currency).toBe("USD"));
 });
 
-describe("guessPlan", () => {
-  it("reads the term and setup from the product name", () => {
-    expect(guessPlan("NairaPlate Restaurant Monthly")).toEqual({ term: "monthly", setup: false });
-    expect(guessPlan("NairaPlate Restaurant 3 Months + Setup")).toEqual({ term: "quarterly", setup: true });
-    expect(guessPlan("NairaPlate Full Suite 12 Months")).toEqual({ term: "yearly", setup: false });
-    expect(guessPlan("NairaPlate Buka Yearly + Setup")).toEqual({ term: "yearly", setup: true });
-  });
-  it("gives no term when the name does not say", () => {
-    expect(guessPlan("NairaPlate Restaurant")).toEqual({ term: null, setup: false });
-    expect(guessPlan(null)).toEqual({ term: null, setup: false });
+describe("isSetupProduct", () => {
+  it("is true for the setup service and false for the subscription", () => {
+    expect(isSetupProduct("NairaPlate Setup")).toBe(true);
+    expect(isSetupProduct("nairaplate SETUP fee")).toBe(true);
+    expect(isSetupProduct("NairaPlate Restaurant")).toBe(false);
+    expect(isSetupProduct(null)).toBe(false);
   });
 });
 
-describe("fallbackRef and cleanCode", () => {
+describe("termForAmount", () => {
+  const prices = DEFAULT_SETTINGS.prices;
+  it("finds the term whose price equals the amount, in the kitchen's own price list", () => {
+    expect(termForAmount(prices, "standard", 1_000_000)).toBe("monthly");
+    expect(termForAmount(prices, "standard", 2_700_000)).toBe("quarterly");
+    expect(termForAmount(prices, "standard", 9_600_000)).toBe("yearly");
+    expect(termForAmount(prices, "buka", 500_000)).toBe("monthly");
+  });
+  it("gives nothing when the amount matches no price, or the kitchen or amount is unknown", () => {
+    expect(termForAmount(prices, "standard", 500_000)).toBeNull();
+    expect(termForAmount(prices, null, 1_000_000)).toBeNull();
+    expect(termForAmount(null, "standard", 1_000_000)).toBeNull();
+    expect(termForAmount(prices, "standard", null)).toBeNull();
+    expect(termForAmount(prices, "standard", 0)).toBeNull();
+  });
+});
+
+describe("normalizeEmail and escapeLike", () => {
+  it("tidies a plain address and refuses anything else", () => {
+    expect(normalizeEmail("  Ada@Kitchen.COM ")).toBe("ada@kitchen.com");
+    for (const v of [null, "", "no-at-sign", "a b@c.com", "a@b"]) expect(normalizeEmail(v)).toBeNull();
+  });
+  it("escapes the wildcard characters so the match is exact", () => {
+    expect(escapeLike("a_b%c@x.com")).toBe("a\\_b\\%c@x.com");
+  });
+});
+
+describe("fallbackRef", () => {
   it("gives the same fingerprint to the same message and a different one to another", async () => {
     expect(await fallbackRef("abc")).toBe(await fallbackRef("abc"));
     expect(await fallbackRef("abc")).not.toBe(await fallbackRef("abd"));
     expect(await fallbackRef("abc")).toMatch(/^raw:[0-9a-f]{24}$/);
-  });
-  it("tidies a business code", () => {
-    expect(cleanCode("  Ada-Kitchen ")).toBe("ada-kitchen");
-    expect(cleanCode("   ")).toBeNull();
-    expect(cleanCode(null)).toBeNull();
   });
 });

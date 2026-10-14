@@ -1,4 +1,6 @@
-// Selar payment messages (first stage: logging only). Pure helpers shared by the receiver and its tests.
+// Selar payment messages. Pure helpers shared by the receiver and its tests.
+import type { OperatingMode } from "@/lib/features";
+import type { Prices } from "@/lib/platform-settings";
 
 /** Largest message the receiver reads. */
 export const SELAR_MAX_BYTES = 100_000;
@@ -64,7 +66,6 @@ export type PlanTerm = "monthly" | "quarterly" | "yearly";
 
 export type SelarPayment = {
   orderRef: string | null;
-  businessCode: string | null;
   buyerName: string | null;
   buyerEmail: string | null;
   productName: string | null;
@@ -86,16 +87,6 @@ function pick(fields: Record<string, unknown>, names: string[]): string | null {
   return null;
 }
 
-/** The first non-empty text under a name that contains any of the given words (for a checkout question used as the field name). */
-function pickContaining(fields: Record<string, unknown>, words: string[]): string | null {
-  for (const [k, v] of Object.entries(fields)) {
-    const n = norm(k);
-    if (!words.some((w) => n.includes(w))) continue;
-    if (typeof v === "string" && v.trim()) return v.trim();
-  }
-  return null;
-}
-
 /** "NGN 4,991.00", "₦4,991", 4991 or "4991.5" in naira to whole kobo. Null when it is not a plain amount. */
 export function nairaToKobo(value: string | null): number | null {
   if (!value) return null;
@@ -110,9 +101,6 @@ export function extractPayment(fields: Record<string, unknown>): SelarPayment {
   const currencyFromAmount = amountText ? (amountText.match(/\b([A-Za-z]{3})\b/)?.[1] ?? (amountText.includes("₦") ? "NGN" : null)) : null;
   return {
     orderRef: pick(fields, ["order_id", "orderid", "order_ref", "order_reference", "reference", "transaction_reference", "transaction_id", "sale_id", "id"]),
-    businessCode:
-      pick(fields, ["business_code", "business_id", "nairaplate_business_code", "payment_code"]) ??
-      pickContaining(fields, ["businesscode", "paymentcode", "nairaplate"]),
     buyerName: pick(fields, ["customer_name", "buyer_name", "name", "full_name"]),
     buyerEmail: pick(fields, ["customer_email", "buyer_email", "email"]),
     productName: pick(fields, ["product_name", "product", "product_title", "item", "title"]),
@@ -122,24 +110,27 @@ export function extractPayment(fields: Record<string, unknown>): SelarPayment {
   };
 }
 
-/** The plan term and whether setup is included, read from the product name. Null term when the name does not say. */
-export function guessPlan(productName: string | null): { term: PlanTerm | null; setup: boolean } {
-  const n = (productName ?? "").toLowerCase();
-  const setup = /\bsetup\b|set-up|set up/.test(n);
-  if (/\b(12|twelve)\s*(months?|mo)\b|\byear(ly)?\b|\bannual/.test(n)) return { term: "yearly", setup };
-  if (/\b(3|three)\s*(months?|mo)\b|\bquarter(ly)?\b/.test(n)) return { term: "quarterly", setup };
-  if (/\bmonth(ly)?\b|\b1\s*month\b/.test(n)) return { term: "monthly", setup };
-  return { term: null, setup };
+/** True for the setup service (its name contains "setup"). */
+export const isSetupProduct = (productName: string | null): boolean => /\bsetup\b|set-up|set up/i.test(productName ?? "");
+
+/** The plan term whose price (in the kitchen's own price list) equals the amount paid. Null when nothing matches. */
+export function termForAmount(prices: Prices | null | undefined, mode: OperatingMode | null | undefined, kobo: number | null): PlanTerm | null {
+  const p = mode ? prices?.plans?.[mode] : null;
+  if (!p || kobo === null || kobo <= 0) return null;
+  return (["monthly", "quarterly", "yearly"] as const).find((t) => p[`${t}_kobo` as const] === kobo) ?? null;
 }
+
+/** An email address tidied for matching. Null when it is not a plain address. */
+export function normalizeEmail(email: string | null | undefined): string | null {
+  const e = (email ?? "").trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length <= 200 ? e : null;
+}
+
+/** Escapes % and _ so an email can be matched exactly with ILIKE. */
+export const escapeLike = (v: string): string => v.replace(/[\\%_]/g, (c) => "\\" + c);
 
 /** A stable stand-in reference when the message carries none, so an identical re-send is still recognised as a duplicate. */
 export async function fallbackRef(raw: string): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
   return "raw:" + Array.from(new Uint8Array(d)).slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-
-/** The code typed at checkout, tidied for matching against a business code. */
-export const cleanCode = (code: string | null): string | null => {
-  const c = (code ?? "").trim().toLowerCase();
-  return c ? c.slice(0, 100) : null;
-};
