@@ -211,3 +211,14 @@ export async function sendPaymentConfirmation(
   ], "info");
   return send(to, `NairaPlate payment received — access until ${endsText}`, html);
 }
+
+/** Tells the buyer their Selar payment arrived and is waiting for approval. Nothing is activated by this email. */
+export async function sendSelarReceived(to: string, buyerName: string | null, amountText: string | null, reference: string): Promise<SendResult> {
+  const html = shell("Payment received: awaiting approval", [
+    `Hello ${escHtml(buyerName ?? "there")},`,
+    `We have received your NairaPlate subscription payment${amountText ? ` of <strong>${escHtml(amountText)}</strong>` : ""}.`,
+    `Your subscription is awaiting final approval. We will email you once your access has been updated.`,
+    `Reference: ${escHtml(reference)}`,
+  ], "info");
+  return send(to, "NairaPlate: payment received, awaiting approval", html);
+}
