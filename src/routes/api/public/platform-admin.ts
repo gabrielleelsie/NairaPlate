@@ -309,6 +309,12 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             : { data: [] as { id: string; display_name: string }[] };
           const recName = new Map((recorders ?? []).map((r) => [r.id, r.display_name]));
 
+          // Setup fees approved from Selar (read separately: if the table does not exist yet there are simply none).
+          const { data: setupRows, error: setupErr } = await admin.from("selar_payments")
+            .select("order_ref, amount_kobo, decided_at").eq("matched_business_id", body.business_id).eq("setup_guess", true).eq("status", "approved")
+            .order("decided_at", { ascending: false });
+          const setup_payments = setupErr ? [] : (setupRows ?? []);
+
           const { data: featureRows } = await admin.from("business_features").select("feature, enabled").eq("business_id", body.business_id);
           const features = { catering: (featureRows ?? []).some((f) => f.feature === "catering" && f.enabled === true) };
           const overrides = Object.fromEntries((featureRows ?? []).map((f) => [f.feature, f.enabled === true]));
@@ -318,7 +324,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
 
           const now = Date.now();
           return json({
-            features, overrides, operating_mode,
+            features, overrides, operating_mode, setup_payments,
             business: { ...biz, reason: biz.rejection_reason,
               has_access: biz.status === "approved" && !!biz.access_ends_at && new Date(biz.access_ends_at).getTime() > now },
             payments: (pays ?? []).map((p) => ({ ...p, recorded_by_name: recName.get(p.recorded_by) ?? "Platform admin" })),
