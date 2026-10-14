@@ -3,7 +3,6 @@
 // Tier 2 actions (suspend a business, emergency owner PIN reset) also ask for the admin's
 // own PIN, because a stolen session must never be enough to shut down or take over a kitchen.
 import { PlatformSettingsPanel } from "@/components/PlatformSettingsPanel";
-import { SelarPayments } from "@/components/SelarPayments";
 import { OPERATING_MODES, OVERRIDABLE, asMode, hasFeature, type OperatingMode } from "@/lib/features";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
@@ -105,7 +104,7 @@ function PlanBadge({ status, plan, access_ends_at }: { status: string; plan: str
 const isExpired = (b: Biz) => b.status === "approved" && !b.has_access;
 const endsSoon = (b: Biz) => { const st = accessState(b); return st.kind === "active" && st.daysLeft <= 3; };
 
-type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "selar" | "settings" | "security";
+type Tab = "health" | "queue" | "directory" | "diagnostics" | "audit" | "messages" | "settings" | "security";
 
 type Watch = { business_id: string; business_name: string; locked: number; flags: number; reasons: string[] };
 type Health = {
@@ -147,7 +146,6 @@ function PlatformConsole() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [auditBiz, setAuditBiz] = useState<string>("");
   const [unhandled, setUnhandled] = useState(0);
-  const [selarWaiting, setSelarWaiting] = useState(0);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -203,7 +201,6 @@ function PlatformConsole() {
     { key: "diagnostics", label: "Troubleshoot", count: lockedTotal },
     { key: "audit", label: "Audit trail" },
     { key: "messages", label: "Messages", count: unhandled },
-    { key: "selar", label: "Selar payments", count: selarWaiting },
     { key: "settings", label: "Settings" },
     { key: "security", label: "My account" },
   ];
@@ -247,7 +244,6 @@ function PlatformConsole() {
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "messages" && <Messages onCount={setUnhandled} />}
-        {tab === "selar" && <SelarPayments onCount={setSelarWaiting} />}
         {tab === "settings" && <PlatformSettingsPanel callApi={callApi} />}
         {tab === "security" && <MyAccount />}
       </div>
