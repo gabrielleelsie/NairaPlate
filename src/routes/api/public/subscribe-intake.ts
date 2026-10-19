@@ -1,13 +1,13 @@
 // subscribe-intake: the questions asked before a visitor is sent to pay. Public, but it only ever answers yes or no.
 //   { action: "check_new", email?, name? }              -> { email_taken, name_taken }
-//   { action: "verify_existing", business_id, email }   -> { ok, setup_paid, email }   (a store code and its owner's email together)
-//   { action: "me" } with a signed-in owner's token      -> { ok, business_id, email, setup_paid }
+//   { action: "verify_existing", business_id, email }   -> { ok, setup_paid, email, operating_mode }   (a store code and its owner's email together)
+//   { action: "me" } with a signed-in owner's token      -> { ok, business_id, email, setup_paid, operating_mode }
 // It changes nothing. A failed check never says which part was wrong.
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { escapeLike, normalizeEmail } from "@/lib/selar-intake";
-import { setupFeePaid, verifyOwnerEmail } from "@/lib/subscribe-identity.server";
+import { ownPlanMode, setupFeePaid, verifyOwnerEmail } from "@/lib/subscribe-identity.server";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const json = (b: unknown, status = 200) =>
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/api/public/subscribe-intake")({
         if (b.action === "verify_existing") {
           const c = await verifyOwnerEmail(admin, b.business_id, b.email);
           if (!c.ok) return json({ ok: false });
-          return json({ ok: true, email: c.email, setup_paid: await setupFeePaid(admin, c.businessId) });
+          return json({ ok: true, email: c.email, setup_paid: await setupFeePaid(admin, c.businessId), operating_mode: await ownPlanMode(admin, c.businessId) });
         }
 
         // me: a signed-in owner
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/api/public/subscribe-intake")({
         if (!businessId || (role !== "owner" && role !== "supa_admin")) return json({ ok: false });
         const { data: owner } = await admin.from("staff_users").select("email").eq("id", userData.user.id).maybeSingle();
         const email = normalizeEmail(owner?.email ?? "");
-        return json({ ok: true, business_id: businessId, email, setup_paid: await setupFeePaid(admin, businessId) });
+        return json({ ok: true, business_id: businessId, email, setup_paid: await setupFeePaid(admin, businessId), operating_mode: await ownPlanMode(admin, businessId) });
       },
     },
   },

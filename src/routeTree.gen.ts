@@ -64,7 +64,6 @@ import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public
 import { Route as ApiPublicPingRouteImport } from './routes/api/public/ping'
 import { Route as ApiPublicPlanChoiceRouteImport } from './routes/api/public/plan-choice'
 import { Route as ApiPublicPlatformAdminRouteImport } from './routes/api/public/platform-admin'
-import { Route as ApiPublicSelarWebhookRouteImport } from './routes/api/public/selar-webhook'
 import { Route as ApiPublicStaffAdminRouteImport } from './routes/api/public/staff-admin'
 import { Route as ApiPublicStaffPinLoginRouteImport } from './routes/api/public/staff-pin-login'
 import { Route as ApiPublicSubscribeIntakeRouteImport } from './routes/api/public/subscribe-intake'
@@ -349,11 +348,6 @@ const ApiPublicPlatformAdminRoute = ApiPublicPlatformAdminRouteImport.update({
   path: '/api/public/platform-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicSelarWebhookRoute = ApiPublicSelarWebhookRouteImport.update({
-  id: '/api/public/selar-webhook',
-  path: '/api/public/selar-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicStaffAdminRoute = ApiPublicStaffAdminRouteImport.update({
   id: '/api/public/staff-admin',
   path: '/api/public/staff-admin',
@@ -433,7 +427,6 @@ export interface FileRoutesByFullPath {
   '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/plan-choice': typeof ApiPublicPlanChoiceRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
-  '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
   '/api/public/subscribe-intake': typeof ApiPublicSubscribeIntakeRoute
@@ -495,7 +488,6 @@ export interface FileRoutesByTo {
   '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/plan-choice': typeof ApiPublicPlanChoiceRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
-  '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
   '/api/public/subscribe-intake': typeof ApiPublicSubscribeIntakeRoute
@@ -558,7 +550,6 @@ export interface FileRoutesById {
   '/api/public/ping': typeof ApiPublicPingRoute
   '/api/public/plan-choice': typeof ApiPublicPlanChoiceRoute
   '/api/public/platform-admin': typeof ApiPublicPlatformAdminRoute
-  '/api/public/selar-webhook': typeof ApiPublicSelarWebhookRoute
   '/api/public/staff-admin': typeof ApiPublicStaffAdminRoute
   '/api/public/staff-pin-login': typeof ApiPublicStaffPinLoginRoute
   '/api/public/subscribe-intake': typeof ApiPublicSubscribeIntakeRoute
@@ -622,7 +613,6 @@ export interface FileRouteTypes {
     | '/api/public/ping'
     | '/api/public/plan-choice'
     | '/api/public/platform-admin'
-    | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
     | '/api/public/subscribe-intake'
@@ -684,7 +674,6 @@ export interface FileRouteTypes {
     | '/api/public/ping'
     | '/api/public/plan-choice'
     | '/api/public/platform-admin'
-    | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
     | '/api/public/subscribe-intake'
@@ -746,7 +735,6 @@ export interface FileRouteTypes {
     | '/api/public/ping'
     | '/api/public/plan-choice'
     | '/api/public/platform-admin'
-    | '/api/public/selar-webhook'
     | '/api/public/staff-admin'
     | '/api/public/staff-pin-login'
     | '/api/public/subscribe-intake'
@@ -809,7 +797,6 @@ export interface RootRouteChildren {
   ApiPublicPingRoute: typeof ApiPublicPingRoute
   ApiPublicPlanChoiceRoute: typeof ApiPublicPlanChoiceRoute
   ApiPublicPlatformAdminRoute: typeof ApiPublicPlatformAdminRoute
-  ApiPublicSelarWebhookRoute: typeof ApiPublicSelarWebhookRoute
   ApiPublicStaffAdminRoute: typeof ApiPublicStaffAdminRoute
   ApiPublicStaffPinLoginRoute: typeof ApiPublicStaffPinLoginRoute
   ApiPublicSubscribeIntakeRoute: typeof ApiPublicSubscribeIntakeRoute
@@ -1203,13 +1190,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPlatformAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/selar-webhook': {
-      id: '/api/public/selar-webhook'
-      path: '/api/public/selar-webhook'
-      fullPath: '/api/public/selar-webhook'
-      preLoaderRoute: typeof ApiPublicSelarWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/staff-admin': {
       id: '/api/public/staff-admin'
       path: '/api/public/staff-admin'
@@ -1297,7 +1277,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPingRoute: ApiPublicPingRoute,
   ApiPublicPlanChoiceRoute: ApiPublicPlanChoiceRoute,
   ApiPublicPlatformAdminRoute: ApiPublicPlatformAdminRoute,
-  ApiPublicSelarWebhookRoute: ApiPublicSelarWebhookRoute,
   ApiPublicStaffAdminRoute: ApiPublicStaffAdminRoute,
   ApiPublicStaffPinLoginRoute: ApiPublicStaffPinLoginRoute,
   ApiPublicSubscribeIntakeRoute: ApiPublicSubscribeIntakeRoute,

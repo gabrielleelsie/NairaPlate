@@ -17,6 +17,7 @@ import { PLAN_NAME, type Prices } from "@/lib/platform-settings";
 import { DIFFERENCE_REASON_MIN, expectedPayment } from "@/lib/payment-check";
 import { accessState, formatLagosDate, PLAN_LABEL, termFor } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
+import { emailWarning } from "@/lib/email-notice";
 import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
 
 export const Route = createFileRoute("/approvals")({
@@ -143,6 +144,7 @@ function PlatformConsole() {
   const [all, setAll] = useState<Biz[]>([]);
   const [search, setSearch] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null); // yellow notice, e.g. the owner's email did not send
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState<string | null>(null);
@@ -163,7 +165,7 @@ function PlatformConsole() {
   }, []);
 
   const openDetail = useCallback(async (business_id: string) => {
-    setDetail(null); setTab("diagnostics"); setMsg(null); setErr(null);
+    setDetail(null); setTab("diagnostics"); setMsg(null); setWarn(null); setErr(null);
     if (!business_id) return setFocus(null); // "back to all businesses"
     setFocus(business_id);
     const { status, data } = await callApi({ action: "business_detail", business_id });
@@ -180,11 +182,12 @@ function PlatformConsole() {
   }
 
   async function act(body: Record<string, unknown>, okText: (d: Record<string, unknown>) => string) {
-    setBusy(true); setMsg(null); setErr(null);
+    setBusy(true); setMsg(null); setWarn(null); setErr(null);
     const { status, data } = await callApi(body);
     setBusy(false);
     if (status !== 200) { setErr(String(data["error"] ?? "That didn't work.")); return null; }
     setMsg(okText(data) + (data["still_expired"] ? ` ${String(data["message"] ?? "")}` : ""));
+    setWarn(emailWarning(data));
     await load();
     if (focus) {
       const { data: d2 } = await callApi({ action: "business_detail", business_id: focus });
@@ -235,7 +238,7 @@ function PlatformConsole() {
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-7 sm:px-6">
         <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
-            <Button key={t.key} variant={tab === t.key ? "default" : "outline"} onClick={() => { setTab(t.key); setMsg(null); setErr(null); }}
+            <Button key={t.key} variant={tab === t.key ? "default" : "outline"} onClick={() => { setTab(t.key); setMsg(null); setWarn(null); setErr(null); }}
               className={tab === t.key ? "bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" : ""}>
               {t.label}{t.count ? ` (${t.count})` : ""}
             </Button>
@@ -243,6 +246,7 @@ function PlatformConsole() {
         </div>
 
         {msg && <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">{msg}</p>}
+        {warn && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{warn}</p>}
         {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-destructive">{err}</p>}
 
         {tab === "health" && <HealthBoard onInspect={openDetail} onAudit={(id) => { setAuditBiz(id); setTab("audit"); }} />}
@@ -252,12 +256,12 @@ function PlatformConsole() {
         )}
         {tab === "diagnostics" && (
           <Diagnostics all={all} focus={focus} detail={detail} busy={busy} act={act} onPick={openDetail}
-            onDone={async (t) => { setErr(null); setMsg(t); await load(); await refreshDetail(); }}
-            onFail={async (t) => { setMsg(null); setErr(t); await load(); await refreshDetail(); }} />
+            onDone={async (t, w) => { setErr(null); setMsg(t); setWarn(w ?? null); await load(); await refreshDetail(); }}
+            onFail={async (t) => { setMsg(null); setWarn(null); setErr(t); await load(); await refreshDetail(); }} />
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "messages" && <Messages onCount={setUnhandled} />}
-        {tab === "selar" && <SelarPayments onCount={setSelarWaiting} />}
+        {tab === "selar" && <SelarPayments onCount={setSelarWaiting} onOpenStore={openDetail} />}
         {tab === "settings" && <PlatformSettingsPanel callApi={callApi} />}
         {tab === "security" && <MyAccount />}
       </div>
@@ -402,7 +406,7 @@ function Directory({ rows, search, setSearch, busy, act, onInspect }: {
 
 function Diagnostics({ all, focus, detail, busy, act, onPick, onDone, onFail }: {
   all: Biz[]; focus: string | null; detail: Detail | null; busy: boolean; act: Act; onPick: (id: string) => void;
-  onDone: (text: string) => Promise<void>; onFail: (text: string) => Promise<void>;
+  onDone: (text: string, warn?: string | null) => Promise<void>; onFail: (text: string) => Promise<void>;
 }) {
   const [resetting, setResetting] = useState<string | null>(null);
   const [pin, setPin] = useState("");
@@ -624,7 +628,7 @@ function RecordPayment({ mode: storeMode, businessId, businessName, suspended, b
   mode: OperatingMode | null; businessId: string; businessName: string; suspended: boolean; busy: boolean; act: Act;
   // A store still waiting for approval that paid first: approve it, set its plan type and record the payment in one go. It never gets a trial.
   pendingStore?: boolean; chosen?: { mode: string; term: string } | null;
-  onDone?: (text: string) => Promise<void>; onFail?: (text: string) => Promise<void>;
+  onDone?: (text: string, warn?: string | null) => Promise<void>; onFail?: (text: string) => Promise<void>;
 }) {
   const today = lagosDateKey(new Date());
   const [payMode, setPayMode] = useState<OperatingMode | "">(chosen ? asMode(chosen.mode) : storeMode ?? "");
@@ -743,7 +747,7 @@ function RecordPayment({ mode: storeMode, businessId, businessName, suspended, b
           const rec = await callApi(payload);
           setWorking(false);
           if (rec.status !== 200) return void (await onFail?.("The store is approved, but the payment was not recorded: " + String(rec.data["error"] ?? "") + ". Use Record payment below."));
-          await onDone?.(`${businessName} approved and payment saved. Access runs until ${formatLagosDate(String(rec.data["period_end"]))}. The owner has been emailed.`);
+          await onDone?.(`${businessName} approved and payment saved. Access runs until ${formatLagosDate(String(rec.data["period_end"]))}.${emailWarning(st.data, rec.data) ? "" : " The owner has been emailed."}`, emailWarning(st.data, rec.data));
         }}>{working ? "Working…" : "Approve and record payment"}</Button>
       ) : (
       <Button disabled={busy || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {

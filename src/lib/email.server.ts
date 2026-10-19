@@ -212,12 +212,6 @@ export async function sendPaymentConfirmation(
   return send(to, `NairaPlate payment received — access until ${endsText}`, html);
 }
 
-/** Tells a platform admin that a Selar payment is waiting. Internal only: never sent to a buyer or an owner. */
-export async function sendSelarAdminAlert(to: string, lines: string[]): Promise<SendResult> {
-  const html = shell("New Selar payment waiting", lines.map((l) => escHtml(l)), "info");
-  return send(to, "NairaPlate: new Selar payment waiting", html);
-}
-
 /** Tells the kitchen owner their setup fee payment was recorded (sent after a platform admin approves it). */
 export async function sendSetupFeeReceived(to: string, businessName: string, amountText: string | null, reference: string): Promise<SendResult> {
   const html = shell("Setup fee received", [

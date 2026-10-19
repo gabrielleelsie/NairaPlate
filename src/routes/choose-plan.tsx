@@ -9,7 +9,7 @@ import { usePublicSettings } from "@/lib/use-public-settings";
 import { PLAN_TERMS, TERM_LABEL, amountFor, isMode, type PlanTerm } from "@/lib/plan-choice";
 import type { OperatingMode } from "@/lib/features";
 import { SELAR_SETUP_URL, SELAR_SUBSCRIBE_URL } from "@/lib/selar-links";
-import { C, cardStyle, FONT_STACK, SiteFooter, SiteHeader } from "@/components/site/site-chrome";
+import { C, cardStyle, FONT_STACK, SiteFooter, SiteHeader, WHATSAPP_HREF } from "@/components/site/site-chrome";
 
 const TITLE = "Choose your plan | NairaPlate";
 const DESCRIPTION = "Choose your NairaPlate plan and how long you want to pay for.";
@@ -29,9 +29,11 @@ export const Route = createFileRoute("/choose-plan")({
   component: ChoosePlanPage,
 });
 
+// mode: the plan type an existing store already has. An existing customer is shown only that plan; a new store is shown the plans.
 type Who =
-  | { kind: "signed_in"; email: string | null; setupPaid: boolean }
-  | { kind: "existing" | "new"; businessId: string; email: string; setupPaid: boolean };
+  | { kind: "signed_in"; email: string | null; setupPaid: boolean; mode: OperatingMode | null }
+  | { kind: "existing"; businessId: string; email: string; setupPaid: boolean; mode: OperatingMode | null }
+  | { kind: "new"; businessId: string; email: string; setupPaid: boolean };
 
 async function post(url: string, body: unknown, token?: string) {
   const res = await fetch(url, {
@@ -58,7 +60,7 @@ function ChoosePlanPage() {
         const token = data.session?.access_token;
         if (token) {
           const r = await post("/api/public/subscribe-intake", { action: "me" }, token);
-          if (live && r.data["ok"] === true) setWho({ kind: "signed_in", email: (r.data["email"] as string | null) ?? null, setupPaid: r.data["setup_paid"] === true });
+          if (live && r.data["ok"] === true) setWho({ kind: "signed_in", email: (r.data["email"] as string | null) ?? null, setupPaid: r.data["setup_paid"] === true, mode: isMode(r.data["operating_mode"]) ? r.data["operating_mode"] : null });
         }
       } catch {
         /* not signed in: the questions are shown */
@@ -124,7 +126,7 @@ function ExistingForm({ onBack, onDone }: { onBack: () => void; onDone: (w: Who)
     setBusy(true); setError(null);
     const r = await post("/api/public/subscribe-intake", { action: "verify_existing", business_id: code.trim().toLowerCase(), email });
     setBusy(false);
-    if (r.data["ok"] === true) onDone({ kind: "existing", businessId: code.trim().toLowerCase(), email: String(r.data["email"] ?? email), setupPaid: r.data["setup_paid"] === true });
+    if (r.data["ok"] === true) onDone({ kind: "existing", businessId: code.trim().toLowerCase(), email: String(r.data["email"] ?? email), setupPaid: r.data["setup_paid"] === true, mode: isMode(r.data["operating_mode"]) ? r.data["operating_mode"] : null });
     else setError("We could not find that store. Check the business code and the email on the account.");
   }
   return (
@@ -137,6 +139,10 @@ function ExistingForm({ onBack, onDone }: { onBack: () => void; onDone: (w: Who)
         <Button type="submit" disabled={busy || !code.trim() || !email.trim()}>{busy ? "Checking…" : "Continue"}</Button>
         <Button type="button" variant="outline" onClick={onBack}>Back</Button>
       </div>
+      <p style={{ color: C.muted, fontSize: 15, margin: 0 }}>
+        Forgot your business code?{" "}
+        <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" style={{ color: C.blue, fontWeight: 700 }}>Message us on WhatsApp</a>
+      </p>
     </form>
   );
 }
@@ -215,9 +221,10 @@ function NewForm({ onBack, onDone }: { onBack: () => void; onDone: (w: Who) => v
 }
 
 function PlanChooser({ who, prices, only }: { who: Who; prices: ReturnType<typeof usePublicSettings>["prices"]; only: OperatingMode | undefined }) {
-  // Coming from one plan's own Subscribe button (for example Buka), only that plan is shown.
-  const shown: OperatingMode[] = only ? [only] : PLAN_MODES;
-  const [mode, setMode] = useState<OperatingMode | null>(only ?? null);
+  // An existing customer is shown only their own plan type. Otherwise, coming from one plan's own Subscribe button (for example Buka), only that plan is shown.
+  const own = who.kind === "new" ? null : who.mode;
+  const shown: OperatingMode[] = own ? [own] : only ? [only] : PLAN_MODES;
+  const [mode, setMode] = useState<OperatingMode | null>(own ?? only ?? null);
   const [term, setTerm] = useState<PlanTerm | null>(null);
   const [busy, setBusy] = useState(false);
   const amount = mode && term ? amountFor(prices, mode, term) : null;

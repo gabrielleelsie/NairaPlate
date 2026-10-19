@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "./platform-settings";
-import { amountFor, needsNoTrialDate, noTrialEndsAt, planDifferences, planFromAmount, planText } from "./plan-choice";
+import { amountFor, needsNoTrialDate, noTrialEndsAt, planDifferences, planFromAmount, planText, waitingToPay } from "./plan-choice";
 
 const prices = DEFAULT_SETTINGS.prices;
 
@@ -57,5 +57,28 @@ describe("no trial for a store that comes through the payment route", () => {
     expect(needsNoTrialDate({ ...ok, status: "approved" })).toBe(false);
     expect(needsNoTrialDate({ ...ok, status: "suspended" })).toBe(false);
     expect(needsNoTrialDate({ ...ok, accessEndsAt: "2026-10-20T00:00:00Z" })).toBe(false);
+  });
+});
+
+describe("waitingToPay", () => {
+  const c = (business_id: string, created_at: string, plan_mode = "buka", plan_term = "monthly") => ({ business_id, plan_mode, plan_term, created_at });
+  it("lists a store that chose a plan and never paid, newest first", () => {
+    const out = waitingToPay([c("a", "2026-10-18T10:00:00Z"), c("b", "2026-10-19T09:00:00Z", "standard", "yearly")], new Map());
+    expect(out.map((i) => i.business_id)).toEqual(["b", "a"]);
+    expect(out[0]).toEqual({ business_id: "b", mode: "standard", term: "yearly", chosen_at: "2026-10-19T09:00:00Z" });
+  });
+  it("shows each store once, with its newest choice", () => {
+    const out = waitingToPay([c("a", "2026-10-18T10:00:00Z", "buka"), c("a", "2026-10-19T10:00:00Z", "advanced", "quarterly")], new Map());
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ mode: "advanced", term: "quarterly" });
+  });
+  it("drops a store once a payment was recorded after its choice", () => {
+    expect(waitingToPay([c("a", "2026-10-18T10:00:00Z")], new Map([["a", "2026-10-18T12:00:00+00:00"]]))).toEqual([]);
+  });
+  it("keeps a store that chose again after its last payment (a renewal)", () => {
+    expect(waitingToPay([c("a", "2026-10-19T10:00:00Z")], new Map([["a", "2026-09-19T12:00:00Z"]]))).toHaveLength(1);
+  });
+  it("ignores a choice it cannot read", () => {
+    expect(waitingToPay([c("a", "2026-10-18T10:00:00Z", "gold", "monthly"), c("b", "2026-10-18T10:00:00Z", "buka", "weekly")], new Map())).toEqual([]);
   });
 });

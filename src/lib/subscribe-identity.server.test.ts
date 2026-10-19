@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { setupFeePaid, verifyOwnerEmail } from "./subscribe-identity.server";
+import { ownPlanMode, setupFeePaid, verifyOwnerEmail } from "./subscribe-identity.server";
 
 // A tiny stand-in for the database client: each table answers with the rows it is given, and the filters used are recorded.
 type Rows = Record<string, unknown[]>;
@@ -58,4 +58,25 @@ describe("setupFeePaid", () => {
   it("is true for an approved Selar setup payment", async () => expect(await setupFeePaid(fake({ selar_payments: [{ id: "s" }], subscription_payments: [] }), "ada")).toBe(true));
   it("is true when a recorded payment included the setup fee", async () => expect(await setupFeePaid(fake({ selar_payments: [], subscription_payments: [{ id: "p" }] }), "ada")).toBe(true));
   it("is false when neither exists", async () => expect(await setupFeePaid(fake({ selar_payments: [], subscription_payments: [] }), "ada")).toBe(false));
+});
+
+// A stand-in for the database client that answers the one question ownPlanMode asks.
+const fakeOne = (row: unknown, error: unknown = null) =>
+  ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: row, error }) }) }) }) }) as unknown as SupabaseClient;
+
+describe("ownPlanMode", () => {
+  it("gives the plan type of an approved or suspended store", async () => {
+    expect(await ownPlanMode(fakeOne({ status: "approved", operating_mode: "standard" }), "x")).toBe("standard");
+    expect(await ownPlanMode(fakeOne({ status: "suspended", operating_mode: "buka" }), "x")).toBe("buka");
+    expect(await ownPlanMode(fakeOne({ status: "approved", operating_mode: "advanced" }), "x")).toBe("advanced");
+  });
+  it("gives nothing for a store still waiting, so every plan is shown", async () => {
+    expect(await ownPlanMode(fakeOne({ status: "pending", operating_mode: "advanced" }), "x")).toBeNull();
+  });
+  it("gives nothing when the plan type is missing or unknown, or the store cannot be read", async () => {
+    expect(await ownPlanMode(fakeOne({ status: "approved", operating_mode: null }), "x")).toBeNull();
+    expect(await ownPlanMode(fakeOne({ status: "approved", operating_mode: "gold" }), "x")).toBeNull();
+    expect(await ownPlanMode(fakeOne(null), "x")).toBeNull();
+    expect(await ownPlanMode(fakeOne(null, { message: "no such column" }), "x")).toBeNull();
+  });
 });
