@@ -53,6 +53,9 @@ const PLANS: Plan[] = [
       "Ingredients, recipes and batches with costs",
       "Staff and PINs",
       "Things to check",
+      "Wastage",
+      "Stock take",
+      "Audit log",
       "Weekly or monthly printable report",
       "Daily summary email each evening on days with sales",
     ],
@@ -63,13 +66,10 @@ const PLANS: Plan[] = [
     intro: "Everything in Buka, plus:",
     includes: [
       "Customer credit",
-      "Wastage",
-      "Stock take",
       "Receipt capture",
       "Today's cost check",
       "7-day cashflow",
       "“Why did my margin change?” with the top 2 reasons",
-      "Audit log",
       "Pricing review",
       "Accountant exports: Sales Day Book, Cash Drawer Summary and Cash Paid Out Register",
     ],
@@ -87,10 +87,10 @@ const PLANS: Plan[] = [
 ];
 
 const STEPS = [
-  "Message us on WhatsApp and tell us whether you want to pay monthly, every 3 months or every 12 months.",
-  "We send you our bank details and the exact amount. For your first payment, that is your plan price plus the one-off setup fee.",
-  "You pay by bank transfer and send us the proof.",
-  "After we confirm your bank transfer, a NairaPlate administrator records your payment and activates your plan.",
+  "Press Subscribe. Tell us if you are an existing customer or new, and give your details if you are new.",
+  "Choose your plan and how long you want to pay for. On your first payment, you pay the one-off setup fee first.",
+  "Pay on the payment page, using the same email you gave us.",
+  "After we confirm your payment, we switch your plan on and email you.",
 ];
 
 function PricingPage() {

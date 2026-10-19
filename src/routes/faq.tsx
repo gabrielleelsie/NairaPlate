@@ -1,7 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { monthlyPricesSentence, setupFeesSentence } from "@/lib/platform-settings";
-import { usePublicSettings } from "@/lib/use-public-settings";
-
 import {
   C,
   FloatingWhatsApp,
@@ -16,7 +13,8 @@ const TITLE = "Frequently asked questions | NairaPlate";
 const DESCRIPTION =
   "Answers to common questions about NairaPlate: the 7-day free trial, market units, pricing your plates, stock, bank transfers, staff PINs, security and how to get started.";
 
-type Faq = { q: string; a: string };
+// link: any question about price points to the pricing page, so prices are written in one place only.
+type Faq = { q: string; a: string; link?: { to: "/pricing"; label: string } };
 type Group = { id: string; title: string; items: Faq[] };
 
 // Every answer below is checked against what the app does today. If the app changes, change the answer.
@@ -159,15 +157,18 @@ const GROUPS: Group[] = [
       },
       {
         q: "Is there a setup fee?",
-        a: "Yes. There is no setup fee during the free trial. When you start a paid plan, our team sets up your full menu with you, and you pay the setup fee once. {setup} Message us on WhatsApp.",
+        a: "Yes. There is no setup fee during the free trial. When you start a paid plan, you pay the setup fee once, and our team sets up your full menu with you. See the pricing page for the amount.",
+        link: { to: "/pricing", label: "Go to the pricing page" },
       },
       {
         q: "How much does it cost?",
-        a: "There are three plans: Buka, Restaurant and Full Suite. {prices} Paying for 3 months or 12 months costs less than month by month. See the pricing page for every price. Message us on WhatsApp to pay, and we will give you the payment details.",
+        a: "There are three plans: Buka, Restaurant and Full Suite. Paying for 3 months or 12 months costs less than month by month. See the pricing page for every price and to choose yours.",
+        link: { to: "/pricing", label: "Go to the pricing page" },
       },
       {
         q: "How do I pay?",
-        a: "Message us on WhatsApp and we will give you the payment details. Once we confirm your payment, we switch your plan on.",
+        a: "Press Subscribe on the pricing page. Choose your plan and how long you want to pay for, and you will be taken to the payment page. Once we confirm your payment, we switch your plan on and email you.",
+        link: { to: "/pricing", label: "Go to the pricing page" },
       },
     ],
   },
@@ -183,18 +184,13 @@ const GROUPS: Group[] = [
   },
 ];
 
-const PRICES_FALLBACK = "Message us on WhatsApp for current prices.";
-const SETUP_FALLBACK = "Message us on WhatsApp for the amount.";
-/** The visible answers show the prices an admin has set, so they never go stale. The structured data uses the generic lines. */
-const fill = (a: string, prices: string, setup: string) => a.replace("{prices}", prices || PRICES_FALLBACK).replace("{setup}", setup || SETUP_FALLBACK);
-
 const jsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: GROUPS.flatMap((g) => g.items).map((i) => ({
     "@type": "Question",
     name: i.q,
-    acceptedAnswer: { "@type": "Answer", text: fill(i.a, "", "") },
+    acceptedAnswer: { "@type": "Answer", text: i.a },
   })),
 });
 
@@ -214,9 +210,6 @@ export const Route = createFileRoute("/faq")({
 });
 
 function FaqPage() {
-  const { prices } = usePublicSettings();
-  const priceLine = monthlyPricesSentence(prices);
-  const setupLine = setupFeesSentence(prices);
   return (
     <div className="np-public" style={{ fontFamily: FONT_STACK }}>
       <SiteHeader />
@@ -296,7 +289,12 @@ function FaqPage() {
                           +
                         </span>
                       </summary>
-                      <p style={{ margin: 0, padding: "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{fill(item.a, priceLine, setupLine)}</p>
+                      <p style={{ margin: 0, padding: item.link ? "0 20px 8px" : "0 20px 20px", color: C.muted, fontSize: 16, lineHeight: 1.7 }}>{item.a}</p>
+                      {item.link && (
+                        <p style={{ margin: 0, padding: "0 20px 20px" }}>
+                          <Link to={item.link.to} style={{ color: C.blue, fontSize: 16, fontWeight: 700 }}>{item.link.label}</Link>
+                        </p>
+                      )}
                     </details>
                   ))}
                 </div>

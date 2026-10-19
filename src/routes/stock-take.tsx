@@ -113,7 +113,7 @@ function StockTake() {
 
       {session.role !== "cook" && (
         <section className="mt-10" data-testid="loss-report">
-          <h2 className="text-lg font-medium text-foreground">Where stock went missing (last 30 days)</h2>
+          <h2 className="text-lg font-medium text-foreground">Leakage report (last 30 days)</h2>
           {losses.rows.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">No missing stock has been found by a stock-take in the last 30 days.</p>
           ) : (
