@@ -375,15 +375,18 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: owner } = await admin.from("staff_users")
             .select("email").eq("business_id", body.business_id).eq("role", "owner")
             .not("email", "is", null).limit(1).maybeSingle();
+          let emailNote: string | null = null; // why the owner was not emailed; null when the email went out
           if (owner?.email) {
             const r = await sendOwnerStatusEmail(owner.email, before.name, body.status, body.reason ?? null);
             if (!r.sent) {
+              emailNote = r.reason ?? "email request failed or timed out";
               await logEmailUndelivered(admin, {
                 businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
                 subjectOf: `${before.name} (${body.status})`, reason: r.reason ?? "email request failed or timed out",
               });
             }
           } else {
+            emailNote = "the owner has no email address on file";
             await logEmailUndelivered(admin, {
               businessId: body.business_id, kind: "Owner status notice", actorId: adminId,
               subjectOf: `${before.name} (${body.status})`, reason: "the owner has no email address on file",
@@ -394,6 +397,7 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             (!before.access_ends_at || new Date(before.access_ends_at).getTime() <= Date.now());
           return json({
             ok: true, status: body.status, was: before.status,
+            owner_emailed: emailNote === null, ...(emailNote ? { email_note: emailNote } : {}),
             ...(stillExpired ? { still_expired: true, message: "Reactivated, but their plan has already ended. Record a payment to give them access." } : {}),
           });
         }
@@ -463,13 +467,18 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             .select("email").eq("business_id", biz.id).eq("role", "owner")
             .not("email", "is", null).limit(1).maybeSingle();
           const subjectOf = `${biz.name} (payment ${body.payment_reference})`;
+          let emailNote: string | null = null; // why the owner was not emailed; null when the email went out
           if (owner?.email) {
             const r = await sendPaymentConfirmation(owner.email, biz.name, PLAN_LABEL[body.plan] ?? body.plan, amountText, body.payment_reference, endsText);
-            if (!r.sent) await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: r.reason ?? "email request failed or timed out" });
+            if (!r.sent) {
+              emailNote = r.reason ?? "email request failed or timed out";
+              await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: emailNote });
+            }
           } else {
-            await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: "the owner has no email address on file" });
+            emailNote = "the owner has no email address on file";
+            await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: emailNote });
           }
-          return json({ ok: true, ...result, still_suspended: biz.status === "suspended" });
+          return json({ ok: true, ...result, still_suspended: biz.status === "suspended", owner_emailed: emailNote === null, ...(emailNote ? { email_note: emailNote } : {}) });
         }
 
         // ---------- Selar payments waiting for approval ----------
