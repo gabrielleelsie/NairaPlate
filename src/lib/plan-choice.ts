@@ -54,3 +54,24 @@ export const noTrialEndsAt = (now: number = Date.now()): string => new Date(now 
 export function needsNoTrialDate(a: { status: string; accessEndsAt: string | null }): boolean {
   return a.status === "pending" && a.accessEndsAt === null;
 }
+
+export type PlanChoiceRow = { business_id: string; plan_mode: string; plan_term: string; created_at: string };
+export type WaitingToPayItem = { business_id: string; mode: OperatingMode; term: PlanTerm; chosen_at: string };
+
+/**
+ * Who chose a plan on the plan page and has not paid since. Each store appears once, with its newest choice, and only while that choice
+ * is newer than its last recorded payment (or it has no payment at all). Newest choice first.
+ */
+export function waitingToPay(choices: PlanChoiceRow[], lastPaidAt: Map<string, string>): WaitingToPayItem[] {
+  const seen = new Set<string>();
+  const out: WaitingToPayItem[] = [];
+  for (const c of [...choices].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))) {
+    if (seen.has(c.business_id)) continue;
+    seen.add(c.business_id);
+    if (!isMode(c.plan_mode) || !isTerm(c.plan_term)) continue;
+    const paid = lastPaidAt.get(c.business_id);
+    if (paid && Date.parse(paid) >= Date.parse(c.created_at)) continue;
+    out.push({ business_id: c.business_id, mode: c.plan_mode, term: c.plan_term, chosen_at: c.created_at });
+  }
+  return out;
+}

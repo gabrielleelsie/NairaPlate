@@ -9,6 +9,7 @@ import { lagosDateKey } from "@/lib/lagos-time";
 import { PLAN_NAME } from "@/lib/platform-settings";
 import { TERM_LABEL, planText, type PlanTerm } from "@/lib/plan-choice";
 import type { OperatingMode } from "@/lib/features";
+import { WaitingToPay, type WaitingRow } from "@/components/WaitingToPay";
 
 type Row = {
   id: string; created_at: string; order_ref: string; status: "awaiting_approval" | "unmatched" | "approved" | "rejected";
@@ -32,9 +33,10 @@ async function callApi(body: unknown) {
 const naira = (kobo: number | null) => (kobo === null ? "not read" : "₦" + (kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 2 }));
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Lagos", dateStyle: "medium", timeStyle: "short" });
 
-export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
+export function SelarPayments({ onCount, onOpenStore }: { onCount?: (n: number) => void; onOpenStore?: (businessId: string) => void }) {
   const [view, setView] = useState<"open" | "done">("open");
   const [rows, setRows] = useState<Row[]>([]);
+  const [waiting, setWaiting] = useState<WaitingRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,6 +48,8 @@ export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
     const list = (data["payments"] ?? []) as Row[];
     setRows(list);
     if (view === "open") onCount?.(list.length);
+    const w = await callApi({ action: "waiting_to_pay" });
+    setWaiting(w.status === 200 ? ((w.data["waiting"] ?? []) as WaitingRow[]) : []);
   }, [view, onCount]);
   useEffect(() => { void load(); }, [load]);
 
@@ -59,6 +63,7 @@ export function SelarPayments({ onCount }: { onCount?: (n: number) => void }) {
       <p className="text-sm text-muted-foreground">
         These payments came from Selar. Nothing here has switched on any kitchen. Approving records the payment (the amount is checked against the price list) and emails the owner.
       </p>
+      {view === "open" && <WaitingToPay items={waiting} onOpenStore={onOpenStore} />}
       {msg && <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">{msg}</p>}
       {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-destructive">{err}</p>}
       {rows.length === 0 && !err && <p className="text-sm">{view === "open" ? "Nothing waiting." : "Nothing decided yet."}</p>}
