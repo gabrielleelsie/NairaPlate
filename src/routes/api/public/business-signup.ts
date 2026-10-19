@@ -8,6 +8,7 @@ import { sendSignupAlert, logEmailUndelivered, NO_ADMIN_EMAIL_REASON } from "@/l
 import { z } from "zod";
 import { hashPin } from "@/lib/pin-hash";
 import { escapeLike } from "@/lib/selar-intake";
+import { noTrialEndsAt } from "@/lib/plan-choice";
 
 const SUPABASE_URL = "https://ckklehqascyglqnqtwpn.supabase.co";
 const RESERVED = new Set(["platform", "admin", "nairaplate"]);
@@ -23,6 +24,8 @@ const SignupSchema = z.object({
   pin: z.string().regex(/^\d{4,8}$/, "PIN must be 4–8 digits"),
   contact: z.string().trim().min(5, "Phone or email is required").max(120),
   caters: z.boolean().optional(),
+  // Set only by the payment page. Such a store is never given a trial (see noTrialEndsAt).
+  via_payment: z.boolean().optional(),
 });
 
 function json(body: unknown, status = 200) {
@@ -81,6 +84,16 @@ export const Route = createFileRoute("/api/public/business-signup")({
             return json({ error: "That business code is taken." }, 409);
           }
           return json({ error: "Could not register the business." }, 500);
+        }
+
+        // A store registered through the payment page never gets a trial: it is given an end date that has already passed, so the database
+        // finds the date filled in at approval and starts no trial. Until its first payment is recorded the owner sees only the Subscribe screen.
+        if (d.via_payment) {
+          const { error: dErr } = await admin.from("businesses").update({ access_ends_at: noTrialEndsAt() }).eq("id", d.business_id).is("access_ends_at", null);
+          if (dErr) {
+            console.error("could not set the no-trial date at sign-up", dErr.message);
+            return json({ error: "Your store was saved, but we could not finish setting it up. Please message us on WhatsApp." }, 500);
+          }
         }
 
         // The sign-up question "Do you cater for events?" switches catering on. A failure here never blocks the signup: support can switch it on later.

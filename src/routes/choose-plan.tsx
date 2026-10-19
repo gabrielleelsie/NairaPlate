@@ -181,7 +181,7 @@ function NewForm({ onBack, onDone }: { onBack: () => void; onDone: (w: Who) => v
     e.preventDefault();
     if (!canSubmit) return;
     setBusy(true); setError(null);
-    const r = await post("/api/public/business-signup", { action: "signup", business_id: code.trim().toLowerCase(), name, owner_name: owner, pin, contact: email.trim() });
+    const r = await post("/api/public/business-signup", { action: "signup", business_id: code.trim().toLowerCase(), name, owner_name: owner, pin, contact: email.trim(), via_payment: true });
     setBusy(false);
     if (r.data["ok"]) onDone({ kind: "new", businessId: code.trim().toLowerCase(), email: email.trim().toLowerCase(), setupPaid: false });
     else setError(String(r.data["error"] ?? "Could not register."));
@@ -300,6 +300,7 @@ function PlanChooser({ who, prices, only }: { who: Who; prices: ReturnType<typeo
         >
           {busy ? "One moment…" : "Continue"}
         </button>
+        <p style={{ color: C.muted, fontSize: 15, margin: "14px 0 0" }}>Your access is switched on once your payment is confirmed.</p>
       </div>
     </>
   );
