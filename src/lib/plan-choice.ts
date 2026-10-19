@@ -50,7 +50,7 @@ export const choiceLine = (prices: Prices | null | undefined, p: PlanPick): stri
  */
 export const noTrialEndsAt = (now: number = Date.now()): string => new Date(now - 1000).toISOString();
 
-/** True when a waiting store with an empty end date has a Selar payment waiting: it must be given its past end date before it is approved. */
-export function needsNoTrialDate(a: { status: string; accessEndsAt: string | null; hasWaitingSelarPayment: boolean }): boolean {
-  return a.status === "pending" && a.accessEndsAt === null && a.hasWaitingSelarPayment;
+/** True when a waiting store still has an empty end date: it must be given its past end date before it is approved from a payment. */
+export function needsNoTrialDate(a: { status: string; accessEndsAt: string | null }): boolean {
+  return a.status === "pending" && a.accessEndsAt === null;
 }

@@ -51,12 +51,11 @@ describe("no trial for a store that comes through the payment route", () => {
     expect(noTrialEndsAt(now)).toBe("2026-10-19T09:59:59.000Z");
     expect(Date.parse(noTrialEndsAt(now))).toBeLessThan(now);
   });
-  const ok = { status: "pending", accessEndsAt: null as string | null, hasWaitingSelarPayment: true };
-  it("prepares a waiting store with an empty end date and a payment waiting", () => expect(needsNoTrialDate(ok)).toBe(true));
+  const ok = { status: "pending", accessEndsAt: null as string | null };
+  it("prepares a waiting store that still has an empty end date", () => expect(needsNoTrialDate(ok)).toBe(true));
   it("refuses everything else", () => {
     expect(needsNoTrialDate({ ...ok, status: "approved" })).toBe(false);
     expect(needsNoTrialDate({ ...ok, status: "suspended" })).toBe(false);
     expect(needsNoTrialDate({ ...ok, accessEndsAt: "2026-10-20T00:00:00Z" })).toBe(false);
-    expect(needsNoTrialDate({ ...ok, hasWaitingSelarPayment: false })).toBe(false);
   });
 });
