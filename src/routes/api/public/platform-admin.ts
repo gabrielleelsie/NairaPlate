@@ -20,7 +20,7 @@ import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPayme
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
-import { canSkipTrial, isMode, isTerm, planDifferences, planFromAmount, type PlanPick } from "@/lib/plan-choice";
+import { isMode, isTerm, needsNoTrialDate, noTrialEndsAt, planDifferences, planFromAmount, type PlanPick } from "@/lib/plan-choice";
 import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
 import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
@@ -61,7 +61,7 @@ const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("selar_list"), view: z.enum(["open", "done"]) }),
   z.object({ action: z.literal("selar_assign"), id: z.string().uuid(), business_id: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal("selar_approve"), id: z.string().uuid() }),
-  z.object({ action: z.literal("skip_trial"), business_id: z.string().trim().min(1).max(100) }),
+  z.object({ action: z.literal("prepare_paid_store"), business_id: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal("get_settings") }),
   z.object({ action: z.literal("save_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), value: z.unknown(), admin_pin: PinSchema }),
   z.object({ action: z.literal("reset_setting"), key: z.enum(["prices", "locked_screen", "expiry_banner", "reminders", "news"]), admin_pin: PinSchema }),
@@ -323,9 +323,14 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           const { data: modeRow, error: modeErr } = await admin.from("businesses").select("operating_mode" as never).eq("id", body.business_id).maybeSingle();
           const operating_mode = modeErr ? null : ((modeRow as { operating_mode?: string } | null)?.operating_mode ?? null);
 
+          // What the owner chose on the plan page (latest). If that table does not exist yet there is simply none.
+          const { data: pcRows, error: pcErr } = await admin.from("plan_choices").select("plan_mode, plan_term").eq("business_id", body.business_id).order("created_at", { ascending: false }).limit(1);
+          const pc = !pcErr ? pcRows?.[0] : undefined;
+          const plan_choice = pc && isMode(pc.plan_mode) && isTerm(pc.plan_term) ? { mode: pc.plan_mode, term: pc.plan_term } : null;
+
           const now = Date.now();
           return json({
-            features, overrides, operating_mode, setup_payments,
+            features, overrides, operating_mode, setup_payments, plan_choice,
             business: { ...biz, reason: biz.rejection_reason,
               has_access: biz.status === "approved" && !!biz.access_ends_at && new Date(biz.access_ends_at).getTime() > now },
             payments: (pays ?? []).map((p) => ({ ...p, recorded_by_name: recName.get(p.recorded_by) ?? "Platform admin" })),
@@ -522,19 +527,18 @@ export const Route = createFileRoute("/api/public/platform-admin")({
           return json({ ok: true });
         }
 
-        // ---------- skip_trial: a store that paid first starts on the day it is approved, with no trial ----------
-        // Allowed only for an approved store still on its automatic trial, with no payment recorded yet and a Selar payment waiting for it.
-        if (body.action === "skip_trial") {
-          const { data: biz } = await admin.from("businesses").select("id, name, status, plan, access_ends_at").eq("id", body.business_id).maybeSingle();
+        // ---------- prepare_paid_store: a waiting store that is approved from a payment must never be given a trial ----------
+        // Run before the store is approved. A store registered through the payment page already has its past end date, so this does nothing for it.
+        // A waiting store with an empty end date is given the past end date, so approval cannot start a trial. Safe to run twice.
+        if (body.action === "prepare_paid_store") {
+          const { data: biz } = await admin.from("businesses").select("id, name, status, access_ends_at").eq("id", body.business_id).maybeSingle();
           if (!biz) return json({ error: "Business not found." }, 404);
-          const { count: paidCount } = await admin.from("subscription_payments").select("id", { count: "exact", head: true }).eq("business_id", biz.id);
-          const { data: waiting } = await admin.from("selar_payments").select("id").eq("matched_business_id", biz.id).eq("status", "awaiting_approval").limit(1);
-          if (!canSkipTrial({ status: biz.status, plan: biz.plan, paymentCount: paidCount ?? 0, hasWaitingSelarPayment: (waiting ?? []).length > 0 }))
-            return json({ error: "The trial can only be skipped for a newly approved store that has paid first." }, 409);
-          const { error } = await admin.from("businesses").update({ access_ends_at: new Date(Date.now() - 1000).toISOString() }).eq("id", biz.id);
-          if (error) return json({ error: "Could not skip the trial: " + error.message }, 500);
-          await writeAudit(admin, { business_id: biz.id, actor_id: adminId, actor_role: "platform_admin", action: "paid_store_trial_skipped",
-            entity_type: "businesses", entity_id: null, details: `${adminName} started ${biz.name} from the day of approval: it paid first, so no trial was given` });
+          if (biz.access_ends_at !== null) return json({ ok: true }); // already has its end date: no trial can start
+          if (!needsNoTrialDate({ status: biz.status, accessEndsAt: biz.access_ends_at })) return json({ error: "Only a waiting store can be prepared." }, 409);
+          const { error } = await admin.from("businesses").update({ access_ends_at: noTrialEndsAt() }).eq("id", biz.id).eq("status", "pending").is("access_ends_at", null);
+          if (error) return json({ error: "Could not prepare the store: " + error.message }, 500);
+          await writeAudit(admin, { business_id: biz.id, actor_id: adminId, actor_role: "platform_admin", action: "paid_store_no_trial",
+            entity_type: "businesses", entity_id: null, details: `${adminName} approved ${biz.name} from a payment: no trial was given` });
           return json({ ok: true });
         }
 

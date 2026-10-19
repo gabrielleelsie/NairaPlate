@@ -43,7 +43,14 @@ export const choiceLine = (prices: Prices | null | undefined, p: PlanPick): stri
   return `${planText(p)}${amt ? `, ${amt}` : ""}`;
 };
 
-/** A store that paid first may skip its automatic trial only while it is newly approved: still on trial, nothing recorded, and a Selar payment waiting. */
-export function canSkipTrial(a: { status: string; plan: string | null; paymentCount: number; hasWaitingSelarPayment: boolean }): boolean {
-  return a.status === "approved" && a.plan === "trial" && a.paymentCount === 0 && a.hasWaitingSelarPayment;
+/**
+ * A store that comes through the payment route never gets a trial. The database starts a trial only when a store goes from waiting to approved
+ * with an empty access end date, so such a store is saved with an end date that has already passed. It then stays on the Subscribe screen until
+ * its first payment is recorded, which sets the plan and the new end date.
+ */
+export const noTrialEndsAt = (now: number = Date.now()): string => new Date(now - 1000).toISOString();
+
+/** True when a waiting store still has an empty end date: it must be given its past end date before it is approved from a payment. */
+export function needsNoTrialDate(a: { status: string; accessEndsAt: string | null }): boolean {
+  return a.status === "pending" && a.accessEndsAt === null;
 }

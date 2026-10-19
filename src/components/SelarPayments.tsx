@@ -116,13 +116,13 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
     const ap = await callApi({ action: "selar_approve", id: row.id });
     return ap.status === 200 ? null : String(ap.data["error"] ?? "Could not approve.");
   });
-  // A store that registered through the payment page: approve the store, start it today with no trial, set the plan it paid for,
+  // A store that registered through the payment page: make sure it can never start a trial, approve it, set the plan it paid for,
   // record the payment, then close the Selar entry. Each step stops on the first failure and says which one.
   const approvePending = () => run("Store approved and payment recorded. The owner has been emailed.", async () => {
+    const pre = await callApi({ action: "prepare_paid_store", business_id: row.matched_business_id });
+    if (pre.status !== 200) return "Nothing was changed. The store could not be prepared for approval: " + String(pre.data["error"] ?? "");
     const st = await callApi({ action: "set_status", business_id: row.matched_business_id, status: "approved" });
     if (st.status !== 200) return "Could not approve the store: " + String(st.data["error"] ?? "");
-    const sk = await callApi({ action: "skip_trial", business_id: row.matched_business_id });
-    if (sk.status !== 200) return "Store approved, but the trial could not be skipped: " + String(sk.data["error"] ?? "");
     if (row.paid_mode && row.operating_mode !== row.paid_mode) {
       const sw = await callApi({ action: "set_operating_mode", business_id: row.matched_business_id, mode: row.paid_mode });
       if (sw.status !== 200) return "Store approved, but its plan type could not be set: " + String(sw.data["error"] ?? "");
@@ -190,7 +190,7 @@ function PaymentCard({ row, busy, setBusy, done, fail }: { row: Row; busy: boole
             </label>
           )}
           {suspended && <p className="rounded bg-amber-50 p-2 text-amber-900">This kitchen is suspended. Do you want to reactivate it with this payment?</p>}
-          {pending && <p className="rounded bg-amber-50 p-2 text-amber-900">This store is still waiting for approval. It paid first, so it starts today with no trial.</p>}
+          {pending && <p className="rounded bg-amber-50 p-2 text-amber-900">This store is still waiting for approval. It paid first, so there is no trial.</p>}
           <Input placeholder="Reason, only if the amount differs from the price list" value={diff} onChange={(e) => setDiff(e.target.value)} />
           <div className="flex flex-wrap gap-2">
             {pending ? (

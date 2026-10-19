@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "./platform-settings";
-import { amountFor, canSkipTrial, planDifferences, planFromAmount, planText } from "./plan-choice";
+import { amountFor, needsNoTrialDate, noTrialEndsAt, planDifferences, planFromAmount, planText } from "./plan-choice";
 
 const prices = DEFAULT_SETTINGS.prices;
 
@@ -45,15 +45,17 @@ describe("planText and planDifferences", () => {
     expect(planDifferences({ paid: null, kitchenMode: "buka", chosen: null })).toEqual(["The amount paid matches no plan on the price list."]));
 });
 
-describe("canSkipTrial", () => {
-  const ok = { status: "approved", plan: "trial", paymentCount: 0, hasWaitingSelarPayment: true };
-  it("allows a newly approved store that paid first", () => expect(canSkipTrial(ok)).toBe(true));
-  it("refuses every other case", () => {
-    expect(canSkipTrial({ ...ok, status: "pending" })).toBe(false);
-    expect(canSkipTrial({ ...ok, status: "suspended" })).toBe(false);
-    expect(canSkipTrial({ ...ok, plan: "monthly" })).toBe(false);
-    expect(canSkipTrial({ ...ok, plan: null })).toBe(false);
-    expect(canSkipTrial({ ...ok, paymentCount: 1 })).toBe(false);
-    expect(canSkipTrial({ ...ok, hasWaitingSelarPayment: false })).toBe(false);
+describe("no trial for a store that comes through the payment route", () => {
+  it("gives an end date that has already passed", () => {
+    const now = Date.parse("2026-10-19T10:00:00Z");
+    expect(noTrialEndsAt(now)).toBe("2026-10-19T09:59:59.000Z");
+    expect(Date.parse(noTrialEndsAt(now))).toBeLessThan(now);
+  });
+  const ok = { status: "pending", accessEndsAt: null as string | null };
+  it("prepares a waiting store that still has an empty end date", () => expect(needsNoTrialDate(ok)).toBe(true));
+  it("refuses everything else", () => {
+    expect(needsNoTrialDate({ ...ok, status: "approved" })).toBe(false);
+    expect(needsNoTrialDate({ ...ok, status: "suspended" })).toBe(false);
+    expect(needsNoTrialDate({ ...ok, accessEndsAt: "2026-10-20T00:00:00Z" })).toBe(false);
   });
 });

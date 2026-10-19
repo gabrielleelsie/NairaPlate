@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { PLAN_NAME, type Prices } from "@/lib/platform-settings";
 import { DIFFERENCE_REASON_MIN, expectedPayment } from "@/lib/payment-check";
-import { accessState, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
+import { accessState, formatLagosDate, PLAN_LABEL, termFor } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { Activity, AlertTriangle, Building2, Download, KeyRound, LogOut, RefreshCw, Search, ShieldAlert, Unlock, Users } from "lucide-react";
 
@@ -61,6 +61,7 @@ type Detail = {
   features?: { catering: boolean };
   overrides?: Record<string, boolean>;
   operating_mode?: string | null;
+  plan_choice?: { mode: string; term: string } | null;
 };
 
 const ENDPOINT = "/api/public/platform-admin";
@@ -172,6 +173,12 @@ function PlatformConsole() {
 
   useEffect(() => { if (session?.role === "platform_admin") load(); }, [session, load]);
 
+  async function refreshDetail() {
+    if (!focus) return;
+    const { data: d2 } = await callApi({ action: "business_detail", business_id: focus });
+    setDetail(d2 as unknown as Detail);
+  }
+
   async function act(body: Record<string, unknown>, okText: (d: Record<string, unknown>) => string) {
     setBusy(true); setMsg(null); setErr(null);
     const { status, data } = await callApi(body);
@@ -244,7 +251,9 @@ function PlatformConsole() {
           <Directory rows={directory} search={search} setSearch={setSearch} busy={busy} act={act} onInspect={openDetail} />
         )}
         {tab === "diagnostics" && (
-          <Diagnostics all={all} focus={focus} detail={detail} busy={busy} act={act} onPick={openDetail} />
+          <Diagnostics all={all} focus={focus} detail={detail} busy={busy} act={act} onPick={openDetail}
+            onDone={async (t) => { setErr(null); setMsg(t); await load(); await refreshDetail(); }}
+            onFail={async (t) => { setMsg(null); setErr(t); await load(); await refreshDetail(); }} />
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "messages" && <Messages onCount={setUnhandled} />}
@@ -391,8 +400,9 @@ function Directory({ rows, search, setSearch, busy, act, onInspect }: {
   );
 }
 
-function Diagnostics({ all, focus, detail, busy, act, onPick }: {
+function Diagnostics({ all, focus, detail, busy, act, onPick, onDone, onFail }: {
   all: Biz[]; focus: string | null; detail: Detail | null; busy: boolean; act: Act; onPick: (id: string) => void;
+  onDone: (text: string) => Promise<void>; onFail: (text: string) => Promise<void>;
 }) {
   const [resetting, setResetting] = useState<string | null>(null);
   const [pin, setPin] = useState("");
@@ -444,6 +454,10 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
 
       {(detail.business.status === "approved" || detail.business.status === "suspended") && (
         <RecordPayment mode={detail.operating_mode == null ? null : asMode(detail.operating_mode)} businessId={detail.business.id} businessName={detail.business.name} suspended={detail.business.status === "suspended"} busy={busy} act={act} />
+      )}
+      {detail.business.status === "pending" && (
+        <RecordPayment pendingStore chosen={detail.plan_choice ?? null} mode={detail.operating_mode == null ? null : asMode(detail.operating_mode)} businessId={detail.business.id} businessName={detail.business.name} suspended={false} busy={busy} act={act}
+          onDone={onDone} onFail={onFail} />
       )}
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-4" data-testid="features-panel">
@@ -606,11 +620,17 @@ function Diagnostics({ all, focus, detail, busy, act, onPick }: {
   );
 }
 
-function RecordPayment({ mode, businessId, businessName, suspended, busy, act }: {
+function RecordPayment({ mode: storeMode, businessId, businessName, suspended, busy, act, pendingStore, chosen, onDone, onFail }: {
   mode: OperatingMode | null; businessId: string; businessName: string; suspended: boolean; busy: boolean; act: Act;
+  // A store still waiting for approval that paid first: approve it, set its plan type and record the payment in one go. It never gets a trial.
+  pendingStore?: boolean; chosen?: { mode: string; term: string } | null;
+  onDone?: (text: string) => Promise<void>; onFail?: (text: string) => Promise<void>;
 }) {
   const today = lagosDateKey(new Date());
-  const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">("monthly");
+  const [payMode, setPayMode] = useState<OperatingMode | "">(chosen ? asMode(chosen.mode) : storeMode ?? "");
+  const [working, setWorking] = useState(false);
+  const mode: OperatingMode | null = pendingStore ? (payMode || null) : storeMode;
+  const [plan, setPlan] = useState<"monthly" | "quarterly" | "yearly">(chosen && (chosen.term === "monthly" || chosen.term === "quarterly" || chosen.term === "yearly") ? chosen.term : "monthly");
   const [amount, setAmount] = useState("");
   const [typed, setTyped] = useState(false); // once the admin types an amount, the plan price no longer overwrites it
   const [prices, setPrices] = useState<Prices | null>(null);
@@ -624,7 +644,7 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
   const expected = expectedPayment(prices, mode, plan, includesSetup);
   const differs = !!expected && kobo > 0 && kobo !== expected.kobo;
   const reasonOk = !differs || diffReason.trim().length >= DIFFERENCE_REASON_MIN;
-  const valid = kobo > 0 && ref.trim().length >= 2 && !!paidOn && paidOn <= today && reasonOk;
+  const valid = kobo > 0 && ref.trim().length >= 2 && !!paidOn && paidOn <= today && reasonOk && (!pendingStore || payMode !== "");
   const payload = {
     action: "record_payment", business_id: businessId, plan, amount_kobo: kobo, payment_reference: ref.trim(), paid_on: paidOn,
     includes_setup: includesSetup, ...(differs ? { difference_reason: diffReason.trim() } : {}),
@@ -641,6 +661,7 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
 
   useEffect(() => {
     setPreview(null); setPerr(null);
+    if (pendingStore) { const t = termFor(null, new Date(), plan); setPreview(`${formatLagosDate(t.start.toISOString())} to ${formatLagosDate(t.end.toISOString())}`); return; }
     let live = true;
     callApi({ ...payload, amount_kobo: kobo > 0 ? kobo : 1, payment_reference: ref.trim() || "preview", preview: true }).then(({ status, data }) => {
       if (!live) return;
@@ -653,8 +674,24 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
 
   return (
     <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-      <h2 className="font-semibold text-card-foreground">Record payment</h2>
+      <h2 className="font-semibold text-card-foreground">{pendingStore ? "Approve and record payment" : "Record payment"}</h2>
+      {pendingStore && (
+        <p className="text-sm text-muted-foreground">
+          This store is waiting. Use this when it has paid. It starts today with no trial, and the owner is emailed.
+          {chosen ? ` The owner chose ${PLAN_NAME[asMode(chosen.mode)]}, ${chosen.term}.` : ""}
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
+        {pendingStore && (
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="rp-mode">Plan type</Label>
+            <select id="rp-mode" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={payMode}
+              onChange={(e) => { setPayMode(e.target.value as OperatingMode | ""); setTyped(false); }}>
+              <option value="">Choose the plan type</option>
+              {OPERATING_MODES.map((m) => <option key={m.value} value={m.value}>{PLAN_NAME[m.value]}</option>)}
+            </select>
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="rp-plan">Plan</Label>
           <select id="rp-plan" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={plan}
@@ -691,10 +728,29 @@ function RecordPayment({ mode, businessId, businessName, suspended, busy, act }:
       {preview && <p className="text-sm text-foreground">This payment will cover <strong>{preview}</strong> (access ends 11:59 pm Lagos time).</p>}
       {perr && <p className="text-sm text-destructive">{perr}</p>}
       {suspended && <p className="text-sm text-amber-900">This business is suspended. Recording a payment does not reactivate it.</p>}
+      {pendingStore ? (
+        <Button disabled={busy || working || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {
+          setWorking(true);
+          // Each step stops on the first failure and says which one. The store can never start a trial: it is given its past end date first.
+          const pre = await callApi({ action: "prepare_paid_store", business_id: businessId });
+          if (pre.status !== 200) { setWorking(false); return void (await onFail?.("Nothing was approved. The store could not be prepared: " + String(pre.data["error"] ?? ""))); }
+          const st = await callApi({ action: "set_status", business_id: businessId, status: "approved" });
+          if (st.status !== 200) { setWorking(false); return void (await onFail?.("The store could not be approved: " + String(st.data["error"] ?? ""))); }
+          if (storeMode !== payMode) {
+            const sw = await callApi({ action: "set_operating_mode", business_id: businessId, mode: payMode });
+            if (sw.status !== 200) { setWorking(false); return void (await onFail?.("The store is approved, but its plan type could not be set: " + String(sw.data["error"] ?? "") + ". Use Record payment below once it is set.")); }
+          }
+          const rec = await callApi(payload);
+          setWorking(false);
+          if (rec.status !== 200) return void (await onFail?.("The store is approved, but the payment was not recorded: " + String(rec.data["error"] ?? "") + ". Use Record payment below."));
+          await onDone?.(`${businessName} approved and payment saved. Access runs until ${formatLagosDate(String(rec.data["period_end"]))}. The owner has been emailed.`);
+        }}>{working ? "Working…" : "Approve and record payment"}</Button>
+      ) : (
       <Button disabled={busy || !valid} className="bg-brand-blue text-brand-inverse hover:bg-brand-blue/90" onClick={async () => {
         const d = await act(payload, (r) => `Payment saved for ${businessName}. Access now runs until ${formatLagosDate(String(r["period_end"]))}.${r["still_suspended"] ? " The business is still suspended." : ""}`);
         if (d) { setTyped(false); setIncludesSetup(false); setDiffReason(""); setAmount(""); setRef(""); }
       }}>Save payment</Button>
+      )}
     </section>
   );
 }
