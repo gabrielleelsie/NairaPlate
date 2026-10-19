@@ -24,3 +24,16 @@ export async function setupFeePaid(admin: SupabaseClient, businessId: string): P
   const { data: viaPayment } = await admin.from("subscription_payments").select("id").eq("business_id", businessId).gt("setup_fee_kobo", 0).limit(1);
   return (viaPayment ?? []).length > 0;
 }
+
+/**
+ * The plan type (Buka, Restaurant or Full Suite) a store was given when it was approved, or null when there is none to show.
+ * A store still waiting for approval has no real plan type yet, so it gets null and the plan page shows every plan.
+ */
+export async function ownPlanMode(admin: SupabaseClient, businessId: string): Promise<"buka" | "standard" | "advanced" | null> {
+  const { data, error } = await admin.from("businesses").select("status, operating_mode" as never).eq("id", businessId).maybeSingle();
+  if (error || !data) return null;
+  const row = data as { status?: string; operating_mode?: string | null };
+  if (row.status !== "approved" && row.status !== "suspended") return null;
+  const m = row.operating_mode;
+  return m === "buka" || m === "standard" || m === "advanced" ? m : null;
+}
