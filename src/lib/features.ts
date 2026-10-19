@@ -32,7 +32,11 @@ const ALL_ON: Record<FeatureName, boolean> = {
 export const MODE_DEFAULTS: Record<OperatingMode, Record<FeatureName, boolean>> = {
   advanced: ALL_ON,
   standard: { ...ALL_ON, channel_payouts: false },
-  buka: Object.fromEntries(Object.keys(ALL_ON).map((k) => [k, false])) as Record<FeatureName, boolean>,
+  // Buka keeps the simple view, plus the three tools the flyer promises every kitchen: wastage, stock take (with the leakage report) and the audit log.
+  buka: {
+    ...(Object.fromEntries(Object.keys(ALL_ON).map((k) => [k, false])) as Record<FeatureName, boolean>),
+    wastage: true, stock_take: true, audit_log: true,
+  },
 };
 
 export function hasFeature(mode: OperatingMode, feature: FeatureName, overrides?: Partial<Record<string, boolean>>): boolean {
