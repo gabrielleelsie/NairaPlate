@@ -257,7 +257,7 @@ function PlatformConsole() {
         )}
         {tab === "audit" && <AuditInspector businesses={all} initialBusiness={auditBiz} />}
         {tab === "messages" && <Messages onCount={setUnhandled} />}
-        {tab === "selar" && <SelarPayments onCount={setSelarWaiting} />}
+        {tab === "selar" && <SelarPayments onCount={setSelarWaiting} onOpenStore={openDetail} />}
         {tab === "settings" && <PlatformSettingsPanel callApi={callApi} />}
         {tab === "security" && <MyAccount />}
       </div>

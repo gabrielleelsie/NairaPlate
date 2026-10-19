@@ -20,7 +20,7 @@ import { sendSecurityAlert, sendOwnerStatusEmail, logEmailUndelivered, sendPayme
 import { termFor, formatLagosDate, PLAN_LABEL } from "@/lib/subscription";
 import { lagosDateKey } from "@/lib/lagos-time";
 import { z } from "zod";
-import { isMode, isTerm, needsNoTrialDate, noTrialEndsAt, planDifferences, planFromAmount, type PlanPick } from "@/lib/plan-choice";
+import { isMode, isTerm, needsNoTrialDate, noTrialEndsAt, planDifferences, planFromAmount, waitingToPay, type PlanPick } from "@/lib/plan-choice";
 import { PLAN_NAME, SETTING_KEYS, SETTING_LABEL, SETTING_SCHEMAS, mergeSettings, type SettingKey } from "@/lib/platform-settings";
 import { checkPaymentAmount, expectedPayment } from "@/lib/payment-check";
 import { NEWS_SCHEMA, READ_SAMPLE_KEY } from "@/lib/news";
@@ -59,6 +59,7 @@ const ActionSchema = z.discriminatedUnion("action", [
     difference_reason: z.string().trim().max(300).optional(),
   }),
   z.object({ action: z.literal("selar_list"), view: z.enum(["open", "done"]) }),
+  z.object({ action: z.literal("waiting_to_pay") }),
   z.object({ action: z.literal("selar_assign"), id: z.string().uuid(), business_id: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal("selar_approve"), id: z.string().uuid() }),
   z.object({ action: z.literal("prepare_paid_store"), business_id: z.string().trim().min(1).max(100) }),
@@ -470,6 +471,27 @@ export const Route = createFileRoute("/api/public/platform-admin")({
             await logEmailUndelivered(admin, { businessId: biz.id, kind: "Payment confirmation", actorId: adminId, subjectOf, reason: "the owner has no email address on file" });
           }
           return json({ ok: true, ...result, still_suspended: biz.status === "suspended" });
+        }
+
+        // ---------- waiting_to_pay: stores whose owner chose a plan on the plan page and has not paid since ----------
+        // Reads only what already exists (plan choices and recorded payments). If the plan choices table is missing there are simply none.
+        if (body.action === "waiting_to_pay") {
+          const { data: choiceRows, error: cErr } = await admin.from("plan_choices")
+            .select("business_id, plan_mode, plan_term, created_at").order("created_at", { ascending: false }).limit(500);
+          if (cErr || !choiceRows || choiceRows.length === 0) return json({ waiting: [] });
+          const ids = [...new Set(choiceRows.map((c) => c.business_id as string))];
+          const { data: bizRows } = await admin.from("businesses").select("id, name, status").in("id", ids).in("status", ["pending", "approved", "suspended"]);
+          const biz = new Map((bizRows ?? []).map((b) => [b.id as string, b]));
+          const { data: pays } = await admin.from("subscription_payments").select("business_id, created_at").in("business_id", ids).order("created_at", { ascending: false });
+          const lastPaid = new Map<string, string>();
+          for (const p of pays ?? []) if (!lastPaid.has(p.business_id as string)) lastPaid.set(p.business_id as string, p.created_at as string);
+          const { data: owners } = await admin.from("staff_users").select("business_id, email").eq("role", "owner").eq("is_active", true).in("business_id", ids);
+          const email = new Map<string, string | null>();
+          for (const o of owners ?? []) if (!email.has(o.business_id as string)) email.set(o.business_id as string, (o.email as string | null) ?? null);
+          const items = waitingToPay(choiceRows.filter((c) => biz.has(c.business_id as string)) as never, lastPaid).slice(0, 100);
+          return json({
+            waiting: items.map((i) => ({ ...i, business_name: biz.get(i.business_id)?.name ?? i.business_id, business_status: biz.get(i.business_id)?.status ?? null, owner_email: email.get(i.business_id) ?? null })),
+          });
         }
 
         // ---------- Selar payments waiting for approval ----------
