@@ -9,7 +9,7 @@ import { usePublicSettings } from "@/lib/use-public-settings";
 import { PLAN_TERMS, TERM_LABEL, amountFor, isMode, type PlanTerm } from "@/lib/plan-choice";
 import type { OperatingMode } from "@/lib/features";
 import { SELAR_SETUP_URL, SELAR_SUBSCRIBE_URL } from "@/lib/selar-links";
-import { C, cardStyle, FONT_STACK, SiteFooter, SiteHeader } from "@/components/site/site-chrome";
+import { C, cardStyle, FONT_STACK, SiteFooter, SiteHeader, WHATSAPP_HREF } from "@/components/site/site-chrome";
 
 const TITLE = "Choose your plan | NairaPlate";
 const DESCRIPTION = "Choose your NairaPlate plan and how long you want to pay for.";
@@ -137,6 +137,10 @@ function ExistingForm({ onBack, onDone }: { onBack: () => void; onDone: (w: Who)
         <Button type="submit" disabled={busy || !code.trim() || !email.trim()}>{busy ? "Checking…" : "Continue"}</Button>
         <Button type="button" variant="outline" onClick={onBack}>Back</Button>
       </div>
+      <p style={{ color: C.muted, fontSize: 15, margin: 0 }}>
+        Forgot your business code?{" "}
+        <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" style={{ color: C.blue, fontWeight: 700 }}>Message us on WhatsApp</a>
+      </p>
     </form>
   );
 }
