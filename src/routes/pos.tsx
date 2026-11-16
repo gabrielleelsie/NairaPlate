@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { PAY_CHOICE_LABEL, payChoicesFor, type PayChoice } from "@/lib/payment-ui";
 import type { PaymentMode } from "@/lib/payments";
 import { TransferWaiting, type WaitingRequest } from "@/components/TransferWaiting";
-import { OfflineBanner } from "@/components/OfflineBanner";
 import { useConnectivity, watTime } from "@/lib/connectivity";
 import { deleteDraft, draftKey, getTillLabel, listQueuedSales, loadDraft, loadSavedMenu, logOutage, nextPaperSequence, saveDraft, saveMenu, saveQueuedSale, setTillLabel } from "@/lib/offline-store";
 import { expiredAtMs, isDraftEmpty, isDraftExpired, isExpiredPurgeDue, newClientSaleId, paperReference, sanitizeDraft, type PosDraft } from "@/lib/pos-draft";
@@ -383,9 +382,6 @@ function PosScreen() {
   return (
     <main className="mx-auto max-w-xl p-4 space-y-5">
       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Till</h1><div className="flex gap-3"><Link className="underline" to="/late-entries">Enter paper sale</Link><Link className="underline" to="/app">Home</Link></div></div>
-
-      <OfflineBanner status={conn.status} outageStartedAtUtc={conn.outageStartedAtUtc} menuSyncedAtUtc={menuSyncedAt}
-        menuStale={menuStale} onPrintPaper={() => printPaper()} />
 
       {expiredDraft && (() => {
         const ex = expiredDraft;
