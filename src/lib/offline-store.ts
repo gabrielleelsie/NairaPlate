@@ -2,9 +2,10 @@
 // Only non-secret sale-form data is ever stored here. Never PINs, sign-in tokens or payment keys.
 import type { PosDraft } from "./pos-draft";
 import { readMenuCache, type MenuCache } from "./offline-menu";
+import type { QueuedSale } from "./offline-sales";
 
 const DB_NAME = "nairaplate-offline";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const OUTAGE_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
 
 function openDb(): Promise<IDBDatabase | null> {
@@ -16,6 +17,7 @@ function openDb(): Promise<IDBDatabase | null> {
       if (!db.objectStoreNames.contains("drafts")) db.createObjectStore("drafts", { keyPath: "key" });
       if (!db.objectStoreNames.contains("outages")) db.createObjectStore("outages", { keyPath: "id", autoIncrement: true });
       if (!db.objectStoreNames.contains("menu")) db.createObjectStore("menu", { keyPath: "businessId" });
+      if (!db.objectStoreNames.contains("sales")) db.createObjectStore("sales", { keyPath: "clientSaleId" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => resolve(null);
@@ -63,6 +65,16 @@ export async function saveMenu(m: MenuCache): Promise<void> {
 export async function loadSavedMenu(businessId: string): Promise<MenuCache | null> {
   const raw = await tx<unknown>("menu", "readonly", (s) => s.get(businessId));
   return readMenuCache(raw, businessId);
+}
+
+/** Finished sales waiting on this phone to be sent. */
+export async function saveQueuedSale(q: QueuedSale): Promise<boolean> {
+  const ok = await tx("sales", "readwrite", (s) => s.put(q));
+  return ok !== null;
+}
+export async function listQueuedSales(businessId: string): Promise<QueuedSale[]> {
+  const all = (await tx<QueuedSale[]>("sales", "readonly", (s) => s.getAll())) ?? [];
+  return all.filter((q) => q.businessId === businessId).sort((a, b) => a.savedAtUtc.localeCompare(b.savedAtUtc));
 }
 
 export type OutageEntry =

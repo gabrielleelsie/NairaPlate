@@ -11,10 +11,11 @@ import type { PaymentMode } from "@/lib/payments";
 import { TransferWaiting, type WaitingRequest } from "@/components/TransferWaiting";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useConnectivity, watTime } from "@/lib/connectivity";
-import { deleteDraft, draftKey, getTillLabel, loadDraft, loadSavedMenu, logOutage, nextPaperSequence, saveDraft, saveMenu, setTillLabel } from "@/lib/offline-store";
+import { deleteDraft, draftKey, getTillLabel, listQueuedSales, loadDraft, loadSavedMenu, logOutage, nextPaperSequence, saveDraft, saveMenu, saveQueuedSale, setTillLabel } from "@/lib/offline-store";
 import { expiredAtMs, isDraftEmpty, isDraftExpired, isExpiredPurgeDue, newClientSaleId, paperReference, sanitizeDraft, type PosDraft } from "@/lib/pos-draft";
 import { printPaperForm } from "@/lib/paper-fallback";
 import { lagosDateKey } from "@/lib/lagos-time";
+import { buildQueuedSale, countWaiting, OFFLINE_TRANSFER_BLOCK, offlinePayAllowed } from "@/lib/offline-sales";
 
 export const Route = createFileRoute("/pos")({
   ssr: false,
@@ -68,6 +69,7 @@ function PosScreen() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // Offline Phase 0
   const [clientSaleId, setClientSaleId] = useState(() => newClientSaleId());
+  const [waitingOnPhone, setWaitingOnPhone] = useState(0);
   const [draftState, setDraftState] = useState<PosDraft["state"]>("editing");
   const [draftReady, setDraftReady] = useState(false);
   const [priorDraft, setPriorDraft] = useState<PosDraft | null>(null);
@@ -202,7 +204,7 @@ function PosScreen() {
   const finalChannel = channel === "Aggregator" ? aggName.trim() : channel;
   const creditOk = pay !== "credit" || (custName.trim().length > 0 && custPhone.trim().length > 0);
   const locked = draftState === "uncertain";
-  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy && !locked && conn.isOnline && !priorDraft && !expiredDraft;
+  const canSubmit = lines.length > 0 && subtotal > 0 && splitOk && creditOk && finalChannel.length > 0 && !busy && !locked && (conn.isOnline || offlinePayAllowed(pay)) && !priorDraft && !expiredDraft;
 
   function addLine() {
     const q = Math.floor(Number(qty));
@@ -231,8 +233,32 @@ function PosScreen() {
     setMsg({ ok: false, text: "Order not saved: " + (error.message ?? "unknown error") });
   }
 
+  const refreshWaiting = async (biz: string) => setWaitingOnPhone(countWaiting(await listQueuedSales(biz)));
+  useEffect(() => { if (session) void refreshWaiting(session.businessId); }, [session?.businessId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** No internet: keep the finished cash or credit sale on this phone. It is sent later and never counted as saved until then. */
+  async function saveOnPhone() {
+    if (!session) return;
+    if (!offlinePayAllowed(pay)) return setMsg({ ok: false, text: OFFLINE_TRANSFER_BLOCK });
+    const dateKey = lagosDateKey(new Date());
+    const q = buildQueuedSale({
+      clientSaleId, businessId: session.businessId, userId: session.userId, nowIso: new Date().toISOString(),
+      paperReference: paperReference(session.businessId, dateKey, getTillLabel(), nextPaperSequence(session.businessId, dateKey)),
+      channel: finalChannel, tier, pay, lines, shownTotalKobo: subtotal, custName, custPhone,
+    });
+    if (!q) return setMsg({ ok: false, text: "This sale is not complete yet." });
+    sending.current = true; setBusy(true); setMsg(null);
+    try {
+      if (!(await saveQueuedSale(q))) return setMsg({ ok: false, text: "Could not keep this sale on the phone. Use the paper fallback form." });
+      await resetSale();
+      await refreshWaiting(session.businessId);
+      setMsg({ ok: true, text: `Kept on this phone: ${formatNaira(subtotal)} (${pay === "credit" ? "credit" : "cash"}). It is not recorded yet. It will be sent when the internet is back.` });
+    } finally { sending.current = false; setBusy(false); }
+  }
+
   async function submit() {
-    if (!session || sending.current || !conn.isOnline) return;
+    if (!session || sending.current) return;
+    if (!conn.isOnline) return void saveOnPhone();
     if (pay !== "auto_transfer" && pay !== "credit" && (cashK + trK !== subtotal || (pay === "split" && (cashK <= 0 || trK <= 0)))) {
       return setMsg({ ok: false, text: "Cash and transfer must add up exactly to the total." });
     }
@@ -485,8 +511,10 @@ function PosScreen() {
       </section>
       </fieldset>
 
-      <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : pay === "credit" ? `Put ${formatNaira(subtotal)} on credit` : pay === "auto_transfer" ? `Ask for ${formatNaira(subtotal)} by transfer` : `Charge ${formatNaira(subtotal)}`}</Button>
-      {!conn.isOnline && !locked && <p className="text-sm text-destructive">Cannot save while the connection is not confirmed. Use the paper fallback form.</p>}
+      <Button className="w-full" size="lg" disabled={!canSubmit} onClick={submit}>{busy ? "Saving…" : !conn.isOnline ? `Keep ${formatNaira(subtotal)} on this phone` : pay === "credit" ? `Put ${formatNaira(subtotal)} on credit` : pay === "auto_transfer" ? `Ask for ${formatNaira(subtotal)} by transfer` : `Charge ${formatNaira(subtotal)}`}</Button>
+      {!conn.isOnline && !locked && offlinePayAllowed(pay) && <p className="text-sm">No internet. This sale will be kept on this phone and sent when the internet is back. Stock and cash totals only update after it is sent.</p>}
+      {!conn.isOnline && !locked && !offlinePayAllowed(pay) && <p className="text-sm text-destructive">{OFFLINE_TRANSFER_BLOCK}</p>}
+      {waitingOnPhone > 0 && <p className="text-sm font-medium">{waitingOnPhone} {waitingOnPhone === 1 ? "sale is" : "sales are"} waiting on this phone to be sent.</p>}
       {msg && <p className={msg.ok ? "text-primary" : "text-destructive"}>{msg.text}</p>}
 
       <section className="space-y-1 border-t pt-3">
