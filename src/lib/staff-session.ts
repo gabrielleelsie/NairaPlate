@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/external-supabase";
 
 export type StaffSession = { userId: string; businessId: string; role: string; name: string; accessLocked: boolean };
@@ -7,8 +8,14 @@ export type StaffSession = { userId: string; businessId: string; role: string; n
 export function useStaffSession() {
   const [state, setState] = useState<{ loading: boolean; session: StaffSession | null }>({ loading: true, session: null });
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const u = data.user;
+    // getUser asks the server. With no internet it fails with a network error; then the sign-in already kept on this phone is used,
+    // so the Till can open. A refusal from the server (a bad or ended sign-in) is never overridden. The database checks every save anyway.
+    const readUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data.user || !isAuthRetryableFetchError(error)) return data.user;
+      return (await supabase.auth.getSession()).data.session?.user ?? null;
+    };
+    readUser().then((u) => {
       const businessId = u?.app_metadata?.["business_id"];
       const role = u?.app_metadata?.["role"];
       if (!u || typeof businessId !== "string" || typeof role !== "string") return setState({ loading: false, session: null });

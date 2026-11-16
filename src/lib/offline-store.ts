@@ -1,9 +1,10 @@
 // Device storage for the Till: the recoverable sale draft and a short outage log.
 // Only non-secret sale-form data is ever stored here. Never PINs, sign-in tokens or payment keys.
 import type { PosDraft } from "./pos-draft";
+import { readMenuCache, type MenuCache } from "./offline-menu";
 
 const DB_NAME = "nairaplate-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const OUTAGE_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
 
 function openDb(): Promise<IDBDatabase | null> {
@@ -14,6 +15,7 @@ function openDb(): Promise<IDBDatabase | null> {
       const db = req.result;
       if (!db.objectStoreNames.contains("drafts")) db.createObjectStore("drafts", { keyPath: "key" });
       if (!db.objectStoreNames.contains("outages")) db.createObjectStore("outages", { keyPath: "id", autoIncrement: true });
+      if (!db.objectStoreNames.contains("menu")) db.createObjectStore("menu", { keyPath: "businessId" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => resolve(null);
@@ -51,6 +53,16 @@ export async function loadDraft(key: string): Promise<PosDraft | null> {
 export async function deleteDraft(key: string): Promise<void> {
   try { sessionStorage.removeItem(sessionKey(key)); } catch { /* ignore */ }
   await tx("drafts", "readwrite", (s) => s.delete(key));
+}
+
+/** The menu is kept per business so the Till can start with no internet. */
+export async function saveMenu(m: MenuCache): Promise<void> {
+  await tx("menu", "readwrite", (s) => s.put(m));
+}
+
+export async function loadSavedMenu(businessId: string): Promise<MenuCache | null> {
+  const raw = await tx<unknown>("menu", "readonly", (s) => s.get(businessId));
+  return readMenuCache(raw, businessId);
 }
 
 export type OutageEntry =

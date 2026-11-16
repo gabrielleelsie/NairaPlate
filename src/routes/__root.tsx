@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AccessGate } from "@/components/AccessGate";
+import { registerOfflineShell } from "@/lib/offline-shell";
 
 function NotFoundComponent() {
   return (
@@ -124,6 +125,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Lets the home screen and Till open with no internet (see public/sw.js).
+  useEffect(() => { void registerOfflineShell(); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -11,7 +11,7 @@ import type { PaymentMode } from "@/lib/payments";
 import { TransferWaiting, type WaitingRequest } from "@/components/TransferWaiting";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useConnectivity, watTime } from "@/lib/connectivity";
-import { deleteDraft, draftKey, getTillLabel, loadDraft, logOutage, nextPaperSequence, saveDraft, setTillLabel } from "@/lib/offline-store";
+import { deleteDraft, draftKey, getTillLabel, loadDraft, loadSavedMenu, logOutage, nextPaperSequence, saveDraft, saveMenu, setTillLabel } from "@/lib/offline-store";
 import { expiredAtMs, isDraftEmpty, isDraftExpired, isExpiredPurgeDue, newClientSaleId, paperReference, sanitizeDraft, type PosDraft } from "@/lib/pos-draft";
 import { printPaperForm } from "@/lib/paper-fallback";
 import { lagosDateKey } from "@/lib/lagos-time";
@@ -83,14 +83,39 @@ function PosScreen() {
 
   const key = session ? draftKey(session.businessId, session.userId) : null;
 
+  const hasMenu = useRef(false);
+  // The menu can arrive before we know who is signed in, so keep it until the business is known, then save it.
+  const freshMenu = useRef<{ savedAtUtc: string; recipes: typeof recipes } | null>(null);
+  const sessionBiz = useRef<string | null>(null);
+  sessionBiz.current = session?.businessId ?? null;
   const loadMenu = async () => {
     await supabase.rpc("refresh_dish_prices" as never); // show a scheduled price once it has started; failure is harmless
     const { data, error } = await supabase.from("recipes").select("id,name,selling_price_kobo").eq("is_current", true).order("name");
-    if (error) { conn.reportRequestFailure(); return setMsg({ ok: false, text: "Could not load menu." }); }
-    setRecipes((data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) })));
-    setMenuSyncedAt(new Date().toISOString());
+    if (error) {
+      conn.reportRequestFailure();
+      if (hasMenu.current) return; // keep showing the menu saved on this phone; the banner says it may be old
+      return setMsg({ ok: false, text: "Could not load menu." });
+    }
+    const list = (data ?? []).map((r) => ({ ...r, selling_price_kobo: Number(r.selling_price_kobo) }));
+    const at = new Date().toISOString();
+    hasMenu.current = true;
+    setRecipes(list);
+    setMenuSyncedAt(at);
+    freshMenu.current = { savedAtUtc: at, recipes: list };
+    if (sessionBiz.current) void saveMenu({ businessId: sessionBiz.current, ...freshMenu.current });
   };
   useEffect(() => { void loadMenu(); setTillLabelState(getTillLabel()); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Start from the menu saved on this phone, so the Till opens even with no internet. A fresh menu replaces it as soon as one loads.
+  useEffect(() => {
+    if (!session) return;
+    if (freshMenu.current) void saveMenu({ businessId: session.businessId, ...freshMenu.current });
+    void loadSavedMenu(session.businessId).then((m) => {
+      if (!m || hasMenu.current) return;
+      hasMenu.current = true;
+      setRecipes(m.recipes);
+      setMenuSyncedAt(m.savedAtUtc);
+    });
+  }, [session?.businessId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const menuStale = !menuSyncedAt || Date.now() - Date.parse(menuSyncedAt) > MENU_STALE_MS;
   // Online with an old menu: refresh it. The database still sets every price on save.
